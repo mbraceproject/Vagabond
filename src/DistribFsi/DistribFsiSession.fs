@@ -19,7 +19,7 @@
                 invalidArg "assemblyOutDir" <| sprintf "Invalid directory '%s'." assemblyOutDir
 
         let fsiSession = prepareFsiInteractiveSession(argv, inReader, outWriter, errorWriter)
-        let compiler = new InteractionCompiler("/mbrace", true, "FSI-ASSEMBLY")
+        let compiler = new InteractionCompiler(assemblyOutDir, true, "FSI-ASSEMBLY")
         do
             match fsiSession.PublishedASTs with
             | None -> invalidOp "internal error"

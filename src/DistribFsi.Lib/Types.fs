@@ -68,8 +68,17 @@
         override x.GetHashCode () = x.Comparable.GetHashCode()
         interface IComparable with member x.CompareTo y = x.CompareTo y
 
-
     and ReadOnly<'T> = abstract Value : 'T
 
-    // TODO : fill in
-    and InteractionCompiler = { Pickler : FsPickler }
+    and InteractionCompilerInfo =
+        
+        abstract ShellId : Guid
+        abstract CompiledAssemblyPath : string
+        abstract DynamicAssembly : Assembly
+        abstract Pickler : FsPickler
+        
+        abstract RequestCompilation : unit -> FsiCompiledAssembly
+
+        abstract TryGetCompiledAssembly : moduleName:string -> FsiCompiledAssembly option
+        abstract TryGetDeclarationInfo : decl:DeclarationId -> FsiDeclarationInfo option
+        abstract GetDependencies : assembly:FsiCompiledAssembly -> AssemblyDescriptor list

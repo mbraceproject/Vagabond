@@ -4,6 +4,8 @@
     open System.Diagnostics
     open System.Threading
 
+    open FsPickler
+
     [<assembly: System.Runtime.InteropServices.ComVisible(false)>]
     [<assembly: System.CLSCompliant(true)>]  
     do()
@@ -93,6 +95,15 @@
         member self.ShowIDictionary with get() = showIDictionary and set v = showIDictionary <- v
         member self.AddedPrinters with get() = addedPrinters and set v = addedPrinters <- v
 
+        member self.UsesInteractionCompiler = 
+            DistribFsiRegistry.TryGetInteractionCompilerInfo().IsSome
+
+        member self.TryGetInteractionCompilerInfo () =
+            DistribFsiRegistry.TryGetInteractionCompilerInfo()
+
+        member self.RequestCompilation () =
+            DistribFsiRegistry.InteractionCompilerInfo.RequestCompilation()
+
         [<CodeAnalysis.SuppressMessage("Microsoft.Performance", "CA1819:PropertiesShouldNotReturnArrays")>]
         member self.CommandLineArgs
            with get() = args 
@@ -113,8 +124,10 @@
     [<assembly: CodeAnalysis.SuppressMessage("Microsoft.Design", "CA1009:DeclareEventHandlersCorrectly", Scope="member", Target="Nessos.DistribFsi.InteractiveSession.#ThreadException")>]
     do()
     #endif
-  
-  
+
+
+
+   
     module Settings = 
         let fsi = new InteractiveSession()
 

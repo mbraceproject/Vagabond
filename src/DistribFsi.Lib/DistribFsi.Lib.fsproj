@@ -8,9 +8,9 @@
     <ProjectGuid>9c98fe8d-ed45-4e49-a538-65e7ae49fb2c</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>FsiD.Core</RootNamespace>
-    <AssemblyName>FsiD.Core</AssemblyName>
+    <AssemblyName>DistribFsi.Lib</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
-    <Name>FsiD.Core</Name>
+    <Name>DistribFsi.Lib</Name>
     <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
@@ -53,7 +53,8 @@
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="Settings.fs" />
+    <Compile Include="Registry.fs" />
+    <Compile Include="InteractiveSettings.fs" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

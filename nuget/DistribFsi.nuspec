@@ -14,10 +14,17 @@
     <releaseNotes>@releaseNotes@</releaseNotes>
     <copyright>Copyright 2013</copyright>
     <tags>@tags@</tags>
-    <dependencies />
+    @dependencies@
   </metadata>
   <files>
     <file src="..\bin\DistribFsi.Settings.dll" target="lib/net40" />
+    <file src="..\bin\DistribFsi.Settings.pdb" target="lib/net40" />
+    <file src="..\bin\DistribFsi.Settings.xml" target="lib/net40" />
+    <file src="..\bin\FSharp.Compiler.Service.dll" target="lib/net40" />
+    <file src="..\bin\FSharp.Compiler.Service.pdb" target="lib/net40" />
+    <file src="..\bin\FSharp.Compiler.Service.xml" target="lib/net40" />
     <file src="..\bin\DistribFsi.Shell.dll" target="lib/net40" />
+    <file src="..\bin\DistribFsi.Shell.pdb" target="lib/net40" />
+    <file src="..\bin\DistribFsi.Shell.xml" target="lib/net40" />
   </files>
 </package>

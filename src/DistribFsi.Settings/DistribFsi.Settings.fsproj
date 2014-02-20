@@ -53,7 +53,7 @@
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
     <None Include="packages.config" />
-    <Compile Include="assemblyInfo.fs" />
+    <Compile Include="assemblyInfo.DistribFsi.Settings.dll.fs" />
     <Compile Include="fsiaux.fsi" />
     <Compile Include="fsiaux.fs" />
     <Compile Include="Serialization.fs" />

@@ -21,34 +21,35 @@ open System
 
 // The name of the project 
 // (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
-let project = "FSharp.ProjectTemplate"
+let project = "DistribFsi.Shell"
 
 // Short summary of the project
 // (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary = "A short summary of your project."
+let summary = "Distributable F# Interactive."
 
 // Longer description of the project
 // (used as a description for NuGet package; line breaks are automatically cleaned up)
 let description = """
-  A lengthy description of your project. 
-  This can have multiple lines and will be cleaned up. """
+  A modified version of F# Interactive.
+  Enables the distribution of code defined in interactions. """
+
 // List of author names (for NuGet package)
-let authors = [ "Your Name" ]
+let authors = [ "Eirik Tsarpalis" ]
 // Tags for your project (for NuGet package)
-let tags = "F# fsharp tags which describe your project"
+let tags = "F# fsharp fsi distribution"
 
 // File system information 
 // (<solutionFile>.sln is built during the building process)
-let solutionFile  = "FSharp.ProjectScaffold"
+let solutionFile  = "DistribFsi"
 // Pattern specifying assemblies to be tested using NUnit
 let testAssemblies = "tests/**/bin/Release/*Tests*.dll"
 
 // Git configuration (used for publishing documentation in gh-pages branch)
 // The profile where the project is posted 
-let gitHome = "https://github.com/fsprojects"
+let gitHome = "https://github.com/nessos"
 // The name of the project on GitHub
-let gitName = "FSharp.ProjectScaffold"
-let cloneUrl = "git@github.com:fsprojects/FSharp.ProjectScaffold.git"
+let gitName = "DistribFsi"
+let cloneUrl = "git@github.com:nessos/DistribFsi.git"
 
 // --------------------------------------------------------------------------------------
 // END TODO: The rest of the file includes standard build steps 

@@ -1,5 +1,5 @@
 ﻿
-namespace Microsoft.FSharp.Compiler.Interactive
+namespace Nessos.DistribFsi.Interactive
 
 /// <summary>An event loop used by the currently executing F# Interactive session to execute code
 /// in the context of a GUI or another event-based system.</summary>

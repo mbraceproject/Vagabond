@@ -491,7 +491,7 @@ module internal Main =
         do mainForm.DoCreateHandle();
         // Set the default thread exception handler
         let restart = ref false
-        { new Microsoft.FSharp.Compiler.Interactive.IEventLoop with
+        { new Nessos.DistribFsi.Interactive.IEventLoop with
              member x.Run() =  
                  restart := false
                  Application.Run()

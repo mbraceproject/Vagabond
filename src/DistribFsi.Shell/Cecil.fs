@@ -1,57 +1,83 @@
-﻿module internal Nessos.DistribFsi.Shell.Cecil
+﻿module internal Nessos.DistribFsi.Shell.AssemblyPostProcessor
 
     open System
-    open System.Text
     open System.Reflection
 
     open Mono.Cecil
     open Mono.Cecil.Cil
 
-    let fsiDynamicAssembly = System.Reflection.Assembly.LoadFrom("/Users/eirik/Desktop/test.dll")
+    //
+    // Uses Cecil to change static constructors of compiled assemblies
+    //
 
-    let allFlags = BindingFlags.NonPublic ||| BindingFlags.Static ||| BindingFlags.Public
-
-    let deserializeM = typeof<Nessos.DistribFsi.SerializationSupport>.GetMethod("UnPickleOfString")
-
-    let generateUnPickler (mainModule : ModuleDefinition) (fieldType : Type) (f : FieldDefinition) (pickle : string) =
-        let deserializer = deserializeM.MakeGenericMethod [| fieldType |]
-        let deserializer = mainModule.Import deserializer
-        [
-            yield Instruction.Create(OpCodes.Ldstr, pickle)
-            yield Instruction.Create(OpCodes.Call, deserializer)
-            yield Instruction.Create(OpCodes.Stfld, f)
-        ] 
-
-    let gatherStartupClasses (path : string) =
-        let defn = AssemblyDefinition.ReadAssembly path
-        let mainModule = defn.MainModule
-        mainModule.Types 
-        |> Seq.choose (fun t -> 
-            if t.FullName.StartsWith("<StartupCode$") then
-                match t.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
-                | None -> None
-                | Some ctor ->
-                    let t0 = fsiDynamicAssembly.GetType(t.FullName)
-                    let values = 
-                        t.Fields 
-                        |> Seq.filter (fun f -> f.IsStatic)
-                        |> Seq.map (fun f -> 
-                            let value = t0.GetField(f.Name, allFlags).GetValue(null)
-//                            let bytes = try Nessos.DistribFsi.SerializationSupport.Pickle value |> Some with e -> None
-                            let bytes = Some [| 1uy |]
-                            f, bytes
-                            ) |> Seq.toArray
-                    Some(values, t, ctor)
-            else
-                None)
-        |> Seq.toArray
+    let private deserializerMethod = lazy(
+        match typeof<Nessos.DistribFsi.SerializationSupport>.GetMethod("UnPickleOfString") with
+        | null -> invalidOp "Could not resolve deserializer method."
+        | m -> m)
 
 
+    let eraseCCtors (fsiDynamicAssembly : Assembly) (compiledAssemblyPath : string) =
 
-    let ctype = gatherStartupClasses "/Users/eirik/Desktop/test.dll"
+        let assemblyDef = AssemblyDefinition.ReadAssembly compiledAssemblyPath
+        let mainModule = assemblyDef.MainModule
+        let deserializer = mainModule.Import(deserializerMethod.Value)
 
-    let first =
-        let m = ctype().[0]
-        let ilProc = m.Body.GetILProcessor()
-        for instr in ilProc.Body.Instructions do
-            printfn "%A" instr
+        let eraseStartupClassCctor (ty : TypeDefinition) (ctor : MethodDefinition) =
+            let ilProc = ctor.Body.GetILProcessor()
+            // resolve the corresponding type from the Fsi Dynamic assembly
+            let fsiType = fsiDynamicAssembly.GetType(ty.FullName)
+
+            // the main point of the technique; extracts the value materialized
+            // from the Fsi dynamic assembly, pickles it and saves it as a deserialization procedure.
+            let generateUnPickleInstructionsForField (f : FieldDefinition) =
+                try
+                    let fsiField = fsiType.GetField(f.Name, BindingFlags.NonPublic ||| BindingFlags.Static)
+                    let value = fsiField.GetValue(null)
+                    let pickle = Nessos.DistribFsi.SerializationSupport.PickleToString value
+
+                    // sfield <- unbox<'T> (Unpickle pickle)
+                    seq {
+                        yield ilProc.Create(OpCodes.Ldstr, pickle)
+                        yield ilProc.Create(OpCodes.Call, deserializer)
+                        if f.FieldType.IsValueType then
+                            yield ilProc.Create(OpCodes.Unbox_Any, f.FieldType)
+                        else
+                            yield ilProc.Create(OpCodes.Castclass, f.FieldType)
+
+                        yield ilProc.Create(OpCodes.Stsfld, f)
+
+                    } |> Seq.iter ilProc.Append
+
+                    None
+                with e ->
+                    // ok, pickling failed for this field; leave it uninitialized and report
+                    Some (e, fsiType, f.Name)
+
+
+            // erase everything
+            ilProc.Body.Instructions.Clear()
+
+            // add cached field initializations
+            let errors = ty.Fields |> Seq.filter(fun f -> f.IsStatic) |> Seq.choose generateUnPickleInstructionsForField |> Seq.toList
+
+            // return
+            ilProc.Append(ilProc.Create(OpCodes.Ret))
+
+            errors
+
+
+        // pick startup classes generated by F#; identified by <StartupCode$FileName> prefix
+        let errors =
+            mainModule.Types 
+            |> Seq.collect (fun t -> 
+                if t.FullName.StartsWith("<StartupCode$") then
+                    match t.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
+                    | None -> []
+                    | Some cctor -> eraseStartupClassCctor t cctor
+                else [])
+            |> Seq.toList
+
+        // save modified assembly
+        do assemblyDef.Write compiledAssemblyPath
+
+        errors

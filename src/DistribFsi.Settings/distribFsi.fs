@@ -33,8 +33,8 @@
             | _ -> None
 
         member internal __.InstallInteractionCompiler info = installState <| InteractionCompiler info
-        member __.InstallClientSerializer (serializer : ISerializer) =
-            installState <| ClientSerializer serializer
+        member __.InstallClientSerializer (serializer : ISerializer) = installState <| ClientSerializer serializer
+        member __.InstallDefaultClientSerializer () = __.InstallClientSerializer <| new FsPicklerSerializer()
 
         member __.IsDistributedFsiSession = 
             match state with InteractionCompiler _ -> true | _ -> false
@@ -70,21 +70,20 @@
 
 
     // referenced by the interaction compiler when pickling top-level value bindings
-    type SerializationSupport private () =
-        static let encoding = System.Text.Encoding.UTF8
+    type SerializationSupport =
         static member Pickle (obj:obj) = 
             use m = new MemoryStream()
             Settings.distribFsi.Serializer.Serialize m obj
             m.ToArray()
 
-        static member UnPickle<'T> (pickle:byte[]) =
+        static member UnPickle (pickle:byte[]) =
             use m = new MemoryStream(pickle)
-            Settings.distribFsi.Serializer.Deserialize<obj> m :?> 'T
+            Settings.distribFsi.Serializer.Deserialize<obj> m
 
         static member PickleToString(obj:obj) =
             let bytes = SerializationSupport.Pickle obj
-            encoding.GetString(bytes)
+            Convert.ToBase64String bytes
 
-        static member UnPickleOfString<'T> (pickle:string) =
-            let bytes = encoding.GetBytes(pickle)
-            SerializationSupport.UnPickle<'T> bytes
+        static member UnPickleOfString (pickle:string) =
+            let bytes = Convert.FromBase64String pickle
+            SerializationSupport.UnPickle bytes

@@ -11,7 +11,7 @@
 //----------------------------------------------------------------------------
 
 
-namespace Microsoft.FSharp.Compiler.Interactive
+namespace Nessos.DistribFsi.Interactive
 
 open System
 open System.Diagnostics
@@ -133,7 +133,7 @@ module Settings =
 
 #if SILVERLIGHT
 #else      
-    [<assembly: AutoOpen("Microsoft.FSharp.Compiler.Interactive.Settings")>]
+    [<assembly: AutoOpen("Nessos.DistribFsi.Interactive.Settings")>]
     do()
 #endif
 

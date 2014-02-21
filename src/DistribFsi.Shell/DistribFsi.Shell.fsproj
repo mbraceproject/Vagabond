@@ -62,6 +62,7 @@
     <Compile Include="InteractionAnalysis.fs" />
     <Compile Include="InteractionCompiler.fs" />
     <Compile Include="DistribFsiSession.fs" />
+    <None Include="Script1.fsx" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

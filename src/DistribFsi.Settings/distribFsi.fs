@@ -2,6 +2,7 @@
 
     open System.Reflection
     open System.IO
+    open System.Text
     open System
 
     open Nessos.DistribFsi.DependencyAnalysis
@@ -69,12 +70,21 @@
 
 
     // referenced by the interaction compiler when pickling top-level value bindings
-    type SerializationSupport =
+    type SerializationSupport private () =
+        static let encoding = System.Text.Encoding.UTF8
         static member Pickle (obj:obj) = 
             use m = new MemoryStream()
             Settings.distribFsi.Serializer.Serialize m obj
             m.ToArray()
 
-        static member UnPickle (pickle:byte[]) =
+        static member UnPickle<'T> (pickle:byte[]) =
             use m = new MemoryStream(pickle)
-            Settings.distribFsi.Serializer.Deserialize<obj> m
+            Settings.distribFsi.Serializer.Deserialize<obj> m :?> 'T
+
+        static member PickleToString(obj:obj) =
+            let bytes = SerializationSupport.Pickle obj
+            encoding.GetString(bytes)
+
+        static member UnPickleOfString<'T> (pickle:string) =
+            let bytes = encoding.GetBytes(pickle)
+            SerializationSupport.UnPickle<'T> bytes

@@ -18,6 +18,7 @@
 
     let eraseCCtors (fsiDynamicAssembly : Assembly) (compiledAssemblyPath : string) =
 
+        let fsiStartupClassPrefix = "<StartupCode$"
         let assemblyDef = AssemblyDefinition.ReadAssembly compiledAssemblyPath
         let mainModule = assemblyDef.MainModule
         let deserializer = mainModule.Import(deserializerMethod.Value)
@@ -25,13 +26,21 @@
         let eraseStartupClassCctor (ty : TypeDefinition) (ctor : MethodDefinition) =
             let ilProc = ctor.Body.GetILProcessor()
             // resolve the corresponding type from the Fsi Dynamic assembly
-            let fsiType = fsiDynamicAssembly.GetType(ty.FullName)
+            let canonicalName = ty.Name.Split('$').[1]
+            let getFieldCanonicalName (fname : string) = fname.Split('@').[0]
+            let fsiTypes = fsiDynamicAssembly.GetTypes() |> Array.filter(fun t -> t.Name.Contains canonicalName)
+            let fsiType = fsiTypes |> Array.find (fun t -> t.Name = canonicalName)
+            let fsiFields = 
+                fsiTypes 
+                |> Seq.collect (fun t -> t.GetFields(BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Static))
+                |> Seq.map (fun f -> getFieldCanonicalName f.Name, f)
+                |> Map.ofSeq
 
             // the main point of the technique; extracts the value materialized
             // from the Fsi dynamic assembly, pickles it and saves it as a deserialization procedure.
             let generateUnPickleInstructionsForField (f : FieldDefinition) =
                 try
-                    let fsiField = fsiType.GetField(f.Name, BindingFlags.NonPublic ||| BindingFlags.Static)
+                    let fsiField = fsiFields.[getFieldCanonicalName f.Name]
                     let value = fsiField.GetValue(null)
                     let pickle = Nessos.DistribFsi.SerializationSupport.PickleToString value
 
@@ -70,7 +79,7 @@
         let errors =
             mainModule.Types 
             |> Seq.collect (fun t -> 
-                if t.FullName.StartsWith("<StartupCode$") then
+                if t.FullName.StartsWith fsiStartupClassPrefix then
                     match t.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
                     | None -> []
                     | Some cctor -> eraseStartupClassCctor t cctor

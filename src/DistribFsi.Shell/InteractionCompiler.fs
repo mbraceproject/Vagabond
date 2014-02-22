@@ -91,6 +91,8 @@
 
                 if id <> 0 then raise <| new Exception(sprintf "Compiler error:\n%A" errors)
 
+                let errors = AssemblyPostProcessor.eraseCCtors fsiDynamicAssembly.Value outFile
+
                 let assembly =
                     {
                         Assembly = Assembly.ReflectionOnlyLoadFrom outFile
@@ -128,7 +130,7 @@
                         // push ASTs from previous interaction to the queue, if such exists
                         // performing pickling operation on top-level value bindings where possible
                         do tyConv.AddPendingInteractionToModuleIndex state
-                        let state = AstTransformer.popPendingInteraction fsiDynamicAssembly.Value true state
+                        let state = AstTransformer.popPendingInteraction fsiDynamicAssembly.Value false state
 
                         // make initial analysis of current interaction
                         let pending = TastAnalyzer.extractFsiMetadata fsiDynamicAssembly.Value references typedAssembly inputs

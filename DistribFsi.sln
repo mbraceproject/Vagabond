@@ -41,6 +41,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{66BF9FB4-399
 		lib\FSharp.Compiler.Service.dll = lib\FSharp.Compiler.Service.dll
 		lib\FSharp.Compiler.Service.pdb = lib\FSharp.Compiler.Service.pdb
 		lib\FSharp.Compiler.Service.xml = lib\FSharp.Compiler.Service.xml
+		lib\Mono.Reflection.dll = lib\Mono.Reflection.dll
+		lib\Mono.Reflection.pdb = lib\Mono.Reflection.pdb
 	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi.Settings", "src\DistribFsi.Settings\DistribFsi.Settings.fsproj", "{27191786-8A08-4273-96A9-410754D97A7C}"

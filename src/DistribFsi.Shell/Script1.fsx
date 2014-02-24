@@ -27,6 +27,22 @@ let f0 = Func f
 f ()
 
 
+type Marker2 = class end
+let foo =
+    let r = System.Random()
+    let v1 = r.Next(0,1)
+    let v2 = r.Next(0,2)
+    {
+        new System.IDisposable with
+            member __.Dispose() = printfn "%d" <| v1 + v2
+        
+    }
+
+let _ = distribFsi.RequestCompilation()
+
+let flds = lsType typeof<Marker2>
+
+
 let client = initThunkServer()
 
 client.EvaluateThunk f0

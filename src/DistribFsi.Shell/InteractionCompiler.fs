@@ -83,7 +83,8 @@
 
                 let compilerSvc = new SimpleSourceCodeServices.SimpleSourceCodeServices()
 
-                let resetCompilerCounters () = globalNng.Reset() ; globalStableNameGenerator.Reset()
+                let resetCompilerCounters () = 
+                    globalNng.Reset() ; globalStableNameGenerator.Reset() ; Ilxgen.ilxgenGlobalNng.Reset()
 
                 do resetCompilerCounters ()
                 let errors, id = compilerSvc.Compile(state.AstQueue, an.Name, outFile, dependencies, ?pdbFile = pdbFile, executable = false)

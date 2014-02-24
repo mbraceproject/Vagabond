@@ -27,40 +27,40 @@
             let ilProc = ctor.Body.GetILProcessor()
             // resolve the corresponding type from the Fsi Dynamic assembly
             let canonicalName = ty.Name.Split('$').[1]
-            let getFieldCanonicalName (fname : string) = fname.Split('@').[0]
             let fsiTypes = fsiDynamicAssembly.GetTypes() |> Array.filter(fun t -> t.Name.Contains canonicalName)
             let fsiType = fsiTypes |> Array.find (fun t -> t.Name = canonicalName)
             let fsiFields = 
                 fsiTypes 
                 |> Seq.collect (fun t -> t.GetFields(BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Static))
-                |> Seq.map (fun f -> getFieldCanonicalName f.Name, f)
-                |> Map.ofSeq
+                |> Seq.toArray
 
             // the main point of the technique; extracts the value materialized
             // from the Fsi dynamic assembly, pickles it and saves it as a deserialization procedure.
             let generateUnPickleInstructionsForField (f : FieldDefinition) =
-                try
-                    let fsiField = fsiFields.[getFieldCanonicalName f.Name]
-                    let value = fsiField.GetValue(null)
-                    let pickle = Nessos.DistribFsi.SerializationSupport.PickleToString value
+                match fsiFields |> Array.tryFind(fun f' -> f.Name = f'.Name) with
+                | None -> failwithf "could not resolve fsi field for '%s'" f.Name
+                | Some fsiField ->
+                    try
+                        let value = fsiField.GetValue(null)
+                        let pickle = Nessos.DistribFsi.SerializationSupport.PickleToString value
 
-                    // sfield <- unbox<'T> (Unpickle pickle)
-                    seq {
-                        yield ilProc.Create(OpCodes.Ldstr, pickle)
-                        yield ilProc.Create(OpCodes.Call, deserializer)
-                        if f.FieldType.IsValueType then
-                            yield ilProc.Create(OpCodes.Unbox_Any, f.FieldType)
-                        else
-                            yield ilProc.Create(OpCodes.Castclass, f.FieldType)
+                        // sfield <- unbox<'T> (Unpickle pickle)
+                        seq {
+                            yield ilProc.Create(OpCodes.Ldstr, pickle)
+                            yield ilProc.Create(OpCodes.Call, deserializer)
+                            if f.FieldType.IsValueType then
+                                yield ilProc.Create(OpCodes.Unbox_Any, f.FieldType)
+                            else
+                                yield ilProc.Create(OpCodes.Castclass, f.FieldType)
 
-                        yield ilProc.Create(OpCodes.Stsfld, f)
+                            yield ilProc.Create(OpCodes.Stsfld, f)
 
-                    } |> Seq.iter ilProc.Append
+                        } |> Seq.iter ilProc.Append
 
-                    None
-                with e ->
-                    // ok, pickling failed for this field; leave it uninitialized and report
-                    Some (e, fsiType, f.Name)
+                        None
+                    with e ->
+                        // ok, pickling failed for this field; leave it uninitialized and report
+                        Some (e, fsiType, f.Name)
 
 
             // erase everything

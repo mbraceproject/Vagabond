@@ -14,6 +14,7 @@ open Mono.Cecil
 open Mono.Cecil.Cil
 
 let ass = Assembly.GetExecutingAssembly()
+let allDecls = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 let tryFindFsiName =
     let fsiRegex = Regex("FSI_[0-9]{4}")
     fun (name : string) ->
@@ -81,15 +82,15 @@ and updateMethodDefinition (updateF : TypeReference -> TypeReference option) (m 
         updateF v.VariableType |> Option.iter (fun t -> v.VariableType <- t)
 
     if m.HasBody then
-        let ilProc = m.Body.GetILProcessor()
+//        let ilProc = m.Body.GetILProcessor()
+//
+//        let instructions = ilProc.Body.Instructions |> Seq.toArray
+//        ilProc.Body.Instructions.Clear()
 
-        let instructions = ilProc.Body.Instructions |> Seq.toArray
-        ilProc.Body.Instructions.Clear()
+        for instr in m.Body.Instructions do
+            updateInstruction updateF instr
 
-        for instr in instructions do
-            updateInstruction updateF ilProc instr
-
-and updateInstruction (updateF : TypeReference -> TypeReference option) (ilProc : ILProcessor) (instr : Instruction) =
+and updateInstruction (updateF : TypeReference -> TypeReference option) (instr : Instruction) =
     match instr.Operand with
     | :? TypeReference as tyRef -> 
         updateF tyRef |> Option.iter (fun t -> instr.Operand <- t)
@@ -105,10 +106,10 @@ and updateInstruction (updateF : TypeReference -> TypeReference option) (ilProc 
     | :? FieldReference as f ->
         updateF f.DeclaringType |> Option.iter (fun t -> f.DeclaringType <- t)
     | :? Instruction as instr ->
-        updateInstruction updateF ilProc instr
+        updateInstruction updateF instr
     | :? (Instruction []) as instructions ->
         for instr in instructions do
-            updateInstruction updateF ilProc instr
+            updateInstruction updateF instr
     | _ -> ()
 
 
@@ -122,9 +123,10 @@ let tryResolveTypeImport (main : ModuleDefinition) (state : CompiledAssemblyStat
                 match t.DeclaringType with
                 | null ->
                     let qname = t.FullName.Replace('/','.')
-                    a.GetType(qname)
+                    a.GetType(qname,true)
                 | dt ->
                     let dt0 = loadType dt
+                    printfn "%s" t.Name
                     dt0.GetNestedType(t.Name)
 
             let t0 = loadType t
@@ -164,7 +166,7 @@ let getAssemblyDiff (state : CompiledAssemblyState) =
     let n = state.CompiledAssemblyCount + 1
     let target = sprintf "C:/mbrace/%d.dll" n
 
-    let name = mainModule.Assembly.Name.Name <- sprintf "FSI_%03d" n
+    mainModule.Assembly.Name.Name <- sprintf "FSI_%03d" n
 
     do snapshot.Write(target)
 
@@ -181,12 +183,4 @@ let getAssemblyDiff (state : CompiledAssemblyState) =
 let state = { CompiledAssemblyCount = 0 ; FsiDynamicAssembly = ass ; TypeIndex = Map.empty }
 let state = getAssemblyDiff state
 
-type Foo = Bar
-
-let foo = AssemblyDefinition.ReadAssembly("/mbrace/1.dll")
-
-foo.MainModule.Name
-
-let t = foo.MainModule.Types |> Seq.toList |> Seq.nth 5
-
-t.Scope
+let x = 34

@@ -50,6 +50,14 @@
         let rec tryResolveTypeImport (t : TypeReference) =
             match t with
             | null -> None
+            | :? GenericParameter as p ->
+                match p.DeclaringMethod with
+                | null -> 
+                    tryResolveTypeImport p.DeclaringType 
+                    |> Option.map (fun (dt : TypeReference) -> 
+                        let t = dt.GenericParameters |> Seq.find (fun p' -> p'.Name = p.Name)
+                        t :> TypeReference)
+                | m -> raise <| new NotImplementedException()
             | :? GenericInstanceType as gi ->
                 let tyArgsRequireUpdate = ref false
                 let gas = 
@@ -130,7 +138,9 @@
         let n = state.CompiledAssemblyCount + 1
         let target = sprintf "C:/mbrace/%d.dll" n
 
-        mainModule.Assembly.Name.Name <- sprintf "FSI_%03d" n
+        let name = sprintf "FSI_%03d" n
+        mainModule.Assembly.Name.Name <- name
+        mainModule.Name <- name + ".dll"
 
         do snapshot.Write(target)
 

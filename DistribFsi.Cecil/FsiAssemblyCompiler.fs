@@ -45,6 +45,10 @@
         let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
             Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
 
+
+    do SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
+    let touch () = ()
+
     let rec tryResolveReferenceType (main : ModuleDefinition) (state : CompiledAssemblyState) (t : TypeReference) =
         match t with
         | null -> None

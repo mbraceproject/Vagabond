@@ -10,24 +10,27 @@ open Mono.Reflection
 open Nessos.DistribFsi
 open Nessos.DistribFsi.FsiAssemblyCompiler
 
-SerializationSupport.RegisterSerializer <| FsPicklerSerializer()
+touch ()
 
 let state = CompiledAssemblyState.Empty
 
 let state = compilePendingInteractions state
 
-
-type Foo (x : int) =
+//stack overflow
+type Foo<'T> (x : 'T) =
     member __.Value = x
     
-type Bar(x : int, y : string) =
-    inherit Foo(x)
+type Bar<'T>(x : 'T, y : string) =
+    inherit Foo<'T>(x)
     member __.Value2 = y
 
 Mono.Reflection.AssemblySaver.SaveTo(System.Reflection.Assembly.GetExecutingAssembly(), "/mbrace/3.dll")
 
-#r "/mbrace/1.dll"
-#r "/mbrace/2.dll"
+#r "C:/mbrace/1.dll"
+#r "C:/mbrace/2.dll"
 
+FSI_0003.Foo 42
 
-let bar = FSI_0005.Bar(42, "forty-two")
+let f () =
+    let bar = FSI_0005.Bar(42, "forty-two")
+    bar.GetHashCode()

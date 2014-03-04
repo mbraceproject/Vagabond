@@ -52,13 +52,18 @@
   <Import Project="$(FSharpTargetsPath)" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
-    <Compile Include="TypeRefUpdater.fs" />
+    <Compile Include="Serialization.fs" />
     <Compile Include="TypeInitializationEraser.fs" />
+    <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="FsiAssemblyCompiler.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FsPickler">
+      <HintPath>..\packages\FsPickler.0.8.5.1\lib\net45\FsPickler.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>..\packages\Mono.Cecil.0.9.5.4\lib\net40\Mono.Cecil.dll</HintPath>
       <Private>True</Private>

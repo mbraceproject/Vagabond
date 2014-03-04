@@ -142,6 +142,9 @@
         mainModule.Assembly.Name.Name <- name
         mainModule.Name <- name + ".dll"
 
+        // erase type initializers
+        let errors = Nessos.DistribFsi.TypeInitializationEraser.eraseTypeInitializers state.FsiDynamicAssembly snapshot
+
         do snapshot.Write(target)
 
         let assembly = Assembly.ReflectionOnlyLoadFrom(target)

@@ -53,8 +53,8 @@
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
     <Compile Include="Serialization.fs" />
-    <Compile Include="TypeInitializationEraser.fs" />
     <Compile Include="TypeRefUpdater.fs" />
+    <Compile Include="TypeInitializationEraser.fs" />
     <Compile Include="FsiAssemblyCompiler.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />

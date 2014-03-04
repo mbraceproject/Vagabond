@@ -14,136 +14,82 @@
             for t in updated do collection.Add(t)
 
 
-//    let rec updateCollection (updateF : TypeReference -> TypeReference) (collection : Collection<TypeReference>) =
-//        let types = collection |> Seq.map updateF |> Seq.toArray
-//        do collection.Clear()
-//        for t in types do collection.Add(t)
+    let rec updateTypeDefinition (updateF : TypeReference -> TypeReference) (t : TypeDefinition) =
 
-    let rec updateCustomAttributes (updateF : TypeReference -> TypeReference) (attr : CustomAttribute) =
-        let constructor
-//        let newAttr = new CustomAttribute()
-//        attr.AttributeType <- updateF attr.S
-//            updater.UpdateTypeRef attr.AttributeType |> Option.iter (fun )
+        if t.BaseType <> null then t.BaseType <- updateF t.BaseType
+
+        Seq.iter (updateCustomAttribute updateF) t.CustomAttributes
+
+        for gparam in t.GenericParameters do
+            Collection.update updateF gparam.Constraints
+            Seq.iter (updateCustomAttribute updateF) gparam.CustomAttributes
+
+        Collection.update updateF t.Interfaces
+
+        Seq.iter (updateFieldRef updateF) t.Fields
+
+        Seq.iter (updatePropertyRef updateF) t.Properties
+
+        Seq.iter (updateEventRef updateF) t.Events
+
+        Seq.iter (updateMethodDefinition updateF) t.Methods
+
+        Seq.iter (updateTypeDefinition updateF) t.NestedTypes
+
+    and updateCustomAttribute (updateF : TypeReference -> TypeReference) (attr : CustomAttribute) =
+        do updateMethodRef updateF attr.Constructor
             
-    and updateMethodRef (updateF : TypeReference -> TypeReference) (m : MethodReference) =
-        updater.UpdateTypeRef m.DeclaringType |> Option.iter (fun t -> m.DeclaringType <- t)
-        updater.UpdateTypeRef m.ReturnType |> Option.iter (fun t -> m.ReturnType <- t)
+    and updateMethodRef (updateF : TypeReference -> TypeReference) (m : MethodReference) : unit =
+        m.DeclaringType <- updateF m.DeclaringType
+        m.ReturnType <- updateF m.ReturnType
 
         for gparam in m.GenericParameters do
-            updateCollection updater gparam.Constraints
-            for attr in gparam.CustomAttributes do
-                updater.UpdateTypeRef attr.
-//            updateCollection updater gparam.CustomAttributes
-//                updater.UpdateTypeRef c |> Option.iter (fun c' -> gparam.Constraints.Remove(c') ; gparam.Constraints.Add(c'))
-
-//        for gparam in m.GenericParameters do
-//            gparam.Constraints
+            Collection.update updateF gparam.Constraints
+            Seq.iter (updateCustomAttribute updateF) gparam.CustomAttributes
 
         for param in m.Parameters do
-            updater.UpdateTypeRef param.ParameterType |> Option.iter (fun t -> param.ParameterType <- t)
-
-        
-            
-//        match updater.UpdateTypeRef m.DeclaringType with
-//        | None -> None
-//        | Some dt ->
-//            let m1 = new MethodReference(m.Name, updateTypeRef updater m.ReturnType, dt)
-//            let m1 =
-//                match m with
-//                | :? GenericInstanceMethod as m ->
-//                    let m1 = new GenericInstanceMethod(m1)
-//                    for ga in m.GenericArguments |> Seq.map (updateTypeRef updater) do
-//                          m1.GenericArguments.Add(ga)
-//                    m1 :> MethodReference
-//                | _ -> m1
-//
-//            for param in m.Parameters do
-//                param.
-//
-//            Some m1
+            param.ParameterType <- updateF param.ParameterType
 
     and updateFieldRef (updateF : TypeReference -> TypeReference) (f : FieldReference) =
-        match updater.UpdateTypeRef f.DeclaringType with
-        | None -> None
-        | Some dt -> Some <| new FieldReference(f.Name, updateTypeRef updater f.FieldType, dt)
+        f.DeclaringType <- updateF f.DeclaringType
+        f.FieldType <- updateF f.FieldType
 
     and updatePropertyRef (updateF : TypeReference -> TypeReference) (p : PropertyReference) =
-        // Cecil legends say that PropertyDefinition is the only implementation of PropertyReference
-        let p = p :?> PropertyDefinition in
-        match updater.UpdateTypeRef p.DeclaringType with
-        | None -> None
-        | Some dt -> 
-            let p' = new PropertyDefinition(p.Name, p.Attributes, updateTypeRef updater p.PropertyType)
-            Some (p' :> PropertyReference)
+        p.DeclaringType <- updateF p.PropertyType
+        p.PropertyType <- updateF p.PropertyType
 
     and updateEventRef (updateF : TypeReference -> TypeReference) (e : EventReference) =
-        let e = e :?> EventDefinition
-        match updater.UpdateTypeRef e.DeclaringType with
-        | None -> None
-        | Some dt -> 
-            let e' = new EventDefinition(e.Name, e.Attributes, updateTypeRef updater e.EventType)
-            Some (e' :> EventReference)
-
-    and updateTypeDefinition (updateF : TypeReference -> TypeReference) (t : TypeDefinition) =
-
-        updater.UpdateTypeRef t.BaseType |> Option.iter (fun t' -> t.BaseType <- t')
-
-        for i in t.Interfaces do
-            updater.UpdateTypeRef i |> Option.iter (fun i' -> t.Interfaces.Remove(i) |> ignore ; t.Interfaces.Add(i'))
-
-        for f in t.Fields do
-            updater.UpdateTypeRef f.FieldType |> Option.iter (fun t -> f.FieldType <- t)
-
-        for p in t.Properties do    
-            updater.UpdateTypeRef p.PropertyType |> Option.iter (fun t -> p.PropertyType <- t)
-
-        for e in t.Events do
-            updater.UpdateTypeRef e.EventType |> Option.iter (fun t -> e.EventType <- t)
-
-        for nt in t.NestedTypes do
-            updateTypeDefinition updater nt
-
-        for m in t.Methods do
-            updateMethodDefinition updater m
-
+        e.DeclaringType <- updateF e.DeclaringType
+        e.EventType <- updateF e.EventType
 
     and updateMethodDefinition (updateF : TypeReference -> TypeReference) (m : MethodDefinition) =
-    
-        updater.UpdateTypeRef m.ReturnType |> Option.iter (fun t -> m.ReturnType <- t)
+
+        Seq.iter (updateCustomAttribute updateF) m.CustomAttributes
+
+        for gparam in m.GenericParameters do
+            Collection.update updateF gparam.Constraints
+            Seq.iter (updateCustomAttribute updateF) gparam.CustomAttributes
+
+        m.ReturnType <- updateF m.ReturnType
 
         for p in m.Parameters do
-            updater.UpdateTypeRef p.ParameterType |> Option.iter (fun t -> p.ParameterType <- t)
+            p.ParameterType <- updateF p.ParameterType
 
         for v in m.Body.Variables do
-            updater.UpdateTypeRef v.VariableType |> Option.iter (fun t -> v.VariableType <- t)
+            v.VariableType <- updateF v.VariableType
 
         if m.HasBody then
-    //        let ilProc = m.Body.GetILProcessor()
-    //
-    //        let instructions = ilProc.Body.Instructions |> Seq.toArray
-    //        ilProc.Body.Instructions.Clear()
-
             for instr in m.Body.Instructions do
-                updateInstruction updater instr
+                updateInstruction updateF instr
 
     and updateInstruction (updateF : TypeReference -> TypeReference) (instr : Instruction) =
         match instr.Operand with
-        | :? TypeReference as tyRef -> 
-            updater.UpdateTypeRef tyRef |> Option.iter (fun t -> instr.Operand <- t)
-        | :? ParameterDefinition as p ->
-            updater.UpdateTypeRef p.ParameterType |> Option.iter (fun t -> p.ParameterType <- t)
-        | :? VariableDefinition as v ->
-            updater.UpdateTypeRef v.VariableType |> Option.iter (fun t -> v.VariableType <- t)
-        | :? MethodReference as m ->
-            updateMethodRef updater m |> Option.iter (fun m -> instr.Operand <- m)
-        | :? PropertyReference as p ->
-            updatePropertyRef updater p |> Option.iter (fun p -> instr.Operand <- p)
-        | :? FieldReference as f ->
-            updateFieldRef updater f |> Option.iter (fun f -> instr.Operand <- f)
-        | :? Instruction as instr ->
-            updateInstruction updater instr
-        | :? (Instruction []) as instructions ->
-            for instr in instructions do
-                updateInstruction updater instr
+        | :? TypeReference as tyRef ->  instr.Operand <- updateF tyRef
+        | :? ParameterDefinition as p -> p.ParameterType <- updateF p.ParameterType
+        | :? VariableDefinition as v -> v.VariableType <- updateF v.VariableType
+        | :? MethodReference as m -> updateMethodRef updateF m
+        | :? PropertyReference as p -> updatePropertyRef updateF p
+        | :? FieldReference as f -> updateFieldRef updateF f
+        | :? Instruction as instr -> updateInstruction updateF instr
+        | :? (Instruction []) as instructions -> Seq.iter (updateInstruction updateF) instructions
         | _ -> ()
-

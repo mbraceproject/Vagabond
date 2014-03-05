@@ -49,53 +49,15 @@
     do SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
     let touch () = ()
 
-    let rec tryResolveReferenceType (main : ModuleDefinition) (state : CompiledAssemblyState) (t : TypeReference) =
+    let updateReferenceType (main : ModuleDefinition) (state : CompiledAssemblyState) (t : TypeReference) =
         match t with
-        | null -> None
-        | :? GenericParameter as p ->
-            match p.DeclaringMethod with
-            | null -> 
-                tryResolveReferenceType main state p.DeclaringType 
-                |> Option.map (fun (dt : TypeReference) -> 
-                    let t = dt.GenericParameters |> Seq.find (fun p' -> p'.Name = p.Name)
-                    t :> TypeReference)
-            | m -> raise <| new NotImplementedException()
-//                tryResolveReferenceType main state m.DeclaringType
-//                |> Option.map (fun (dt : TypeReference) ->
-//                    
-//                    
-//                    )
-
-
-        | :? GenericInstanceType as gi ->
-            let tyArgsRequireUpdate = ref false
-            let gas = 
-                gi.GenericArguments 
-                |> Seq.map (fun ga -> 
-                    match tryResolveReferenceType main state ga with 
-                    | Some ga' -> tyArgsRequireUpdate := true ; ga'
-                    | None -> ga)
-                |> Seq.toArray
-
-            match tryResolveReferenceType main state gi with
-            | None ->
-                if !tyArgsRequireUpdate then
-                    gi.GenericArguments.Clear()
-                    for ga in gas do gi.GenericArguments.Add(ga)
-                    Some (gi :> TypeReference)
-                else
-                    None
-            | Some gt ->
-                let gi = new GenericInstanceType(gt)
-                for ga in gas do gi.GenericArguments.Add(ga)
-                Some (gi :> TypeReference)
-
+        | null -> t
         | t when t.Scope.Name = main.Name ->
             match t.FullName.Split('`').[0] |> tryFindFsiName with
             | None -> failwith "parse error!"
             | Some interactionId ->
                 match state.TypeIndex.TryFind interactionId with
-                | None -> None
+                | None -> t
                 | Some a ->
                     let rec loadType (t : TypeReference) =
                         match t.DeclaringType with
@@ -107,10 +69,70 @@
                             dt0.GetNestedType(t.Name)
 
                     let t0 = loadType t
-                    let t00 = main.Import t0
-                    Some t00
-        | _ -> None
+                    main.Import t0
+        | _ -> t
+
+//        match t with
+//        | null -> None
+//        | :? GenericParameter as p ->
+//            match p.DeclaringMethod with
+//            | null -> 
+//                tryResolveReferenceType main state p.DeclaringType 
+//                |> Option.map (fun (dt : TypeReference) -> 
+//                    let t = dt.GenericParameters |> Seq.find (fun p' -> p'.Name = p.Name)
+//                    t :> TypeReference)
+//            | m -> raise <| new NotImplementedException()
+////                tryResolveReferenceType main state m.DeclaringType
+////                |> Option.map (fun (dt : TypeReference) ->
+////                    
+////                    
+////                    )
 //
+//
+//        | :? GenericInstanceType as gi ->
+//            let tyArgsRequireUpdate = ref false
+//            let gas = 
+//                gi.GenericArguments 
+//                |> Seq.map (fun ga -> 
+//                    match tryResolveReferenceType main state ga with 
+//                    | Some ga' -> tyArgsRequireUpdate := true ; ga'
+//                    | None -> ga)
+//                |> Seq.toArray
+//
+//            match tryResolveReferenceType main state <| gi.Resolve() with
+//            | None ->
+//                if !tyArgsRequireUpdate then
+//                    gi.GenericArguments.Clear()
+//                    for ga in gas do gi.GenericArguments.Add(ga)
+//                    Some (gi :> TypeReference)
+//                else
+//                    None
+//            | Some gt ->
+//                let gi = new GenericInstanceType(gt)
+//                for ga in gas do gi.GenericArguments.Add(ga)
+//                Some (gi :> TypeReference)
+//
+//        | t when t.Scope.Name = main.Name ->
+//            match t.FullName.Split('`').[0] |> tryFindFsiName with
+//            | None -> failwith "parse error!"
+//            | Some interactionId ->
+//                match state.TypeIndex.TryFind interactionId with
+//                | None -> None
+//                | Some a ->
+//                    let rec loadType (t : TypeReference) =
+//                        match t.DeclaringType with
+//                        | null ->
+//                            let qname = t.FullName.Replace('/','.')
+//                            a.GetType(qname,true)
+//                        | dt ->
+//                            let dt0 = loadType dt
+//                            dt0.GetNestedType(t.Name)
+//
+//                    let t0 = loadType t
+//                    let t00 = main.Import t0
+//                    Some t00
+//        | _ -> None
+
 //        { 
 //            new IReferenceUpdater with
 //                member __.UpdateTypeRef t = tryResolveTypeImport t
@@ -139,17 +161,15 @@
 
         // remap type refs
 
-        for t in types do
-            updateTypeDefinition (fun t -> defaultArg (tryResolveReferenceType mainModule state t) t) t
+        do remapTypeReferences (updateReferenceType mainModule state) types
 
         // compile
 
         let n = state.CompiledAssemblyCount + 1
-        let target = sprintf "C:/mbrace/%d.dll" n
-
         let name = sprintf "FSI_%03d" n
+        let target = sprintf "C:/mbrace/%s.dll" name
+
         mainModule.Assembly.Name.Name <- name
-        mainModule.Name <- name + ".dll"
 
         // erase type initializers
         let errors = Nessos.DistribFsi.TypeInitializationEraser.eraseTypeInitializers state.FsiDynamicAssembly snapshot

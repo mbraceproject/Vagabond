@@ -16,21 +16,35 @@ let state = CompiledAssemblyState.Empty
 
 let state = compilePendingInteractions state
 
-//stack overflow
+
 type Foo<'T> (x : 'T) =
     member __.Value = x
+
+    static member Create<'S>(x : 'S) = Foo<'S>(x)
     
 type Bar<'T>(x : 'T, y : string) =
     inherit Foo<'T>(x)
+
+    let copy = Foo<int>.Create<'T>(x)
+
     member __.Value2 = y
+    member __.Copy = copy
+//
+//type Foo(x : int) =
+//    member __.Value = x
+//    
+//type Bar(x : int, y : string) =
+//    inherit Foo(x)
+//    member __.Value2 = y
 
 Mono.Reflection.AssemblySaver.SaveTo(System.Reflection.Assembly.GetExecutingAssembly(), "/mbrace/3.dll")
 
-#r "C:/mbrace/1.dll"
-#r "C:/mbrace/2.dll"
+#r "C:/mbrace/FSI_001.dll"
+#r "C:/mbrace/FSI_002.dll"
+//#r "C:/mbrace/3.dll"
 
-FSI_0003.Foo 42
-
-let f () =
-    let bar = FSI_0005.Bar(42, "forty-two")
-    bar.GetHashCode()
+FSI_0003.Foo<_>((12,"hello"))
+FSI_0005.Bar<_>((12,"hello"), "hello")
+//FSI_0005.Bar<_>("hello", "hello")
+//
+//typeof<FSI_0005.Bar<int * string>>

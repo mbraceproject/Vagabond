@@ -162,7 +162,7 @@
 
         // remap type refs
 
-        do remapTypeReferences (updateReferenceType mainModule state) types
+        do remapTypeReferences (tryUpdateReferenceType mainModule state) types
 
         // compile
 

@@ -49,15 +49,15 @@
     do SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
     let touch () = ()
 
-    let updateReferenceType (main : ModuleDefinition) (state : CompiledAssemblyState) (t : TypeReference) =
+    let tryUpdateReferenceType (main : ModuleDefinition) (state : CompiledAssemblyState) (t : TypeReference) =
         match t with
-        | null -> t
+        | null -> None
         | t when t.Scope.Name = main.Name ->
             match t.FullName.Split('`').[0] |> tryFindFsiName with
             | None -> failwith "parse error!"
             | Some interactionId ->
                 match state.TypeIndex.TryFind interactionId with
-                | None -> t
+                | None -> None
                 | Some a ->
                     let rec loadType (t : TypeReference) =
                         match t.DeclaringType with
@@ -69,8 +69,9 @@
                             dt0.GetNestedType(t.Name)
 
                     let t0 = loadType t
-                    main.Import t0
-        | _ -> t
+                    let tI = main.Import t0
+                    Some tI
+        | _ -> None
 
 //        match t with
 //        | null -> None

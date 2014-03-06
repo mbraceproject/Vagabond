@@ -1,6 +1,7 @@
 ﻿module Nessos.DistribFsi.TypeRefUpdater
 
     open System
+    open System.Collections.Generic
     open System.Reflection
 
     open Mono.Collections.Generic
@@ -21,28 +22,22 @@
             else
                 let _,firstTime = objectCounter.GetId x in firstTime
 
-    let remapTypeReferences (updateF : TypeReference -> TypeReference) (ts : seq<TypeDefinition>) =
+    let remapTypeReferences (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) =
 
-        let tracker = new ObjectTracker()            
+        let tracker = new ObjectTracker()          
 
         let rec updateTypeReference (t : TypeReference) =
-            if not <| tracker.IsFirstOccurence t then t else
-
             match t with
-            | null -> t
             | :? GenericParameter as p ->
                 match p.DeclaringMethod with
-                | null -> // is type-level variable
-                    let dt = updateF p.DeclaringType
-                    let p' = dt.GenericParameters |> Seq.find (fun p' -> p'.Name = p.Name)
+                | null ->
+                    let dt : TypeReference = updateTypeReference p.DeclaringType
+                    let p' = dt.GenericParameters |> Seq.find (fun p' -> p.Name = p.Name)
                     p' :> TypeReference
-                | m -> // is method-level variable
-                    do updateMethodRef m
-                    p :> TypeReference
+                | m -> updateMethodReference m ; p :> TypeReference
 
             | :? GenericInstanceType as gi ->
-
-                let updated = updateF gi.ElementType
+                let updated = updateTypeReference gi.ElementType
                 let genericType = new GenericInstanceType(updated)
 
                 for arg in gi.GenericArguments do
@@ -50,10 +45,40 @@
 
                 genericType :> TypeReference
 
-            | t -> updateF t
+            | :? ArrayType as at ->
+                let updated = updateTypeReference at.ElementType
+                new ArrayType(updated) :> TypeReference
+
+            | :? PointerType as at ->
+                let updated = updateTypeReference at.ElementType
+                new PointerType(updated) :> TypeReference
+
+            | :? ByReferenceType as at ->
+                let updated = updateTypeReference at.ElementType
+                new ByReferenceType(updated) :> TypeReference
+
+            | :? TypeSpecification as ts -> updateTypeReference ts.ElementType
+
+            | t -> defaultArg (updateF t) t
+
+        and updateMethodReference (m : MethodReference) =
+            if not <| tracker.IsFirstOccurence m then () else
+
+            match m with
+            | :? MethodSpecification as m -> updateMethodReference m.ElementMethod
+            | _ ->
+
+                m.DeclaringType <- updateTypeReference m.DeclaringType
+                m.ReturnType <- updateTypeReference m.ReturnType
+
+                for gparam in m.GenericParameters do
+                    Collection.update updateTypeReference gparam.Constraints
+                    Seq.iter updateCustomAttribute gparam.CustomAttributes
+
+                for param in m.Parameters do
+                    param.ParameterType <- updateTypeReference param.ParameterType
 
         and updateTypeDefinition (t : TypeDefinition) =
-            tracker.IsFirstOccurence t |> ignore
 
             if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
 
@@ -65,45 +90,32 @@
 
             Collection.update updateTypeReference t.Interfaces
 
-            Seq.iter updateFieldRef t.Fields
+            Seq.iter updateFieldReference t.Fields
 
-            Seq.iter updatePropertyRef t.Properties
+            Seq.iter updatePropertyReference t.Properties
 
-            Seq.iter updateEventRef t.Events
+            Seq.iter updateEventReference t.Events
 
             Seq.iter updateMethodDefinition t.Methods
 
             Seq.iter updateTypeDefinition t.NestedTypes
 
         and updateCustomAttribute (attr : CustomAttribute) =
-            do updateMethodRef attr.Constructor
-            
-        and updateMethodRef (m : MethodReference) =
-            if not <| tracker.IsFirstOccurence m then () else
+            do updateMethodReference attr.Constructor
 
-            m.DeclaringType <- updateTypeReference m.DeclaringType
-            m.ReturnType <- updateTypeReference m.ReturnType
-
-            for gparam in m.GenericParameters do
-                Collection.update updateTypeReference gparam.Constraints
-                Seq.iter updateCustomAttribute gparam.CustomAttributes
-
-            for param in m.Parameters do
-                param.ParameterType <- updateTypeReference param.ParameterType
-
-        and updateFieldRef (f : FieldReference) =
+        and updateFieldReference (f : FieldReference) =
             if not <| tracker.IsFirstOccurence f then () else
 
             f.DeclaringType <- updateTypeReference f.DeclaringType
             f.FieldType <- updateTypeReference f.FieldType
 
-        and updatePropertyRef (p : PropertyReference) =
+        and updatePropertyReference (p : PropertyReference) =
             if not <| tracker.IsFirstOccurence p then () else
 
             p.DeclaringType <- updateTypeReference p.PropertyType
             p.PropertyType <- updateTypeReference p.PropertyType
 
-        and updateEventRef (e : EventReference) =
+        and updateEventReference (e : EventReference) =
             if not <| tracker.IsFirstOccurence e then () else
 
             e.DeclaringType <- updateTypeReference e.DeclaringType
@@ -135,9 +147,9 @@
             | :? TypeReference as tyRef ->  instr.Operand <- updateTypeReference tyRef
             | :? ParameterDefinition as p -> p.ParameterType <- updateTypeReference p.ParameterType
             | :? VariableDefinition as v -> v.VariableType <- updateTypeReference v.VariableType
-            | :? MethodReference as m -> updateMethodRef m
-            | :? PropertyReference as p -> updatePropertyRef p
-            | :? FieldReference as f -> updateFieldRef f
+            | :? MethodReference as m -> updateMethodReference m
+            | :? PropertyReference as p -> updatePropertyReference p
+            | :? FieldReference as f -> updateFieldReference f
             | :? Instruction as instr -> updateInstruction instr
             | :? (Instruction []) as instructions -> Array.iter updateInstruction instructions
             | _ -> ()

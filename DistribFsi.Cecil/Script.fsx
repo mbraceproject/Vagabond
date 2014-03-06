@@ -12,23 +12,25 @@ open Nessos.DistribFsi.FsiAssemblyCompiler
 
 touch ()
 
-let state = CompiledAssemblyState.Empty
+let state = DynamicAssemblyInfo.Init <| System.Reflection.Assembly.GetExecutingAssembly()
 
-let state = compilePendingInteractions state
+let state = compileDynamicAssemblySlice state
 
-
-type Foo<'T> (x : 'T []) =
+type Foo<'T> (x : 'T) =
     member __.Value = x
 
-    static member Create<'S>(x : 'S []) = Foo<'S>(x)
+    static member Create<'S>(x : 'S) = Foo<'S>(x)
+
+let foo = Foo<int * string>(42, "forty-two")
     
-type Bar<'T>(x : 'T [], y : string) =
+type Bar<'T>(x : 'T, y : string) =
     inherit Foo<'T>(x)
 
     let copy = Foo<int>.Create<'T>(x)
 
     member __.Value2 = y
     member __.Copy = copy
+    member __.GetLam() = fun x -> copy.GetHashCode() + x
 //
 //type Foo(x : int) =
 //    member __.Value = x
@@ -47,6 +49,7 @@ Mono.Reflection.AssemblySaver.SaveTo(System.Reflection.Assembly.GetExecutingAsse
 
 FSI_0003.Foo<_>((12,"hello"))
 FSI_0005.Bar<_>((12,"hello"), "hello")
+FSI_0005.foo
 let it = FSI_0009.Bar<_>([|12|], "hello")
 //FSI_0005.Bar<_>("hello", "hello")
 //

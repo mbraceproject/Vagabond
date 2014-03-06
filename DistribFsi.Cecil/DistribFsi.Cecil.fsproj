@@ -52,10 +52,11 @@
   <Import Project="$(FSharpTargetsPath)" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="TypeInitializationEraser.fs" />
-    <Compile Include="FsiAssemblyCompiler.fs" />
+    <Compile Include="DynamicAssemblyCompiler.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>

@@ -57,6 +57,7 @@
     <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="TypeInitializationEraser.fs" />
     <Compile Include="DynamicAssemblyCompiler.fs" />
+    <Compile Include="DependencyAnalysis.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>

@@ -79,6 +79,7 @@
                     param.ParameterType <- updateTypeReference param.ParameterType
 
         and updateTypeDefinition (t : TypeDefinition) =
+            if not <| tracker.IsFirstOccurence t then () else
 
             if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
 
@@ -98,7 +99,7 @@
 
             Seq.iter updateMethodDefinition t.Methods
 
-            Seq.iter updateTypeDefinition t.NestedTypes
+//            Seq.iter updateTypeDefinition t.NestedTypes
 
         and updateCustomAttribute (attr : CustomAttribute) =
             do updateMethodReference attr.Constructor

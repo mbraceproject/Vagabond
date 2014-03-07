@@ -4,6 +4,7 @@
     open System.Reflection
 
     open Mono.Cecil
+    open Mono.Collections.Generic
     open Mono.Reflection
 
     open Nessos.DistribFsi.TypeRefUpdater
@@ -65,6 +66,64 @@
             Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
 
 
+
+
+    //
+    //  traverse the type hierarchy to: 
+    //  1) identify and collect all freshly emitted type definitions
+    //  2) for all the previously emitted types:
+    //      a) erase type definitions that do not have new nested types
+    //      b) keep all others for scaffolding
+    //
+
+    let mkAssemblyDefinitionSlice (state : DynamicAssemblyInfo) (assemblyDef : AssemblyDefinition) =
+
+        let eraseTypeContents(t : TypeDefinition) =
+            t.Methods.Clear() ; t.Fields.Clear()
+            t.Events.Clear() ; t.Properties.Clear()
+            t.CustomAttributes.Clear()
+            for gt in t.GenericParameters do
+                gt.CustomAttributes.Clear()
+                gt.Constraints.Clear()
+
+        let rec gatherFreshTypes (types : Collection<TypeDefinition>) =
+            seq {
+                let erasedTypes = ref []
+
+                for t in types do
+                    let name = getCanonicalTypeName t
+                    
+                    if name = "<Module>" then ()
+                    elif state.TypeIndex.ContainsKey name then
+                        // type has already been emitted, is to be kept only in event of new nested subtypes
+                        let freshNested = gatherFreshTypes t.NestedTypes |> Seq.toArray
+
+                        if freshNested.Length = 0 then
+                            // no new nested subtypes, schedule for erasure
+                            erasedTypes := t :: !erasedTypes
+                        else
+                            // has nested subtypes, keep type for scaffolding but erase contents
+                            yield! freshNested
+                            do eraseTypeContents t
+                    else
+                        // new type, collect the entire hierarchy
+                        yield! collectHierarchy t
+
+                // Mono.Collection cannot be updated while enumerated, perform erasure now
+                for t in !erasedTypes do 
+                    types.Remove(t) |> ignore
+            }
+
+        and collectHierarchy (t : TypeDefinition) =
+            seq {
+                yield t
+                for nt in t.NestedTypes do
+                    yield! collectHierarchy nt
+            }
+
+        gatherFreshTypes assemblyDef.MainModule.Types |> Seq.toArray
+
+
     let compileDynamicAssemblySlice (state : DynamicAssemblyInfo) =
 
         let typeCount = state.Assembly.GetTypes().Length
@@ -73,17 +132,8 @@
         else
             let snapshot = AssemblySaver.Read state.Assembly
 
-            let rec gatherFreshTypes (types : seq<TypeDefinition>) =
-                seq {
-                    for t in types do
-                        let name = getCanonicalTypeName t
-                        if state.TypeIndex.ContainsKey name then
-                            yield! gatherFreshTypes t.NestedTypes
-                        else
-                            yield t
-                }
-
-            let freshTypes = gatherFreshTypes snapshot.MainModule.Types |> Seq.toArray
+            // update snapshot to only contain slice
+            let freshTypes = mkAssemblyDefinitionSlice state snapshot
 
             // TODO : erase .cctors in non-fresh types
             do remapTypeReferences (tryUpdateTypeReference snapshot state) freshTypes

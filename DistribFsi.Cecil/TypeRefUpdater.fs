@@ -81,6 +81,9 @@
         and updateTypeDefinition (t : TypeDefinition) =
             if not <| tracker.IsFirstOccurence t then () else
 
+            if t.IsNested then t.IsNestedPublic <- true
+            else t.IsPublic <- true
+
             if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
 
             Seq.iter updateCustomAttribute t.CustomAttributes
@@ -107,6 +110,8 @@
         and updateFieldReference (f : FieldReference) =
             if not <| tracker.IsFirstOccurence f then () else
 
+            match f with :? FieldDefinition as f -> f.IsPublic <- true | _ -> ()
+
             f.DeclaringType <- updateTypeReference f.DeclaringType
             f.FieldType <- updateTypeReference f.FieldType
 
@@ -124,6 +129,8 @@
 
         and updateMethodDefinition (m : MethodDefinition) =
             tracker.IsFirstOccurence m |> ignore
+
+            m.IsPublic <- true
 
             Seq.iter updateCustomAttribute m.CustomAttributes
 

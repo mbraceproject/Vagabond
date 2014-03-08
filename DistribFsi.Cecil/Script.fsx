@@ -29,3 +29,23 @@ type Bar<'T>(x : 'T, y : string) =
 
 
 let deps = srv.ComputePortableDependencies <@ foo @>
+
+
+
+#I "C:/Users/eirik/Desktop"
+#r "a.dll"
+#r "b.dll"
+
+let b = FSI_0002.Foo.NewBar 42
+
+FSI_0004.incr b
+
+let ass = AssemblyDefinition.ReadAssembly("C:/Users/eirik/Desktop/a.dll")
+
+let t = ass.MainModule.Types |> Seq.nth 3
+let flds = t.Fields |> Seq.toList |> Seq.head
+
+let m = t.Methods |> Seq.head
+let foo = m.Body.Instructions |> Seq.nth 1
+
+let fr = foo.Operand :?> FieldReference

@@ -70,7 +70,7 @@
       <HintPath>..\..\lib\FSharp.Compiler.Service.dll</HintPath>
     </Reference>
     <Reference Include="FsPickler">
-      <HintPath>..\..\packages\FsPickler.0.8.5.1\lib\net45\FsPickler.dll</HintPath>
+      <HintPath>..\..\packages\FsPickler.0.8.5.3\lib\net45\FsPickler.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Cecil">

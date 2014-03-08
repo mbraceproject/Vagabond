@@ -8,7 +8,6 @@
     open Mono.Collections.Generic
     open Mono.Reflection
 
-//    open Nessos.DistribFsi.DependencyAnalysis
     open Nessos.DistribFsi.TypeRefUpdater
     open Nessos.DistribFsi.TypeInitializationEraser
 
@@ -103,6 +102,7 @@
 
 
     let eraseStaticInitializers (eraseF : Type -> bool) (assembly : Assembly) (typeDef : TypeDefinition) =
+        // static initializers for generic types not supported
         if typeDef.GenericParameters.Count > 0 then [||]
         else
             let name = getCanonicalTypeName typeDef
@@ -113,6 +113,7 @@
                 | None -> ()
 
                 reflectionType.GetFields(BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Static)
+                |> Array.filter (fun f -> not f.IsLiteral)
 
             else [||]
 
@@ -157,9 +158,3 @@
             let assemblyInfo = { assemblyInfo with CompiledAssemblies = compiledAssemblies ; TypeIndex = typeIndex ; StaticFields = staticFields}
 
             { state with DynamicAssemblies = state.DynamicAssemblies.Add(assemblyInfo.Assembly.FullName, assemblyInfo)}
-
-
-//    let private testState = 
-//        do SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
-//        ref <| GlobalDynamicAssemblyState.Init @"C:\mbrace\"
-//

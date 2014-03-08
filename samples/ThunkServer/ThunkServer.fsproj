@@ -59,13 +59,11 @@
   <ItemGroup>
     <Compile Include="server.fs" />
     <Compile Include="main.fs" />
-    <None Include="packages.config" />
+    <None Include="test.fsx" />
     <None Include="app.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
-    <Reference Include="FSharp.Compiler.Service">
-      <HintPath>..\..\lib\FSharp.Compiler.Service.dll</HintPath>
-    </Reference>
     <Reference Include="FsPickler">
       <HintPath>..\..\packages\FsPickler.0.8.5.1\lib\net45\FsPickler.dll</HintPath>
       <Private>True</Private>
@@ -78,14 +76,11 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Runtime.Remoting" />
-    <ProjectReference Include="..\..\src\DistribFsi.Settings\DistribFsi.Settings.fsproj">
-      <Name>DistribFsi.Settings</Name>
-      <Project>{27191786-8a08-4273-96a9-410754d97a7c}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\src\DistribFsi.Shell\DistribFsi.Shell.fsproj">
-      <Name>DistribFsi.Shell</Name>
-      <Project>{c9776661-d74c-4d93-821a-267fb66c51e6}</Project>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\DistribFsi.Cecil\DistribFsi.Cecil.fsproj">
+      <Name>DistribFsi.Cecil</Name>
+      <Project>{2e62b639-1560-46eb-8528-a604b5d194fb}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

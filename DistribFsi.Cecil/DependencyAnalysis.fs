@@ -189,7 +189,7 @@
 
 
 
-    let computeObjectDependencies (pickler : FsPickler) (state : GlobalDynamicAssemblyState) (obj:obj) =
+    let computeObjectDependencies (state : GlobalDynamicAssemblyState) (obj:obj) =
 
         let types = gatherTypesInObjectGraph obj
         let assemblyInfo = types |> Seq.groupBy (fun t -> t.Assembly) |> Seq.toList
@@ -231,9 +231,7 @@
                         yield a
             ]
 
-        let info, errors = getPortableDependencyInfo pickler exportedAssemblies !dynamicAssemblies
-
-        info, errors, !state
+        exportedAssemblies, !dynamicAssemblies, !state
 
 
 //    let computeObjectPickler (pickler : FsPickler) (state : GlobalDynamicAssemblyState) (obj:obj) =

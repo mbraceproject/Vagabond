@@ -15,7 +15,7 @@
         let mkQualifiedName (t : TypeInfo) = 
             let sb = new System.Text.StringBuilder()
             let inline add (x:string) = sb.Append x |> ignore
-            add t.Name
+            add t.AssemblyName
             add ", Version="
             add (if String.IsNullOrEmpty t.Version then "0.0.0.0" else t.Version)
             add ", Culture="

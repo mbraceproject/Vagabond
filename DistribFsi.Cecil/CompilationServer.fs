@@ -38,8 +38,13 @@
 
             let result =
                 try
-                    let info, errors, state = computeObjectDependencies fspickler globalStateContainer.Value obj
+                    let assemblies, dynamicAssemblies, state = computeObjectDependencies globalStateContainer.Value obj
+                    // update the state container *before* producing the blobs;
+                    // this is required because the serializer uses it
                     do globalStateContainer := state
+                    // it is now safe to perform serializations
+                    let info, errors = getPortableDependencyInfo fspickler assemblies dynamicAssemblies
+
                     Choice1Of2 (info, errors)
                 with e -> Choice2Of2 e
 

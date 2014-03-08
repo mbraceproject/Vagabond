@@ -11,6 +11,23 @@
     open Microsoft.FSharp.Quotations.DerivedPatterns
     open Microsoft.FSharp.Quotations.ExprShape
 
+
+    type Graph<'T> = ('T * 'T list) list
+
+    let getTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) =
+        let rec aux sorted (g : Graph<'T>) =
+            if g.IsEmpty then sorted else
+
+            match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
+            | None -> failwith "not a DAG."
+            | Some (t,_) ->
+                let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
+                aux (t :: sorted) g0
+
+        aux [] g
+    
+
+
     /// gathers all types that occur in an object graph
 
     let gatherTypesInObjectGraph (obj:obj) =
@@ -89,7 +106,7 @@
         gathered |> Seq.toList
 
     // recursively traverse assembly dependency graph
-    let buildAssemblyDAG (assemblies : seq<Assembly>) =
+    let traverseDependencies (assemblies : seq<Assembly>) =
 
         let ignoredAssemblies = 
             [| typeof<int> ; typeof<int option> |]
@@ -97,73 +114,26 @@
 
         let isIgnoredAssembly a = Array.exists ((=) a) ignoredAssemblies
 
-        let tryResolveAssembly (an : AssemblyName) =
-            try Some <| Assembly.Load(an)
-            with _ ->
-                System.AppDomain.CurrentDomain.GetAssemblies() |> Array.tryFind (fun a -> a.GetName() = an)
+        let tryResolveLoadedAssembly (an : AssemblyName) =
+            System.AppDomain.CurrentDomain.GetAssemblies() |> Array.tryFind (fun a -> a.GetName() = an)
 
-        let rec traverse (traversed : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
+        let rec traverseDependencyGraph (graph : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
-            | [] -> traversed
-            | a :: tail when traversed.ContainsKey a.FullName || isIgnoredAssembly a -> traverse traversed tail
+            | [] -> graph
+            | a :: tail when graph.ContainsKey a.FullName || isIgnoredAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
-                let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveAssembly |> Array.toList
-                traverse (traversed.Add(a.FullName, (a, dependencies))) (dependencies @ tail)
+                let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
+                traverseDependencyGraph (graph.Add(a.FullName, (a, dependencies))) (dependencies @ tail)
 
-        traverse Map.empty <| Seq.toList assemblies
-
-
-    let getDynamicAssemblyDAG ()
-
-
-//    let getAssemblies (o : obj) =
-//        o |> gatherTypesInObjectGraph |> (Seq.map (fun t -> t.Assembly)) |> traverseAssemblyDependencies
-//
-//    let foo = (typeof<System.Xml.Linq.XElement>, Bar(Some 42, async { return 42 })) |> getAssemblies
-//
-//    let getSortedDynamicAssemblies (assemblies : Assembly []) =
-////        = new Dictionary<Assembly, Assembly []> ()
-//        let dynamicAssemblyDAG = 
-//            assemblies 
-//            |> Seq.filter (fun a -> a.IsDynamic)
-//            |> Seq.map (fun a -> a.GetReferencedAssemblies() |> Seq.map (fun )
+        assemblies
+        |> Seq.toList
+        |> traverseDependencyGraph Map.empty
+        |> Map.toList
+        |> List.map snd
+        |> getTopologicalOrdering
 
 
-//    let computeObjectDependencies (obj:obj) =
-//        
-//        // get types in object
-//        let types = gatherTypesInObjectGraph obj
-//
-//        let requiresCompilation = ref false
-//        let dependsOnCurrentInteraction = ref false
-//        let dependsOnInteraction = ref false
-//
-//        // resolve assembly containing type
-//        // if in Fsi dynamic assembly, query interaction compiler
-//        // to determine statically compiled assemblies
-//        let tryGetDeclaringAssemblies (t : Type) =
-//            match state with
-//            | None -> [ t.Assembly ]
-//            | Some ici ->
-//                match ici.TryGetCompiledAssembly t with
-//                | None -> [ t.Assembly ]
-//                | Some result ->
-//                    dependsOnInteraction := true
-//                    match result with
-//                    | AlreadyCompiled a -> a.Assembly :: a.Dependencies
-//                    | RequiresCompilation(inCurrent,_) ->
-//                        dependsOnCurrentInteraction := inCurrent
-//                        requiresCompilation := true
-//                        []
-//
-//        // use Seq.toList to force values in ref cells
-//        let assemblies = Seq.collect tryGetDeclaringAssemblies types |> Seq.distinct |> Seq.toList
-//
-//        {
-//            Dependencies = if !requiresCompilation then None else Some <| traverseAssemblyDependencies assemblies
-//
-//            RequiresAssemblyCompilation = requiresCompilation.Value
-//            DependsOnFsiCompiledAssembly = dependsOnInteraction.Value
-//            DependsOnCurrentInteraction = dependsOnCurrentInteraction.Value
-//
-//        }
+    let computeObjectDependencies (obj:obj) =
+        let types = gatherTypesInObjectGraph obj
+        let assemblies = types |> Seq.map (fun t -> t.Assembly) |> Seq.distinct
+        traverseDependencies assemblies

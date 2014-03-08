@@ -10,16 +10,12 @@ open Mono.Reflection
 open Nessos.DistribFsi
 open Nessos.DistribFsi.FsiAssemblyCompiler
 
-touch ()
-
-let state = DynamicAssemblyInfo.Init <| System.Reflection.Assembly.GetExecutingAssembly()
-
-let state = compileDynamicAssemblySlice state
-
 type Foo<'T> (x : 'T) =
     member __.Value = x
 
     static member Create<'S>(x : 'S) = Foo<'S>(x)
+
+let deps = getObjectDependencies ()
 
 let foo = Foo<int * string>(42, "forty-two")
     

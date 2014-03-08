@@ -10,6 +10,43 @@
     open Nessos.DistribFsi.TypeRefUpdater
     open Nessos.DistribFsi.TypeInitializationEraser
 
+    type DynamicAssemblyInfo =
+        {
+            Assembly : Assembly
+            CompiledAssemblies : Assembly list
+            TypeIndex : Map<string, Assembly>
+        }
+    with
+        member i.HasFreshTypes =
+            let assemblyTypeCount = i.Assembly.GetTypes().Length
+            let compiledTypeCount = i.TypeIndex.Count
+            assemblyTypeCount > compiledTypeCount
+
+        member i.Name = i.Assembly.GetName()
+
+        static member Init(a : Assembly) =
+            {
+                Assembly = a
+                CompiledAssemblies = []
+                TypeIndex = Map.empty
+            }
+
+    and GlobalDynamicAssemblyState =
+        {
+            ClientId : string
+            OutputDirectory : string
+            DynamicAssemblies : Map<string, DynamicAssemblyInfo>
+        }
+    with
+        static member Init (path : string) =
+            if not <| System.IO.Directory.Exists(path) then failwith "invalid directory"
+            {
+                ClientId = Guid.NewGuid().ToString()
+                OutputDirectory = path
+                DynamicAssemblies = Map.empty
+            }
+
+
     let getCanonicalTypeName (t : TypeReference) =
         let rec aux carry (t : TypeReference) =
             if t = null then String.concat "+" carry
@@ -19,54 +56,30 @@
         if String.IsNullOrEmpty t.Namespace then aux [] t
         else
             sprintf "%s.%s" t.Namespace <| aux [] t
-            
-
-    type DynamicAssemblyInfo =
-        {
-            Assembly : Assembly
-            CompiledAssemblyCount : int
-            TypeIndex : Map<string, Assembly>
-        }
-    with
-        member i.EmittedTypeCount = i.TypeIndex.Count
-
-        static member Init(a : Assembly) =
-            {
-                Assembly = a
-                CompiledAssemblyCount = 0
-                TypeIndex = Map.empty
-            }
 
 
-    let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : DynamicAssemblyInfo) (t : TypeReference) =
+    let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
         if t = null then None
         else
-            let remoteAssembly =
+            let assemblyName =
                 match t.Scope with
-                | :? AssemblyNameReference as a when a.FullName <> assembly.FullName -> Some a.FullName
-                | _ -> None
+                | :? AssemblyNameReference as a -> a.FullName
+                | _ -> assembly.FullName
 
-            if remoteAssembly.IsNone then
+            match state.DynamicAssemblies.TryFind assemblyName with
+            | None -> None
+            | Some info ->
                 let name = getCanonicalTypeName t
-                match state.TypeIndex.TryFind name with
+                match info.TypeIndex.TryFind name with
                 | None -> None
-                | Some a -> 
+                | Some a ->
                     let rt = a.GetType(name, true)
                     let tI = assembly.MainModule.Import(rt)
                     Some tI
-            else
-                None
-
-
-    let x = SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
-    let touch () = x
 
     module Map =
         let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
             Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
-
-
-
 
     //
     //  traverse the type hierarchy to: 
@@ -124,32 +137,59 @@
         gatherFreshTypes assemblyDef.MainModule.Types |> Seq.toArray
 
 
-    let compileDynamicAssemblySlice (state : DynamicAssemblyInfo) =
+    let compileDynamicAssemblySlice (state : GlobalDynamicAssemblyState) (assembly : Assembly) =
+        
+        if not assembly.IsDynamic then invalidArg assembly.FullName "not a dynamic assembly."
 
-        let typeCount = state.Assembly.GetTypes().Length
+        let assemblyInfo =
+            match state.DynamicAssemblies.TryFind assembly.FullName with
+            | None -> DynamicAssemblyInfo.Init assembly
+            | Some info -> info
 
-        if typeCount = state.EmittedTypeCount then state 
+        if not assemblyInfo.HasFreshTypes then state
         else
-            let snapshot = AssemblySaver.Read state.Assembly
+            // parse dynamic assembly
+            let snapshot = AssemblySaver.Read assemblyInfo.Assembly
 
-            // update snapshot to only contain slice
-            let freshTypes = mkAssemblyDefinitionSlice state snapshot
+            // update snapshot to only contain current slice
+            let freshTypes = mkAssemblyDefinitionSlice assemblyInfo snapshot
 
             // TODO : erase .cctors in non-fresh types
             do remapTypeReferences (tryUpdateTypeReference snapshot state) freshTypes
 
-            let errors = eraseTypeInitializers state.Assembly snapshot
+            let errors = eraseTypeInitializers assemblyInfo.Assembly snapshot
 
             // compile
 
-            let n = state.CompiledAssemblyCount + 1
-            let name = sprintf "FSI_%03d" n
-            let target = sprintf "C:/mbrace/%s.dll" name
-            
+            let n = assemblyInfo.CompiledAssemblies.Length + 1
+            let name = sprintf "%s_%s_%03d" assemblyInfo.Name.Name state.ClientId n
+            let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
+
             do snapshot.Name.Name <- name
             do snapshot.Write(target)
 
+            // update type index & compiled assembly info
             let assembly = Assembly.ReflectionOnlyLoadFrom(target)
-            let typeIndex = freshTypes |> Seq.map (fun t -> getCanonicalTypeName t, assembly) |> Map.addMany state.TypeIndex
+            let compiledAssemblies = assembly :: assemblyInfo.CompiledAssemblies
+            let typeIndex = freshTypes |> Seq.map (fun t -> getCanonicalTypeName t, assembly) |> Map.addMany assemblyInfo.TypeIndex
 
-            { state with CompiledAssemblyCount = n ; TypeIndex = typeIndex }
+            let assemblyInfo = { assemblyInfo with CompiledAssemblies = compiledAssemblies ; TypeIndex = typeIndex }
+
+            { state with DynamicAssemblies = state.DynamicAssemblies.Add(assemblyInfo.Assembly.FullName, assemblyInfo)}
+
+
+    let private testState = 
+        do SerializationSupport.RegisterSerializer <| new FsPicklerSerializer()
+        ref <| GlobalDynamicAssemblyState.Init @"C:\mbrace\"
+
+    let getObjectDependencies (obj:obj) =
+        let assemblies = Nessos.DistribFsi.DependencyAnalysis.computeObjectDependencies obj
+        [
+            for a in assemblies do
+                if a.IsDynamic then
+                    testState := compileDynamicAssemblySlice !testState a
+                    yield! testState.Value.DynamicAssemblies.[a.FullName].CompiledAssemblies
+                else
+                    yield a
+        ]
+

@@ -54,10 +54,11 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="Serialization.fs" />
-    <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="TypeInitializationEraser.fs" />
     <Compile Include="DynamicAssemblyCompiler.fs" />
+    <Compile Include="DependencyAnalysis.fs" />
+    <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>

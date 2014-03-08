@@ -28,7 +28,7 @@
 
             sb.ToString()
 
-        let assemblyRegex = Regex(sprintf "^(.*)_%s_[0-9]*$" self.DynamicAssemblyState.ClientId)
+        let assemblyRegex = Regex(sprintf "^(.*)_%s_[0-9]*$" self.DynamicAssemblyState.ServerId)
 
         abstract DynamicAssemblyState : GlobalDynamicAssemblyState
 
@@ -39,7 +39,7 @@
                 | None -> typeInfo
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
-                    | None -> typeInfo
+                    | None -> failwithf "could not serialize type '%s' in dynamic assembly '%s'." typeInfo.Name qname
                     | Some a -> { typeInfo with AssemblyName = a.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =

@@ -11,6 +11,10 @@
     open Microsoft.FSharp.Quotations.DerivedPatterns
     open Microsoft.FSharp.Quotations.ExprShape
 
+    open Nessos.DistribFsi.FsiAssemblyCompiler
+
+    open FsPickler
+
 
     type Graph<'T> = ('T * 'T list) list
 
@@ -25,6 +29,16 @@
                 aux (t :: sorted) g0
 
         aux [] g
+
+    module Choice2 =
+        let partition (inputs : Choice<'T,'S> list) =
+            let rec aux p1 p2 rest =
+                match rest with
+                | Choice1Of2 t :: tl -> aux (t :: p1) p2 tl
+                | Choice2Of2 s :: tl -> aux p1 (s :: p2) tl
+                | [] -> List.rev p1, List.rev p2
+
+            aux [] [] inputs
     
 
 
@@ -131,3 +145,112 @@
         |> Map.toList
         |> List.map snd
         |> getTopologicalOrdering
+
+
+    //
+    //
+    //
+
+    let getExportableDynamicAssemblyInfo (pickler : FsPickler) (info : DynamicAssemblyInfo) =
+        let fieldPickles, pickleFailures =
+            info.StaticFields
+            |> List.map(fun fI -> 
+                try
+                    let value = fI.GetValue(null)
+                    let payload = (fI, value)
+                    let pickle = pickler.Pickle<FieldInfo * obj>(payload)
+                    Choice1Of2 (fI.ToString(), pickle)
+                with e -> Choice2Of2 (e, fI))
+            |> Choice2.partition
+
+        let exportable = { ActualName = info.Assembly.FullName ; Slices = info.CompiledAssemblies ; ValueInitializationBlobs = fieldPickles }
+
+        exportable, pickleFailures
+
+    let loadExportedDynamicAssemblyInfo (pickler : FsPickler) (info : ExportedDynamicAssemblyInfo) =
+        // load value initialization blobs
+        for (_,blob) in info.ValueInitializationBlobs do
+            let field,value = pickler.UnPickle<FieldInfo * obj>(blob)
+            field.SetValue(null, value)  
+
+    let getPortableDependencyInfo (pickler : FsPickler) (assemblies : Assembly list) (info : DynamicAssemblyInfo list) =
+        let info, failures = info |> List.map (getExportableDynamicAssemblyInfo pickler) |> List.unzip
+        let failures = List.concat failures
+        let depInfo = {
+            AllDependencies = assemblies
+            DynamicAssemblies = info
+        }
+
+        depInfo, failures
+
+
+    let loadPortableDependencyInfo (pickler : FsPickler) (info : PortableDependencyInfo) =
+        info.DynamicAssemblies |> List.iter (loadExportedDynamicAssemblyInfo pickler)
+
+
+
+    let computeObjectDependencies (pickler : FsPickler) (state : GlobalDynamicAssemblyState) (obj:obj) =
+
+        let types = gatherTypesInObjectGraph obj
+        let assemblyInfo = types |> Seq.groupBy (fun t -> t.Assembly) |> Seq.toList
+
+        let allAssemblies = assemblyInfo |> List.map fst |> traverseDependencies
+        let topLevelDynamicAssemblies =
+            assemblyInfo 
+            |> Seq.map (fun (a, types) -> 
+                let requiresCompilation =
+                    match state.DynamicAssemblies.TryFind a.FullName with
+                    | None -> true // always attempt to compile dynamic assemblies whose types do not directly appear in the object graph
+                    | Some info -> types |> Seq.forall (fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
+
+                a.FullName, requiresCompilation)
+            |> Map.ofSeq
+
+        let isDynamicAssemblyRequiringCompilation (a : Assembly) =
+            match topLevelDynamicAssemblies.TryFind a.FullName with
+            | None -> true
+            | Some requires -> requires
+
+        // traverse and compile
+        let state = ref state
+        let dynamicAssemblies = ref []
+
+        let exportedAssemblies =
+            [
+                for a in allAssemblies do
+                    if a.IsDynamic then 
+                        if isDynamicAssemblyRequiringCompilation a then
+                            state := compileDynamicAssemblySlice !state a
+
+                        let assemblyInfo = state.Value.DynamicAssemblies.[a.FullName]
+
+                        dynamicAssemblies := assemblyInfo :: !dynamicAssemblies
+                        yield! assemblyInfo.CompiledAssemblies
+
+                    else 
+                        yield a
+            ]
+
+        let info, errors = getPortableDependencyInfo pickler exportedAssemblies !dynamicAssemblies
+
+        info, errors, !state
+
+
+//    let computeObjectPickler (pickler : FsPickler) (state : GlobalDynamicAssemblyState) (obj:obj) =
+//        let info, errors, state = computeObjectDependencies pickler state obj
+//
+//        let objPickle = pickler.Pickle<obj> obj
+//
+//        let pickle =
+//            {
+//                Pickle = objPickle
+//                DependencyInfo = info
+//            }
+//
+//        pickle, errors, state
+//
+//
+//    let loadObjectPickle (pickler : FsPickler) (pickle : Pickle) =
+//        do loadPortableDependencyInfo pickler pickle.DependencyInfo
+//
+//        pickler.UnPickle<obj> pickle.Pickle

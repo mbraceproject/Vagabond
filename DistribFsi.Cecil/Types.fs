@@ -3,18 +3,34 @@
     open System
     open System.Reflection
 
-    type Pickle =
+
+    type PortableDependencyInfo =
+        {
+            AllDependencies : Assembly list
+            DynamicAssemblies : ExportedDynamicAssemblyInfo list
+        }
+
+    and Pickle =
         {
             Pickle : byte []
+            DependencyInfo : PortableDependencyInfo
+        }
 
-            Dependencies : Assembly list
+    and ExportedDynamicAssemblyInfo =
+        {
+            ActualName : string
+            Slices : Assembly list
             ValueInitializationBlobs : (string * byte []) list
         }
 
 
-    and internal DynamicAssemblyInfo =
+
+    // internal types
+
+    type DynamicAssemblyInfo =
         {
             Assembly : Assembly
+            StaticFields : FieldInfo list
             CompiledAssemblies : Assembly list
             TypeIndex : Map<string, Assembly>
         }
@@ -29,13 +45,21 @@
         static member Init(a : Assembly) =
             {
                 Assembly = a
+                StaticFields = []
                 CompiledAssemblies = []
                 TypeIndex = Map.empty
             }
 
-    and internal GlobalDynamicAssemblyState =
+    and GlobalDynamicAssemblyState =
         {
-            ClientId : string
+            ServerId : string
             OutputDirectory : string
             DynamicAssemblies : Map<string, DynamicAssemblyInfo>
         }
+    with
+        static member Init(serverId : string, outputDirectory : string) =
+            {
+                ServerId = serverId
+                OutputDirectory = outputDirectory
+                DynamicAssemblies = Map.empty
+            }

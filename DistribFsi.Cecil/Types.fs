@@ -3,15 +3,39 @@
     open System
     open System.Reflection
 
-    type AssemblyId =
+    type Pickle =
         {
-            Name : string
-            FullName : string
-            Hash : byte []
+            Pickle : byte []
+
+            Dependencies : Assembly list
+            ValueInitializationBlobs : (string * byte []) list
         }
 
-    and AssemblyInfo =
+
+    and internal DynamicAssemblyInfo =
         {
-            Id : AssemblyId
-            Location : string
+            Assembly : Assembly
+            CompiledAssemblies : Assembly list
+            TypeIndex : Map<string, Assembly>
+        }
+    with
+        member i.HasFreshTypes =
+            let assemblyTypeCount = i.Assembly.GetTypes().Length
+            let compiledTypeCount = i.TypeIndex.Count
+            assemblyTypeCount > compiledTypeCount
+
+        member i.Name = i.Assembly.GetName()
+
+        static member Init(a : Assembly) =
+            {
+                Assembly = a
+                CompiledAssemblies = []
+                TypeIndex = Map.empty
+            }
+
+    and internal GlobalDynamicAssemblyState =
+        {
+            ClientId : string
+            OutputDirectory : string
+            DynamicAssemblies : Map<string, DynamicAssemblyInfo>
         }

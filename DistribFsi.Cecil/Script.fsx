@@ -15,7 +15,7 @@ type Foo<'T> (x : 'T) =
 
     static member Create<'S>(x : 'S) = Foo<'S>(x)
 
-let deps = getObjectDependencies ()
+let deps = getObjectDependencies <@ abs @>
 
 let foo = Foo<int * string>(42, "forty-two")
     
@@ -35,18 +35,13 @@ type Bar<'T>(x : 'T, y : string) =
 //    inherit Foo(x)
 //    member __.Value2 = y
 
+[<ReflectedDefinition>]
+let abs x = if x > 0 then x else -x
+
 Mono.Reflection.AssemblySaver.SaveTo(System.Reflection.Assembly.GetExecutingAssembly(), "/mbrace/3.dll")
 
-#r "C:/mbrace/FSI_001.dll"
-#r "C:/mbrace/FSI_002.dll"
-#r "C:/mbrace/FSI_003.dll"
-#r "C:/mbrace/FSI_004.dll"
-//#r "C:/mbrace/3.dll"
+#r "/mbrace/FSI-ASSEMBLY_9829c6ae-19b9-4a7c-974b-09fcb8b9c8c6_001.dll"
 
-FSI_0003.Foo<_>((12,"hello"))
-FSI_0005.Bar<_>((12,"hello"), "hello")
-FSI_0005.foo
-let it = FSI_0009.Bar<_>([|12|], "hello")
-//FSI_0005.Bar<_>("hello", "hello")
-//
-//typeof<FSI_0005.Bar<int * string>>
+let (Quotations.Patterns.Call(_,m,_)) = <@ FSI_0003.abs 2 @>
+
+Quotations.Expr.TryGetReflectedDefinition m

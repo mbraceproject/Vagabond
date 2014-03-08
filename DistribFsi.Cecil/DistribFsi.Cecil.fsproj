@@ -53,8 +53,8 @@
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
     <Compile Include="Types.fs" />
-    <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="Serialization.fs" />
+    <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="TypeInitializationEraser.fs" />
     <Compile Include="DynamicAssemblyCompiler.fs" />

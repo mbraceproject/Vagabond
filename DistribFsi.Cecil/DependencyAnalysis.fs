@@ -131,9 +131,3 @@
         |> Map.toList
         |> List.map snd
         |> getTopologicalOrdering
-
-
-    let computeObjectDependencies (obj:obj) =
-        let types = gatherTypesInObjectGraph obj
-        let assemblies = types |> Seq.map (fun t -> t.Assembly) |> Seq.distinct
-        traverseDependencies assemblies

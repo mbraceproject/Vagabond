@@ -22,6 +22,17 @@
             sprintf "%s.%s" t.Namespace <| aux [] t
 
 
+    let memoize f =
+        let dict = new System.Collections.Generic.Dictionary<_,_>()
+        fun x ->
+            let found,y = dict.TryGetValue x
+            if found then y
+            else
+                let y = f x
+                dict.Add(x,y)
+                y
+
+
     let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
         if t = null then None
         else
@@ -135,7 +146,7 @@
             let freshTypes = mkAssemblyDefinitionSlice assemblyInfo snapshot
 
             // remap typeRefs so that slices are correctly referenced
-            do remapTypeReferences (tryUpdateTypeReference snapshot state) freshTypes
+            do remapTypeReferences (memoize <| tryUpdateTypeReference snapshot state) freshTypes
 
             // erase type initializers where applicable
             let newStaticFields = freshTypes |> Seq.collect (eraseStaticInitializers (fun _ -> true) assemblyInfo.Assembly) |> Seq.toList

@@ -5,8 +5,9 @@ open Nessos.DistribFsi.Sample
 
 let client = ThunkClient.Init()
 
-
 type Foo<'T> = Bar of 'T
+
+#time
 
 
 let x = client.EvaluateThunk <| fun () -> Bar 42
@@ -17,4 +18,5 @@ let y = client.EvaluateThunk <| fun () -> incr x
 
 let z = client.EvaluateThunk <| fun () -> let (Bar x) = x in let (Bar y) = y in Bar(x+y)
 
-let w = client.EvaluateThunk <| fun () -> Bar(z)
+let w = 1
+let w = client.EvaluateThunk <| fun () -> Bar(w)

@@ -15,7 +15,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60BC93-E09B-4E5F-9D85-95A519479D54}"
 	ProjectSection(SolutionItems) = preProject
 		build.fsx = build.fsx
-		nuget\DistribFsi.nuspec = nuget\DistribFsi.nuspec
+		nuget\Vagrant.nuspec = nuget\Vagrant.nuspec
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
 	EndProjectSection
@@ -44,7 +44,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{66BF9FB4-399
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ThunkServer", "samples\ThunkServer\ThunkServer.fsproj", "{8BA10AC7-7E8A-4D38-99E6-575B77598534}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi", "src\DistribFsi\DistribFsi.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant", "src\Vagrant\Vagrant.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

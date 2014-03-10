@@ -1,10 +1,10 @@
-﻿module internal Nessos.DistribFsi.Sample.Main
+﻿module internal Nessos.Vagrant.Sample.Main
 
     open System
     open System.IO
     open System.Threading
 
-    open Nessos.DistribFsi.Sample
+    open Nessos.Vagrant.Sample
 
     [<EntryPoint>]
     let main args =

@@ -1,13 +1,13 @@
 ﻿#r "bin/Debug/FsPickler.dll"
 #r "bin/Debug/Mono.Cecil.dll"
 #r "bin/Debug/Mono.Reflection.dll"
-#r "bin/Debug/DistribFsi.Cecil.dll"
+#r "bin/Debug/Vagrant.Cecil.dll"
 //#r "../packages/Mono.Cecil.0.9.5.4/lib/net40/Mono.Cecil.Rocks.dll"
 
 open Mono.Cecil
 open Mono.Reflection
 
-open Nessos.DistribFsi
+open Nessos.Vagrant
 
 let srv = CompilationServer.Create(path = "C:/mbrace/")
 

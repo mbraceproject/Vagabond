@@ -1,4 +1,4 @@
-﻿namespace Nessos.DistribFsi
+﻿namespace Nessos.Vagrant
 
     open System
     open System.Reflection
@@ -6,6 +6,7 @@
 
     type PortableDependencyInfo =
         {
+            SourceId : string
             AllDependencies : Assembly list
             DynamicAssemblies : ExportedDynamicAssemblyInfo list
         }
@@ -19,6 +20,7 @@
     and ExportedDynamicAssemblyInfo =
         {
             ActualName : string
+            Iteration : int
             Slices : Assembly list
             ValueInitializationBlobs : (string * byte []) list
         }

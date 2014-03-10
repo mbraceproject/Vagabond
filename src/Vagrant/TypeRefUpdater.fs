@@ -1,4 +1,4 @@
-﻿module Nessos.DistribFsi.TypeRefUpdater
+﻿module Nessos.Vagrant.TypeRefUpdater
 
     open System
     open System.Collections.Generic
@@ -8,21 +8,9 @@
     open Mono.Cecil
     open Mono.Cecil.Cil
 
-    module Collection =
-        let update (f : 'T -> 'T) (collection : Collection<'T>) =
-            let updated = collection |> Seq.map f |> Seq.toArray
-            collection.Clear()
-            for t in updated do collection.Add(t)
+    open Nessos.Vagrant.Utils
 
-    type ObjectTracker() =
-        let objectCounter = new System.Runtime.Serialization.ObjectIDGenerator()
-
-        member __.IsFirstOccurence<'T when 'T : not struct>(x : 'T) =
-            if obj.ReferenceEquals(x,null) then false
-            else
-                let _,firstTime = objectCounter.GetId x in firstTime
-
-    let remapTypeReferences (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) =
+    let remapTypeReferences (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) : unit =
 
         let tracker = new ObjectTracker()          
 
@@ -102,7 +90,7 @@
 
             Seq.iter updateMethodDefinition t.Methods
 
-//            Seq.iter updateTypeDefinition t.NestedTypes
+            Seq.iter updateTypeDefinition t.NestedTypes
 
         and updateCustomAttribute (attr : CustomAttribute) =
             do updateMethodReference attr.Constructor

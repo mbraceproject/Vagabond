@@ -1,4 +1,4 @@
-﻿namespace Nessos.DistribFsi.Sample
+﻿namespace Nessos.Vagrant.Sample
 
     open System
     open System.IO
@@ -9,7 +9,7 @@
     open System.Runtime.Remoting
     open System.Runtime.Remoting.Lifetime
 
-    open Nessos.DistribFsi
+    open Nessos.Vagrant
 
     type ThunkServer private () =
         inherit System.MarshalByRefObject()

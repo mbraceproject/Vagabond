@@ -1,14 +1,13 @@
 ﻿#I "bin/Debug"
 #r "ThunkServer.exe"
 
-open Nessos.DistribFsi.Sample
+open Nessos.Vagrant.Sample
 
 let client = ThunkClient.Init()
 
 type Foo<'T> = Bar of 'T
 
 #time
-
 
 let x = client.EvaluateThunk <| fun () -> Bar 42
 

@@ -78,8 +78,8 @@
     <Reference Include="System.Runtime.Remoting" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\src\DistribFsi\DistribFsi.fsproj">
-      <Name>DistribFsi</Name>
+    <ProjectReference Include="..\..\src\DistribFsi\Vagrant.fsproj">
+      <Name>Vagrant</Name>
       <Project>{2e62b639-1560-46eb-8528-a604b5d194fb}</Project>
       <Private>True</Private>
     </ProjectReference>

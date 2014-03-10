@@ -1,4 +1,4 @@
-﻿module internal Nessos.DistribFsi.DependencyAnalysis
+﻿module internal Nessos.Vagrant.DependencyAnalysis
 
     open System
     open System.Collections
@@ -11,36 +11,10 @@
     open Microsoft.FSharp.Quotations.DerivedPatterns
     open Microsoft.FSharp.Quotations.ExprShape
 
-    open Nessos.DistribFsi.FsiAssemblyCompiler
+    open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.FsiAssemblyCompiler
 
     open FsPickler
-
-
-    type Graph<'T> = ('T * 'T list) list
-
-    let getTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) =
-        let rec aux sorted (g : Graph<'T>) =
-            if g.IsEmpty then sorted else
-
-            match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> failwith "not a DAG."
-            | Some (t,_) ->
-                let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
-                aux (t :: sorted) g0
-
-        aux [] g
-
-    module Choice2 =
-        let partition (inputs : Choice<'T,'S> list) =
-            let rec aux p1 p2 rest =
-                match rest with
-                | Choice1Of2 t :: tl -> aux (t :: p1) p2 tl
-                | Choice2Of2 s :: tl -> aux p1 (s :: p2) tl
-                | [] -> List.rev p1, List.rev p2
-
-            aux [] [] inputs
-    
-
 
     /// gathers all types that occur in an object graph
 
@@ -173,10 +147,11 @@
             let field,value = pickler.UnPickle<FieldInfo * obj>(blob)
             field.SetValue(null, value)  
 
-    let getPortableDependencyInfo (pickler : FsPickler) (assemblies : Assembly list) (info : DynamicAssemblyInfo list) =
+    let getPortableDependencyInfo (pickler : FsPickler) (sourceId : string) (assemblies : Assembly list) (info : DynamicAssemblyInfo list) =
         let info, failures = info |> List.map (getExportableDynamicAssemblyInfo pickler) |> List.unzip
         let failures = List.concat failures
         let depInfo = {
+            SourceId = sourceId
             AllDependencies = assemblies
             DynamicAssemblies = info
         }
@@ -232,23 +207,3 @@
             ]
 
         exportedAssemblies, !dynamicAssemblies, !state
-
-
-//    let computeObjectPickler (pickler : FsPickler) (state : GlobalDynamicAssemblyState) (obj:obj) =
-//        let info, errors, state = computeObjectDependencies pickler state obj
-//
-//        let objPickle = pickler.Pickle<obj> obj
-//
-//        let pickle =
-//            {
-//                Pickle = objPickle
-//                DependencyInfo = info
-//            }
-//
-//        pickle, errors, state
-//
-//
-//    let loadObjectPickle (pickler : FsPickler) (pickle : Pickle) =
-//        do loadPortableDependencyInfo pickler pickle.DependencyInfo
-//
-//        pickler.UnPickle<obj> pickle.Pickle

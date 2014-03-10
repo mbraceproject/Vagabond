@@ -1,20 +1,18 @@
-﻿module internal Nessos.DistribFsi.Serialization
+﻿module internal Nessos.Vagrant.Serialization
 
     open System
     open System.IO
-    open System.Text.RegularExpressions
     open System.Reflection
 
     open FsPickler
 
-    open Nessos.DistribFsi
+    open Nessos.Vagrant
 
     [<AbstractClass>]
-    type DistribFsiNameConverter() as self =
-
-        let assemblyRegex = Regex(sprintf "^(.*)_%s_[0-9]*$" self.DynamicAssemblyState.ServerId)
+    type DistribFsiNameConverter() =
 
         abstract DynamicAssemblyState : GlobalDynamicAssemblyState
+        abstract TryGetDynamicAssemblyNameOfSlice : string -> string option
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
@@ -27,12 +25,9 @@
                     | Some a -> { typeInfo with AssemblyName = a.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                let m = assemblyRegex.Match(typeInfo.AssemblyName)
-                if m.Success then
-                    let assemblyName = m.Groups.[1].Value
-                    { typeInfo with AssemblyName = assemblyName }
-                else
-                    typeInfo
+                match __.TryGetDynamicAssemblyNameOfSlice typeInfo.AssemblyQualifiedName with
+                | None -> typeInfo
+                | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
 
 
 
@@ -40,7 +35,7 @@
 
         let registry =
             match registry with
-            | None -> let r = new CustomPicklerRegistry("DistribFsi Pickler") in r.SetTypeNameConverter conv ; r
+            | None -> let r = new CustomPicklerRegistry("Vagrant Pickler") in r.SetTypeNameConverter conv ; r
             | Some r ->
                 let tyConv =
                     match r.TypeNameConverter with

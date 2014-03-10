@@ -1,4 +1,4 @@
-﻿module Nessos.DistribFsi.FsiAssemblyCompiler
+﻿module Nessos.Vagrant.FsiAssemblyCompiler
 
     open System
     open FsPickler
@@ -8,43 +8,18 @@
     open Mono.Collections.Generic
     open Mono.Reflection
 
-    open Nessos.DistribFsi.TypeRefUpdater
-    open Nessos.DistribFsi.TypeInitializationEraser
-
-    let getCanonicalTypeName (t : TypeReference) =
-        let rec aux carry (t : TypeReference) =
-            if t = null then String.concat "+" carry
-            else
-                aux (t.Name :: carry) t.DeclaringType
-
-        if String.IsNullOrEmpty t.Namespace then aux [] t
-        else
-            sprintf "%s.%s" t.Namespace <| aux [] t
-
-
-    let memoize f =
-        let dict = new System.Collections.Generic.Dictionary<_,_>()
-        fun x ->
-            let found,y = dict.TryGetValue x
-            if found then y
-            else
-                let y = f x
-                dict.Add(x,y)
-                y
-
+    open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.TypeRefUpdater
 
     let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
         if t = null then None
         else
-            let assemblyName =
-                match t.Scope with
-                | :? AssemblyNameReference as a -> a.FullName
-                | _ -> assembly.FullName
+            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
 
             match state.DynamicAssemblies.TryFind assemblyName with
             | None -> None
             | Some info ->
-                let name = getCanonicalTypeName t
+                let name = t.CanonicalName
                 match info.TypeIndex.TryFind name with
                 | None -> None
                 | Some a ->
@@ -52,9 +27,7 @@
                     let tI = assembly.MainModule.Import(rt)
                     Some tI
 
-    module Map =
-        let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
-            Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
+
 
     //
     //  traverse the type hierarchy to: 
@@ -79,7 +52,7 @@
                 let erasedTypes = ref []
 
                 for t in types do
-                    let name = getCanonicalTypeName t
+                    let name = t.CanonicalName
                     
                     if name = "<Module>" then ()
                     elif state.TypeIndex.ContainsKey name then
@@ -116,7 +89,7 @@
         // static initializers for generic types not supported
         if typeDef.GenericParameters.Count > 0 then [||]
         else
-            let name = getCanonicalTypeName typeDef
+            let name = typeDef.CanonicalName
             let reflectionType = assembly.GetType(name, true)
             if eraseF reflectionType then
                 match typeDef.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
@@ -164,7 +137,7 @@
             let assembly = Assembly.ReflectionOnlyLoadFrom(target)
             let compiledAssemblies = assembly :: assemblyInfo.CompiledAssemblies
             let staticFields = assemblyInfo.StaticFields @ newStaticFields
-            let typeIndex = freshTypes |> Seq.map (fun t -> getCanonicalTypeName t, assembly) |> Map.addMany assemblyInfo.TypeIndex
+            let typeIndex = freshTypes |> Seq.map (fun t -> t.CanonicalName, assembly) |> Map.addMany assemblyInfo.TypeIndex
 
             let assemblyInfo = { assemblyInfo with CompiledAssemblies = compiledAssemblies ; TypeIndex = typeIndex ; StaticFields = staticFields}
 

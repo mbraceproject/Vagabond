@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.21005.1
+VisualStudioVersion = 12.0.30110.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{1F1B4F0F-2998-4D74-865B-9122611C2B14}"
 	ProjectSection(SolutionItems) = preProject
@@ -38,20 +38,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{66BF9FB4-399C-4103-BE99-D683FE32B79B}"
 	ProjectSection(SolutionItems) = preProject
-		lib\FSharp.Compiler.Service.dll = lib\FSharp.Compiler.Service.dll
-		lib\FSharp.Compiler.Service.pdb = lib\FSharp.Compiler.Service.pdb
-		lib\FSharp.Compiler.Service.xml = lib\FSharp.Compiler.Service.xml
 		lib\Mono.Reflection.dll = lib\Mono.Reflection.dll
 		lib\Mono.Reflection.pdb = lib\Mono.Reflection.pdb
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi.Settings", "src\DistribFsi.Settings\DistribFsi.Settings.fsproj", "{27191786-8A08-4273-96A9-410754D97A7C}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi.Shell", "src\DistribFsi.Shell\DistribFsi.Shell.fsproj", "{C9776661-D74C-4D93-821A-267FB66C51E6}"
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ThunkServer", "samples\ThunkServer\ThunkServer.fsproj", "{8BA10AC7-7E8A-4D38-99E6-575B77598534}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi.Cecil", "DistribFsi.Cecil\DistribFsi.Cecil.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "DistribFsi", "src\DistribFsi\DistribFsi.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -59,14 +52,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{27191786-8A08-4273-96A9-410754D97A7C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{27191786-8A08-4273-96A9-410754D97A7C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{27191786-8A08-4273-96A9-410754D97A7C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{27191786-8A08-4273-96A9-410754D97A7C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{C9776661-D74C-4D93-821A-267FB66C51E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C9776661-D74C-4D93-821A-267FB66C51E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C9776661-D74C-4D93-821A-267FB66C51E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C9776661-D74C-4D93-821A-267FB66C51E6}.Release|Any CPU.Build.0 = Release|Any CPU
 		{8BA10AC7-7E8A-4D38-99E6-575B77598534}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{8BA10AC7-7E8A-4D38-99E6-575B77598534}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8BA10AC7-7E8A-4D38-99E6-575B77598534}.Release|Any CPU.ActiveCfg = Release|Any CPU

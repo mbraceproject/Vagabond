@@ -78,8 +78,8 @@
     <Reference Include="System.Runtime.Remoting" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\DistribFsi.Cecil\DistribFsi.Cecil.fsproj">
-      <Name>DistribFsi.Cecil</Name>
+    <ProjectReference Include="..\..\DistribFsi.Cecil\DistribFsi.fsproj">
+      <Name>DistribFsi</Name>
       <Project>{2e62b639-1560-46eb-8528-a604b5d194fb}</Project>
       <Private>True</Private>
     </ProjectReference>

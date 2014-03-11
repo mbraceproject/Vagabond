@@ -207,3 +207,25 @@
             ]
 
         exportedAssemblies, !dynamicAssemblies, !state
+
+
+    let mkSliceDependencyInfo (pickler : FsPickler) (serverId : Guid) (dynamicAssembly : Assembly) (sliceInfo : AssemblySliceInfo) =
+        let fieldPickles, pickleFailures =
+            sliceInfo.StaticFields
+            |> List.map(fun (sourceField, targetField) -> 
+                try
+                    let value = sourceField.GetValue(null)
+                    let pickle = pickler.Pickle<obj>(value)
+                    Choice1Of2 (targetField, pickle)
+                with e -> Choice2Of2 (targetField, e.ToString()))
+            |> Choice2.partition
+
+        {
+            SourceId = serverId
+            SliceId = sliceInfo.SliceId
+            IsDynamicAssemblySlice = true
+            Assembly = sliceInfo.Assembly
+            ActualQualifiedName = dynamicAssembly.FullName
+            TypeInitializationBlobs = fieldPickles
+            TypeInitializationErrors = pickleFailures
+        }

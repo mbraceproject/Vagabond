@@ -1,6 +1,7 @@
 ﻿namespace Nessos.Vagrant
     
     open System
+    open System.IO
     open System.Text.RegularExpressions
     open System.Reflection
 
@@ -9,65 +10,68 @@
     open FsPickler
 
     open Nessos.Vagrant.Serialization
-    open Nessos.Vagrant.FsiAssemblyCompiler
-    open Nessos.Vagrant.DependencyAnalysis
+    open Nessos.Vagrant.SliceCompiler
 
-    type internal ServerMsg = obj * AsyncReplyChannel<Choice<PortableDependencyInfo * (exn * FieldInfo) list, exn>>
-    type internal ClientMsg = PortableDependencyInfo * AsyncReplyChannel<exn option>
-
-
-
-
-
-    type CompilationClient private (?pickler : FsPickler) =
+//    type internal ServerMsg = obj * AsyncReplyChannel<Choice<PortableDependencyInfo * (exn * FieldInfo) list, exn>>
+//    type internal ClientMsg = PortableDependencyInfo * AsyncReplyChannel<exn option>
+//
+//
         
-        let pickler = match pickler with None -> new FsPickler() | Some p -> p
-
-        let rec actorBehaviour (mailbox : MailboxProcessor<ClientMsg>) = async {
-            let! info, rc = mailbox.Receive()
-
-            let reply =
-                try loadPortableDependencyInfo pickler info ; None
-                with e -> Some e
-
-            rc.Reply reply
-
-            return! actorBehaviour mailbox
-        }
-
-        let actor = MailboxProcessor.Start actorBehaviour
-
-        let loadDependencyInfo (info : PortableDependencyInfo) =
-            match actor.PostAndReply <| fun ch -> info,ch with
-            | None -> ()
-            | Some e -> raise e
-
-        member __.Pickler = pickler
-        member __.LoadPortableDependencyInfo (info : PortableDependencyInfo) =
-            loadDependencyInfo info
-
-        member __.LoadPortablePickle (pickle : Pickle) =
-            loadDependencyInfo pickle.DependencyInfo
-            pickler.UnPickle<obj> pickle.Pickle
-
-        static member Create(?pickler : FsPickler) = new CompilationClient(?pickler = pickler)
+    type internal ServerMsg = CompileNextSlice of Assembly * AsyncReplyChannel<Choice<AssemblySliceInfo option, exn>>
 
 
+//    type CompilationClient private (?pickler : FsPickler) =
+//        
+//        let pickler = match pickler with None -> new FsPickler() | Some p -> p
+//
+//        let rec actorBehaviour (mailbox : MailboxProcessor<ClientMsg>) = async {
+//            let! info, rc = mailbox.Receive()
+//
+//            let reply =
+//                try loadPortableDependencyInfo pickler info ; None
+//                with e -> Some e
+//
+//            rc.Reply reply
+//
+//            return! actorBehaviour mailbox
+//        }
+//
+//        let actor = MailboxProcessor.Start actorBehaviour
+//
+//        let loadDependencyInfo (info : PortableDependencyInfo) =
+//            match actor.PostAndReply <| fun ch -> info,ch with
+//            | None -> ()
+//            | Some e -> raise e
+//
+//        member __.Pickler = pickler
+//        member __.LoadPortableDependencyInfo (info : PortableDependencyInfo) =
+//            loadDependencyInfo info
+//
+//        member __.LoadPortablePickle (pickle : Pickle) =
+//            loadDependencyInfo pickle.DependencyInfo
+//            pickler.UnPickle<obj> pickle.Pickle
+//
+//        static member Create(?pickler : FsPickler) = new CompilationClient(?pickler = pickler)
 
-    type CompilationServer private (?picklerRegistry : CustomPicklerRegistry, ?path : string) as self =
-        
+
+
+    type CompilationServer private (?picklerRegistry : CustomPicklerRegistry, ?outPath : string) as self =
+
+        let outPath = 
+            match outPath with
+            | Some path when Directory.Exists path -> path
+            | Some _ -> invalidArg "outPath" "not a directory."
+            | None -> Path.GetTempPath()
+
         static let singletonLock = ref None
         do lock singletonLock
             (fun () ->
                 if singletonLock.Value.IsSome then invalidOp "A compilation server instance is already running."
                 else singletonLock := Some self)
 
-        let serverId = Guid.NewGuid().ToString()
-        let path = defaultArg path <| System.IO.Path.GetTempPath()
-        // TODO : check path
-        let globalStateContainer = ref <| GlobalDynamicAssemblyState.Init(serverId, path)
+        let globalStateContainer = ref <| GlobalDynamicAssemblyState.Init(outPath)
 
-        let assemblyRegex = Regex(sprintf "^(.*)_%s_[0-9]*$" serverId)
+        let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]*$" globalStateContainer.Value.ServerId)
 
         let typeNameConverter =
             {
@@ -80,24 +84,17 @@
                             None
             }
 
-        let fspickler = mkFsPicklerInstance picklerRegistry typeNameConverter
-
-        let client = CompilationClient.Create(fspickler)
+        let pickler = mkFsPicklerInstance picklerRegistry typeNameConverter
 
         // use mailbox processor to sequentialize compilation requests
         let rec compiler (mailbox : MailboxProcessor<ServerMsg>) = async {
-            let! obj, rc = mailbox.Receive()
+            let! (CompileNextSlice(assembly, rc)) = mailbox.Receive()
 
             let result =
                 try
-                    let assemblies, dynamicAssemblies, state = computeObjectDependencies globalStateContainer.Value obj
-                    // update the state container *before* producing the blobs;
-                    // this is required because the serializer uses it
+                    let sliceInfo, state = tryCompileDynamicAssemblySlice globalStateContainer.Value assembly
                     do globalStateContainer := state
-                    // it is now safe to perform serializations
-                    let info, errors = getPortableDependencyInfo fspickler serverId assemblies dynamicAssemblies
-
-                    Choice1Of2 (info, errors)
+                    Choice1Of2 sliceInfo
                 with e -> Choice2Of2 e
 
             rc.Reply result
@@ -107,28 +104,29 @@
 
         let compilationActor = MailboxProcessor.Start compiler
 
-        let computeDependencies (obj:obj) =
-            match compilationActor.PostAndReply <| fun ch -> obj,ch with
-            | Choice1Of2 assemblies -> assemblies
+        let tryCompileNextSlice (a : Assembly) =
+            match compilationActor.PostAndReply <| fun ch -> CompileNextSlice(a,ch) with
+            | Choice1Of2 slice -> slice
             | Choice2Of2 e -> raise e
 
-        member __.ComputePortableDependencies (obj:obj) = computeDependencies obj
-        member __.ComputePortablePickle (obj:obj) =
-            let info, errors = computeDependencies obj
-            let pickle = {
-                Pickle = fspickler.Pickle<obj> obj
-                DependencyInfo = info
-            }
+        member __.TryCompileNextSlice (a : Assembly) = tryCompileNextSlice(a : Assembly)
 
-            pickle, errors
-
-
-        member __.Pickler = fspickler
-        member __.Client = client
-
-        static member Create (?picklerRegistry : CustomPicklerRegistry, ?path : string) =
-            new CompilationServer(?picklerRegistry = picklerRegistry, ?path = path)
+//        member __.ComputePortableDependencies (obj:obj) = computeDependencies obj
+//        member __.ComputePortablePickle (obj:obj) =
+//            let info, errors = computeDependencies obj
+//            let pickle = {
+//                Pickle = fspickler.Pickle<obj> obj
+//                DependencyInfo = info
+//            }
+//
+//            pickle, errors
 
 
-            
-        
+        member __.Pickler = pickler
+
+//        static member Create (?picklerRegistry : CustomPicklerRegistry, ?path : string) =
+//            new CompilationServer(?picklerRegistry = picklerRegistry, ?path = path)
+//
+//
+//            
+//        

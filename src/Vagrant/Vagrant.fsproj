@@ -56,7 +56,7 @@
     <Compile Include="Types.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="TypeRefUpdater.fs" />
-    <Compile Include="DynamicAssemblyCompiler.fs" />
+    <Compile Include="SliceCompiler.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />

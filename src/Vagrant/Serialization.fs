@@ -22,7 +22,7 @@
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
                     | None -> failwithf "could not serialize type '%s' in dynamic assembly '%s'." typeInfo.Name qname
-                    | Some a -> { typeInfo with AssemblyName = a.GetName().Name }
+                    | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
                 match __.TryGetDynamicAssemblyNameOfSlice typeInfo.AssemblyQualifiedName with

@@ -58,6 +58,7 @@
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="Serialization.fs" />
+    <Compile Include="DependencyExporter.fs" />
     <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />

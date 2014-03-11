@@ -12,12 +12,7 @@
 
     type VagrantTypeNameConverter(compiler : SliceCompilationServer) =
 
-        let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]*" compiler.UUId)
-        let tryExtractDynamicAssemblyName (assemblyName : string) =
-            let m = assemblyRegex.Match(assemblyName)
-            if m.Success then Some <| m.Groups.[1].Value
-            else
-                None
+
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
@@ -30,7 +25,7 @@
                     | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                match tryExtractDynamicAssemblyName typeInfo.AssemblyQualifiedName with
+                match compiler.State.TryGetDynamicAssemblyName typeInfo.AssemblyQualifiedName with
                 | None -> typeInfo
                 | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
 

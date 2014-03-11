@@ -11,7 +11,7 @@
             IsDynamicAssemblySlice : bool
             ActualQualifiedName : string
             SliceId : int
-//            BlobGeneration : int
+            BlobGeneration : int
             TypeInitializationBlobs : (FieldInfo * byte []) list
             TypeInitializationErrors : (FieldInfo * string) list
         }
@@ -59,6 +59,7 @@
     type AssemblySliceInfo =
         {
             Assembly : Assembly
+            DynamicAssemblyName : string
             SliceId : int
             StaticFields : (FieldInfo * FieldInfo) list
         }
@@ -89,11 +90,5 @@
             ServerId : Guid
             OutputDirectory : string
             DynamicAssemblies : Map<string, DynamicAssemblyState>
+            TryGetDynamicAssemblyName : string -> string option
         }
-    with
-        static member Init(outputDirectory : string) =
-            {
-                ServerId = Guid.NewGuid()
-                OutputDirectory = outputDirectory
-                DynamicAssemblies = Map.empty
-            }

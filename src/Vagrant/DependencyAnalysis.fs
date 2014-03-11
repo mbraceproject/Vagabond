@@ -60,36 +60,36 @@
         gathered |> Seq.toList
 
 
-    /// matches quotations of form <@ symbol @>
-    let (|SymbolExpr|_|) (expr : Expr) =
-        let rec peel expr =
-            match expr with
-            | Lambda(_,body) -> peel body
-            | Call(_,meth,_) -> meth :> MemberInfo |> Some
-            | PropertyGet(_,prop,_) -> prop :> MemberInfo |> Some
-            | _ -> None
-
-        peel expr
-
-    /// gathers all memberInfo's that occur in quotation
-    let gatherMembersOfExpr (expr : Expr) =
-        let gathered = new HashSet<MemberInfo> ()
-        let inline add x = gathered.Add x |> ignore
-        let rec aux (e : Expr) =
-            try add e.Type with _ -> ()
-            match e with
-            | ShapeVar _ -> ()
-            | ShapeLambda(_, body) -> aux body
-            | ShapeCombination(_,exprs) -> 
-                match e with
-                | Call(_,m,_) -> add m
-                | PropertyGet(_,p,_) -> add p
-                | _ -> ()
-
-                for e in exprs do aux e
-
-        do aux expr
-        gathered |> Seq.toList
+//    /// matches quotations of form <@ symbol @>
+//    let (|SymbolExpr|_|) (expr : Expr) =
+//        let rec peel expr =
+//            match expr with
+//            | Lambda(_,body) -> peel body
+//            | Call(_,meth,_) -> meth :> MemberInfo |> Some
+//            | PropertyGet(_,prop,_) -> prop :> MemberInfo |> Some
+//            | _ -> None
+//
+//        peel expr
+//
+//    /// gathers all memberInfo's that occur in quotation
+//    let gatherMembersOfExpr (expr : Expr) =
+//        let gathered = new HashSet<MemberInfo> ()
+//        let inline add x = gathered.Add x |> ignore
+//        let rec aux (e : Expr) =
+//            try add e.Type with _ -> ()
+//            match e with
+//            | ShapeVar _ -> ()
+//            | ShapeLambda(_, body) -> aux body
+//            | ShapeCombination(_,exprs) -> 
+//                match e with
+//                | Call(_,m,_) -> add m
+//                | PropertyGet(_,p,_) -> add p
+//                | _ -> ()
+//
+//                for e in exprs do aux e
+//
+//        do aux expr
+//        gathered |> Seq.toList
 
     // recursively traverse assembly dependency graph
     let traverseDependencies (assemblies : seq<Assembly>) =
@@ -119,9 +119,92 @@
         |> getTopologicalOrdering
 
 
+
+    let computeObjectDependencies (state : GlobalDynamicAssemblyState) (obj : obj) =
+
+        let types = gatherTypesInObjectGraph obj
+        let assemblyInfo = types |> Seq.groupBy (fun t -> t.Assembly) |> Seq.toList
+
+        let allAssemblies = assemblyInfo |> Seq.map fst |> traverseDependencies
+
+        let topLevelDynamicAssemblies =
+            assemblyInfo 
+            |> Seq.map (fun (a, types) -> 
+                let requiresCompilation =
+                    match state.DynamicAssemblies.TryFind a.FullName with
+                    | None -> true // always attempt to compile dynamic assemblies whose types do not directly appear in the object graph
+                    | Some info -> types |> Seq.forall (fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
+
+                a.FullName, requiresCompilation)
+            |> Map.ofSeq
+
+        let isDynamicAssemblyRequiringCompilation (a : Assembly) =
+            if a.IsDynamic then
+                match topLevelDynamicAssemblies.TryFind a.FullName with
+                | None -> true
+                | Some requires -> requires
+            else
+                false
+
+        let slices = 
+            allAssemblies 
+            |> List.filter isDynamicAssemblyRequiringCompilation 
+            |> List.choose compiler.TryCompileNextSlice
+
+        let exportedAssemblies =
+            [
+                for a in allAssemblies do
+                    match compiler.State.DynamicAssemblies.TryFind a.FullName with
+                    | None -> yield a
+                    | Some d -> yield! d.GeneratedSlices |> Seq.map (fun s -> s.Assembly)
+            ]
+
+        slices, exportedAssemblies
+
+
     //
     //
     //
+
+//    let getDynamicAssemblySlice (compiler : SliceCompilationServer) (a : Assembly) =
+//        assert a.IsDynamic
+//        
+//        traverseDependencies [a] 
+//        |> List.filter (fun a -> a.IsDynamic)
+//        |> List.choose compiler.TryCompileNextSlice
+//
+//
+//
+
+            
+
+
+
+
+//        let newSliceInfo = ref []
+//
+//        let exportedDependencies =
+//            [
+//                for a in allAssemblies do
+//                    if a.IsDynamic then 
+//                        if isDynamicAssemblyRequiringCompilation a then
+//                            let slice = compiler.TryCompileNextSlice(a).Value
+//                            newSliceInfo := slice :: !newSliceInfo
+//
+//                        let assemblyInfo = compiler.State.DynamicAssemblies.[a.FullName]
+//                        yield! assemblyInfo.CompiledAssemblies
+//
+//                    else 
+//                        yield a
+//            ]
+//
+//        exported
+        
+
+
+//        if not a.IsDynamic then invalidArg a.FullName "not a dynamic assembly."
+//
+//        let dependencies = 
 
 //    let getExportableDynamicAssemblyInfo (pickler : FsPickler) (info : DynamicAssemblyInfo) =
 //        let fieldPickles, pickleFailures =
@@ -139,11 +222,7 @@
 //
 //        exportable, pickleFailures
 //
-//    let loadExportedDynamicAssemblyInfo (pickler : FsPickler) (info : ExportedDynamicAssemblyInfo) =
-//        // load value initialization blobs
-//        for (_,blob) in info.ValueInitializationBlobs do
-//            let field,value = pickler.UnPickle<FieldInfo * obj>(blob)
-//            field.SetValue(null, value)  
+
 //
 //    let getPortableDependencyInfo (pickler : FsPickler) (sourceId : string) (assemblies : Assembly list) (info : DynamicAssemblyInfo list) =
 //        let info, failures = info |> List.map (getExportableDynamicAssemblyInfo pickler) |> List.unzip
@@ -164,66 +243,13 @@
 //
 //    let computeObjectDependencies (state : GlobalDynamicAssemblyState) (obj:obj) =
 //
-//        let types = gatherTypesInObjectGraph obj
-//        let assemblyInfo = types |> Seq.groupBy (fun t -> t.Assembly) |> Seq.toList
-//
-//        let allAssemblies = assemblyInfo |> List.map fst |> traverseDependencies
-//        let topLevelDynamicAssemblies =
-//            assemblyInfo 
-//            |> Seq.map (fun (a, types) -> 
-//                let requiresCompilation =
-//                    match state.DynamicAssemblies.TryFind a.FullName with
-//                    | None -> true // always attempt to compile dynamic assemblies whose types do not directly appear in the object graph
-//                    | Some info -> types |> Seq.forall (fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
-//
-//                a.FullName, requiresCompilation)
-//            |> Map.ofSeq
-//
-//        let isDynamicAssemblyRequiringCompilation (a : Assembly) =
-//            match topLevelDynamicAssemblies.TryFind a.FullName with
-//            | None -> true
-//            | Some requires -> requires
+
+
 //
 //        // traverse and compile
 //        let state = ref state
-//        let dynamicAssemblies = ref []
-//
-//        let exportedAssemblies =
-//            [
-//                for a in allAssemblies do
-//                    if a.IsDynamic then 
-//                        if isDynamicAssemblyRequiringCompilation a then
-//                            state := compileDynamicAssemblySlice !state a
-//
-//                        let assemblyInfo = state.Value.DynamicAssemblies.[a.FullName]
-//
-//                        dynamicAssemblies := assemblyInfo :: !dynamicAssemblies
-//                        yield! assemblyInfo.CompiledAssemblies
-//
-//                    else 
-//                        yield a
-//            ]
+
 //
 //        exportedAssemblies, !dynamicAssemblies, !state
 //
 //
-//    let mkSliceDependencyInfo (pickler : FsPickler) (serverId : Guid) (dynamicAssembly : Assembly) (sliceInfo : AssemblySliceInfo) =
-//        let fieldPickles, pickleFailures =
-//            sliceInfo.StaticFields
-//            |> List.map(fun (sourceField, targetField) -> 
-//                try
-//                    let value = sourceField.GetValue(null)
-//                    let pickle = pickler.Pickle<obj>(value)
-//                    Choice1Of2 (targetField, pickle)
-//                with e -> Choice2Of2 (targetField, e.ToString()))
-//            |> Choice2.partition
-//
-//        {
-//            SourceId = serverId
-//            SliceId = sliceInfo.SliceId
-//            IsDynamicAssemblySlice = true
-//            Assembly = sliceInfo.Assembly
-//            ActualQualifiedName = dynamicAssembly.FullName
-//            TypeInitializationBlobs = fieldPickles
-//            TypeInitializationErrors = pickleFailures
-//        }

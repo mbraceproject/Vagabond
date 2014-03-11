@@ -2,7 +2,6 @@
 
     open System
     open System.IO
-//    open FsPickler
     open System.Reflection
 
     open Mono.Cecil
@@ -207,6 +206,7 @@
             | Choice2Of2 e -> raise e
 
 
+        member __.UUId = globalStateContainer.Value.ServerId
         member __.State = !globalStateContainer
 
         member __.TryCompileNextSlice (a : Assembly) =

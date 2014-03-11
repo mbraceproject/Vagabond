@@ -12,7 +12,6 @@
     open Microsoft.FSharp.Quotations.ExprShape
 
     open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.FsiAssemblyCompiler
 
     open FsPickler
 

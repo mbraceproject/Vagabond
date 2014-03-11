@@ -2,50 +2,56 @@
 
     open System
     open System.IO
+    open System.Text.RegularExpressions
     open System.Reflection
 
     open FsPickler
 
     open Nessos.Vagrant
+    open Nessos.Vagrant.SliceCompiler
 
-    [<AbstractClass>]
-    type DistribFsiNameConverter() =
+    type VagrantTypeNameConverter(compiler : SliceCompilationServer) =
 
-        abstract DynamicAssemblyState : GlobalDynamicAssemblyState
-        abstract TryGetDynamicAssemblyNameOfSlice : string -> string option
+        let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]*" compiler.UUId)
+        let tryExtractDynamicAssemblyName (assemblyName : string) =
+            let m = assemblyRegex.Match(assemblyName)
+            if m.Success then Some <| m.Groups.[1].Value
+            else
+                None
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
                 let qname = typeInfo.AssemblyQualifiedName
-                match __.DynamicAssemblyState.DynamicAssemblies.TryFind qname with
+                match compiler.State.DynamicAssemblies.TryFind qname with
                 | None -> typeInfo
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
-                    | None -> failwithf "could not serialize type '%s' in dynamic assembly '%s'." typeInfo.Name qname
+                    | None -> failwithf "Vagrant: type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname
                     | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                match __.TryGetDynamicAssemblyNameOfSlice typeInfo.AssemblyQualifiedName with
+                match tryExtractDynamicAssemblyName typeInfo.AssemblyQualifiedName with
                 | None -> typeInfo
                 | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
 
 
 
-    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (conv : DistribFsiNameConverter) =
+    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (compiler : SliceCompilationServer) =
+
+        let tyConv = new VagrantTypeNameConverter(compiler) :> ITypeNameConverter
 
         let registry =
             match registry with
-            | None -> let r = new CustomPicklerRegistry("Vagrant Pickler") in r.SetTypeNameConverter conv ; r
+            | None -> let r = new CustomPicklerRegistry("Vagrant Custom Pickler") in r.SetTypeNameConverter tyConv ; r
             | Some r ->
                 let tyConv =
                     match r.TypeNameConverter with
-                    | None -> conv :> ITypeNameConverter
+                    | None -> tyConv
                     | Some c ->
-                        let conv = conv :> ITypeNameConverter
                         {
                             new ITypeNameConverter with
-                                member __.OfSerializedType tI = tI |> conv.OfSerializedType |> c.OfSerializedType
-                                member __.ToDeserializedType tI = tI |> c.ToDeserializedType |> conv.ToDeserializedType
+                                member __.OfSerializedType tI = tI |> tyConv.OfSerializedType |> c.OfSerializedType
+                                member __.ToDeserializedType tI = tI |> c.ToDeserializedType |> tyConv.ToDeserializedType
                         }
 
                 r.SetTypeNameConverter tyConv

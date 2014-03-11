@@ -52,11 +52,11 @@
   <Import Project="$(FSharpTargetsPath)" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
-    <Compile Include="Utils.fs" />
     <Compile Include="Types.fs" />
-    <Compile Include="Serialization.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="TypeRefUpdater.fs" />
     <Compile Include="SliceCompiler.fs" />
+    <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />

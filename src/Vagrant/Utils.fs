@@ -21,6 +21,12 @@
 
             aux [] [] inputs
 
+    module Option =
+        let filter (f : 'T -> bool) (x : 'T option) : 'T option = 
+            match x with 
+            | Some t when f t -> x
+            | _ -> None
+
     let memoize f =
         let dict = new System.Collections.Generic.Dictionary<_,_>()
         fun x ->

@@ -55,9 +55,9 @@
     <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="TypeRefUpdater.fs" />
+    <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="Serialization.fs" />
-    <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />

@@ -9,7 +9,7 @@
             Assembly : Assembly
             SourceId : Guid
             IsDynamicAssemblySlice : bool
-            ActualQualifiedName : string
+            DynamicAssemblyQualifiedName : string
             SliceId : int
             BlobGeneration : int
             TypeInitializationBlobs : (FieldInfo * byte []) list
@@ -29,7 +29,7 @@
         {
             DynamicAssembly : Assembly
             AssemblyReferences : Assembly list
-            GeneratedSlices : AssemblySliceInfo list
+            GeneratedSlices : Map<string, AssemblySliceInfo>
             TypeIndex : Map<string, AssemblySliceInfo>
         }
     with
@@ -44,7 +44,7 @@
             {
                 DynamicAssembly = a
                 AssemblyReferences = []
-                GeneratedSlices = []
+                GeneratedSlices = Map.empty
                 TypeIndex = Map.empty
             }
 
@@ -55,5 +55,14 @@
             DynamicAssemblies : Map<string, DynamicAssemblyState>
 
             TryGetDynamicAssemblyName : string -> string option
-            GetAssemblySliceName : string -> int -> string
+            CreateAssemblySliceName : string -> int -> string
         }
+    with
+        member s.TryFindSliceInfo(sliceName : string) =
+            match s.TryGetDynamicAssemblyName sliceName with
+            | Some name ->
+                let an = new AssemblyName(sliceName)
+                do an.Name <- name
+                s.DynamicAssemblies.TryFind(an.FullName) 
+                |> Option.bind(fun info -> info.GeneratedSlices.TryFind sliceName)
+            | None -> None

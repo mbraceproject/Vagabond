@@ -14,10 +14,10 @@
         static member ComputeObjectDependencies(obj:obj) =
             gatherObjectDependencies obj
             |> Seq.map fst
-            |> traverseDependencies
+            |> traverseDependencies None
 
-        static member ComputeAssemblyDependencies(assembly:Assembly) = traverseDependencies [assembly]
-        static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = traverseDependencies assemblies
+        static member ComputeAssemblyDependencies(assembly:Assembly) = traverseDependencies None [assembly]
+        static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = traverseDependencies None assemblies
 
 
     type VagrantClient internal (pickler : FsPickler, localServerId : Guid option) =

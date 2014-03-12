@@ -77,19 +77,23 @@
         |> Seq.map (fun a -> a.FullName, a)
         |> Map.ofSeq
 
-    let isSystemAssembly =
-        let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-        let systemPkt = getPublicKey typeof<int>.Assembly
-        fun (a:Assembly) -> getPublicKey a = systemPkt
-
     // recursively traverse assembly dependency graph
-    let traverseDependencies (assemblies : seq<Assembly>) =
+    let traverseDependencies (state : GlobalDynamicAssemblyState option) (assemblies : seq<Assembly>) =
 
         let loadedAssemblies = getLoadedAssemblies ()
 
+        let isSystemAssembly =
+            let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
+            let systemPkt = getPublicKey typeof<int>.Assembly
+            fun (a:Assembly) -> getPublicKey a = systemPkt
+
         let tryResolveLoadedAssembly (an : AssemblyName) =
-            loadedAssemblies.TryFind an.FullName
-            |> Option.filter (not << isSystemAssembly)
+            match loadedAssemblies.TryFind an.FullName, state with
+            | Some a, _ when isSystemAssembly a -> None
+            | Some _ as s, _ -> s
+            // query the slice compiler when present: this is needed since slices are not loaded in the appdomain
+            | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun s -> s.Assembly)
+            | None, None -> None
 
         let rec traverseDependencyGraph (graph : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
@@ -158,20 +162,18 @@
 
 
     let remapDependencies (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
-        let rec remap (a : Assembly, ts : seq<Type>) =
+        let remap (a : Assembly, ts : seq<Type>) =
             if a.IsDynamic then
                 match state.DynamicAssemblies.TryFind a.FullName with
                 | None -> failwithf "Vagrant: no slices have been created for assembly '%s'." a.FullName
                 | Some info ->
-                    seq {
-                        yield! info.AssemblyReferences |> Seq.collect (fun a -> remap (a,[]))
+                    let remapType (t : Type) =
+                        match info.TypeIndex.TryFind t.FullName with
+                        | None -> failwithf "Vagrant: no slice has been created for dynamic type '%O'." t
+                        | Some slice -> slice.Assembly
 
-                        for t in ts do
-                            match info.TypeIndex.TryFind t.FullName with 
-                            | None -> failwithf "Vagrant: no slice has been created for dynamic type '%O'." t
-                            | Some i -> yield i.Assembly
-                    }
+                    Seq.map remapType ts
 
             else Seq.singleton a
 
-        dependencies |> Seq.collect remap |> traverseDependencies
+        dependencies |> Seq.collect remap |> traverseDependencies (Some state)

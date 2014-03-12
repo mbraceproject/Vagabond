@@ -29,7 +29,7 @@
                     singletonLock := true)
 
         let compilationAgent =
-            let init = initGlobalState outpath
+            let init = initCompilerState outpath
             mkStatefulWrapper init compileDynamicAssemblySlices
 
         let serverId = compilationAgent.CurrentState.ServerId
@@ -65,9 +65,11 @@
             match compilationAgent.CurrentState.DynamicAssemblies.TryFind assembly.FullName with
             | None -> []
             | Some info ->
-                info.GeneratedSlices 
-                |> List.sortBy (fun s -> s.SliceId) 
-                |> List.map (fun s -> s.Assembly)
+                info.GeneratedSlices
+                |> Map.toSeq
+                |> Seq.sortBy (fun (_,s) -> s.SliceId) 
+                |> Seq.map (fun (_,s) -> s.Assembly)
+                |> Seq.toList
 
         member __.GetDependencyInfo(assembly : Assembly) = exportingAgent.Invoke assembly
 

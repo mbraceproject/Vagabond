@@ -15,8 +15,7 @@
 
         if assembly.IsDynamic then invalidOp "Dynamic assembly not exportable."
 
-        let an = assembly.GetName()
-        match state.TryGetDynamicAssemblyName an.Name with
+        match state.TryFindSliceInfo assembly.FullName with
         | None ->
             let info =
                 {
@@ -28,16 +27,12 @@
                     BlobGeneration = 0
                     TypeInitializationBlobs = []
                     TypeInitializationErrors = []
-                    ActualQualifiedName = assembly.FullName
+                    DynamicAssemblyQualifiedName = null
                 }
 
             generationIdx, info
 
-        | Some dynamicAssemblyName ->
-            an.Name <- dynamicAssemblyName
-            let sliceInfo = 
-                state.DynamicAssemblies.[an.FullName].GeneratedSlices 
-                |> List.find (fun s -> s.Assembly = assembly)
+        | Some sliceInfo ->
 
             let fieldPickles, pickleFailures =
                 sliceInfo.StaticFields
@@ -55,7 +50,7 @@
                 {
                     SourceId = state.ServerId
                     SliceId = sliceInfo.SliceId
-                    ActualQualifiedName = sliceInfo.DynamicAssemblyName
+                    DynamicAssemblyQualifiedName = sliceInfo.DynamicAssemblyName
 
                     IsDynamicAssemblySlice = true
                     Assembly = sliceInfo.Assembly

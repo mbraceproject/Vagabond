@@ -15,7 +15,7 @@
 
 
 
-    let initGlobalState (outDirectory : string) =
+    let initCompilerState (outDirectory : string) =
         let uuid = Guid.NewGuid()
         let mkSliceName (name : string) (id : int) = sprintf "%s_%O_%d" name uuid id
         let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]+" uuid)
@@ -30,7 +30,7 @@
             DynamicAssemblies = Map.empty
 
             TryGetDynamicAssemblyName = tryExtractDynamicAssemblyName
-            GetAssemblySliceName = mkSliceName
+            CreateAssemblySliceName = mkSliceName
         }
 
     let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
@@ -170,8 +170,8 @@
 
         // compile
 
-        let sliceId = assemblyState.GeneratedSlices.Length + 1
-        let name = state.GetAssemblySliceName assemblyState.Name.Name sliceId
+        let sliceId = assemblyState.GeneratedSlices.Count + 1
+        let name = state.CreateAssemblySliceName assemblyState.Name.Name sliceId
         let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
 
         do snapshot.Name.Name <- name
@@ -180,7 +180,7 @@
         // update type index & compiled assembly info
         let assembly = Assembly.ReflectionOnlyLoadFrom(target)
         let sliceInfo = mkSliceInfo assemblyState.DynamicAssembly sliceId staticFields assembly
-        let generatedSlices = sliceInfo :: assemblyState.GeneratedSlices
+        let generatedSlices = assemblyState.GeneratedSlices.Add(assembly.FullName, sliceInfo)
         let typeIndex = freshTypes |> Seq.map (fun t -> t.CanonicalName, sliceInfo) |> Map.addMany assemblyState.TypeIndex
 
         let assemblyState = { assemblyState with GeneratedSlices = generatedSlices ; TypeIndex = typeIndex ; AssemblyReferences = dependencies }

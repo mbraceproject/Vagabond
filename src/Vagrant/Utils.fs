@@ -118,8 +118,8 @@
                     with e ->
                         state, Choice2Of2 e
 
-                rc.Reply reply
                 stateRef := state
+                rc.Reply reply
 
                 return! behaviour state mailbox
             }

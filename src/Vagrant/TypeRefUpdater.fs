@@ -53,6 +53,10 @@
             if not <| tracker.IsFirstOccurence m then () else
 
             match m with
+            | :? GenericInstanceMethod as gm ->
+                updateMethodReference gm.ElementMethod
+                Collection.update updateTypeReference gm.GenericArguments
+
             | :? MethodSpecification as m -> updateMethodReference m.ElementMethod
             | _ ->
 
@@ -90,7 +94,7 @@
 
             Seq.iter updateMethodDefinition t.Methods
 
-            Seq.iter updateTypeDefinition t.NestedTypes
+//            Seq.iter updateTypeDefinition t.NestedTypes
 
         and updateCustomAttribute (attr : CustomAttribute) =
             do updateMethodReference attr.Constructor

@@ -29,7 +29,7 @@
                 else
                     singletonLock := true)
 
-        let agent = mkDependencyLoader pickler localServerId
+        let loader = mkLoaderAgent pickler localServerId
 
         new (?pickler : FsPickler) =
             let pickler = match pickler with None -> new FsPickler() | Some p -> p
@@ -37,6 +37,6 @@
 
         member __.Pickler = pickler
 
-        member __.LoadDependencyInfo(info : DependencyInfo) = agent.Invoke info
+        member __.LoadDependencyInfo(info : DependencyInfo) = loader.Invoke info
         member __.LoadDependencyInfo(info : seq<DependencyInfo>) =
-            for i in info do agent.Invoke i
+            for i in info do loader.Invoke i

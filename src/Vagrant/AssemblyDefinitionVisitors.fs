@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.TypeRefUpdater
+﻿module internal Nessos.Vagrant.AssemblyDefinitionVisitors
 
     open System
     open System.Collections.Generic
@@ -10,7 +10,15 @@
 
     open Nessos.Vagrant.Utils
 
-    let remapTypeReferences (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) : unit =
+    //
+    //  The following implements a visitor of sorts for Cecil TypeDefinitions. 
+    //  It performs the following operations:
+    //
+    //    1. All type references are updated using the updateF function
+    //    2. Makes all member definitions public if enabled
+    //
+
+    let updateTypeReferences makePublicMembers (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) : unit =
 
         let tracker = new ObjectTracker()          
 
@@ -73,8 +81,9 @@
         and updateTypeDefinition (t : TypeDefinition) =
             if not <| tracker.IsFirstOccurence t then () else
 
-            if t.IsNested then t.IsNestedPublic <- true
-            else t.IsPublic <- true
+            if makePublicMembers then
+                if t.IsNested then t.IsNestedPublic <- true
+                else t.IsPublic <- true
 
             if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
 
@@ -94,7 +103,7 @@
 
             Seq.iter updateMethodDefinition t.Methods
 
-//            Seq.iter updateTypeDefinition t.NestedTypes
+            Seq.iter updateTypeDefinition t.NestedTypes
 
         and updateCustomAttribute (attr : CustomAttribute) =
             do updateMethodReference attr.Constructor
@@ -102,7 +111,8 @@
         and updateFieldReference (f : FieldReference) =
             if not <| tracker.IsFirstOccurence f then () else
 
-            match f with :? FieldDefinition as f -> f.IsPublic <- true | _ -> ()
+            if makePublicMembers then
+                match f with :? FieldDefinition as f -> f.IsPublic <- true | _ -> ()
 
             f.DeclaringType <- updateTypeReference f.DeclaringType
             f.FieldType <- updateTypeReference f.FieldType
@@ -122,7 +132,7 @@
         and updateMethodDefinition (m : MethodDefinition) =
             tracker.IsFirstOccurence m |> ignore
 
-            m.IsPublic <- true
+            if makePublicMembers then m.IsPublic <- true
 
             Seq.iter updateCustomAttribute m.CustomAttributes
 

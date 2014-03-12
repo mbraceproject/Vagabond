@@ -56,7 +56,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
-    <Compile Include="TypeRefUpdater.fs" />
+    <Compile Include="AssemblyDefinitionVisitors.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="DependencyExporter.fs" />
     <Compile Include="CompilationClient.fs" />

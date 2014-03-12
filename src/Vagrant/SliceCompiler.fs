@@ -10,10 +10,10 @@
     open Mono.Reflection
 
     open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.TypeRefUpdater
+    open Nessos.Vagrant.AssemblyDefinitionVisitors
     open Nessos.Vagrant.DependencyAnalysis
 
-
+    /// create an initial, empty compiler state
 
     let initCompilerState (outDirectory : string) =
         let uuid = Guid.NewGuid()
@@ -32,23 +32,6 @@
             TryGetDynamicAssemblyName = tryExtractDynamicAssemblyName
             CreateAssemblySliceName = mkSliceName
         }
-
-    let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
-        if t = null then None
-        else
-            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
-
-            match state.DynamicAssemblies.TryFind assemblyName with
-            | None -> None // referenced assembly not dynamic
-            | Some info ->
-                let name = t.CanonicalName
-                match info.TypeIndex.TryFind name with
-                | None when assemblyName = assembly.FullName -> None // the type will be compiled in current slice; do not remap
-                | None -> failwithf "Vagrant error: referencing type '%O' from dynamic assembly '%s' which has not been sliced." name assemblyName
-                | Some a ->
-                    let rt = a.Assembly.GetType(name, true)
-                    let tI = assembly.MainModule.Import(rt)
-                    Some tI
 
     //
     //  TODO: for performance reasons, it would be a good idea to merge Mono.Reflection's AssemblySaver and the slicer
@@ -149,6 +132,29 @@
             SliceId = sliceId
         }
 
+
+    /// type reference updating logic : consult the compiler state to update TypeReferences to dynamic assemblies
+
+    let tryUpdateTypeReference (state : GlobalDynamicAssemblyState) (assembly : AssemblyDefinition) (t : TypeReference) =
+        if t = null then None
+        else
+            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
+
+            match state.DynamicAssemblies.TryFind assemblyName with
+            | None -> None // referenced assembly not dynamic
+            | Some info ->
+                let name = t.CanonicalName
+                match info.TypeIndex.TryFind name with
+                | None when assemblyName = assembly.FullName -> None // the type will be compiled in current slice; do not remap
+                | None -> failwithf "Vagrant: referencing type '%O' from dynamic assembly '%s' which has not been sliced." name assemblyName
+                | Some a ->
+                    let rt = a.Assembly.GetType(name, true)
+                    let tI = assembly.MainModule.Import(rt)
+                    Some tI
+
+
+    /// compiles a slice of given dynamic assembly snapshot
+
     let compileDynamicAssemblySlice (state : GlobalDynamicAssemblyState) 
                                         (dynamicAssembly : Assembly) 
                                         (dependencies : Assembly list) 
@@ -163,7 +169,7 @@
         let freshTypes = mkAssemblyDefinitionSlice assemblyState snapshot
 
         // remap typeRefs so that slices are correctly referenced
-        do remapTypeReferences (memoize <| tryUpdateTypeReference snapshot state) freshTypes
+        do updateTypeReferences true (memoize <| tryUpdateTypeReference state snapshot) freshTypes
 
         // erase type initializers where applicable
         let staticFields = freshTypes |> Array.map (eraseStaticInitializers (fun _ -> true) assemblyState.DynamicAssembly)
@@ -177,8 +183,10 @@
         do snapshot.Name.Name <- name
         do snapshot.Write(target)
 
-        // update type index & compiled assembly info
+        // load new slice to System.Reflection
         let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+
+        // update type index & compiled assembly info
         let sliceInfo = mkSliceInfo assemblyState.DynamicAssembly sliceId staticFields assembly
         let generatedSlices = assemblyState.GeneratedSlices.Add(assembly.FullName, sliceInfo)
         let typeIndex = freshTypes |> Seq.map (fun t -> t.CanonicalName, sliceInfo) |> Map.addMany assemblyState.TypeIndex
@@ -190,11 +198,15 @@
         sliceInfo, state
 
 
+
+    /// compiles a collection of assemblies
+
     let compileDynamicAssemblySlices (state : GlobalDynamicAssemblyState) (assemblies : Assembly list) =
         // resolve dynamic assembly dependency graph
         let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
-        // the returned state should reflect the last successful compilation
+        // exceptions are handled locally so that returned state reflects
+        // the last successful compilation
         let compileSlice (state : GlobalDynamicAssemblyState, acc : Choice<AssemblySliceInfo list, exn>) 
                             (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
             match acc with
@@ -207,3 +219,9 @@
             | Choice2Of2 _ -> state, acc // discard the remaining list
 
         List.fold compileSlice (state, Choice1Of2 []) parsedDynamicAssemblies
+
+    /// initializes a stateful compilation agent
+
+    let mkCompilationAgent (outpath : string) =
+        let init = initCompilerState outpath
+        mkStatefulAgent init compileDynamicAssemblySlices

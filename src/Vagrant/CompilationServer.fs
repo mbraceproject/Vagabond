@@ -28,41 +28,35 @@
                 else
                     singletonLock := true)
 
-        let compilationAgent =
-            let init = initCompilerState outpath
-            mkStatefulWrapper init compileDynamicAssemblySlices
+        // initialize agents
 
-        let serverId = compilationAgent.CurrentState.ServerId
-
-        let getState () = compilationAgent.CurrentState
-
-        let pickler = mkFsPicklerInstance picklerRegistry getState
-
-        let exportingAgent = mkDependencyExporter pickler getState
-        let client = new VagrantClient(pickler, Some serverId)
+        let compiler = mkCompilationAgent outpath
+        let pickler = mkFsPicklerInstance picklerRegistry (fun () -> compiler.CurrentState)
+        let exporter = mkExporterAgent pickler (fun () -> compiler.CurrentState)
+        let client = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)
 
         let compile (assemblies : Assembly list) =
-            match compilationAgent.Invoke assemblies with
+            match compiler.Invoke assemblies with
             | Choice1Of2 slices -> slices
             | Choice2Of2 e -> raise e
 
-        member __.UUId = serverId
+        member __.UUId = compiler.CurrentState.ServerId
         member __.Pickler = pickler
         member __.Client = client
 
         member __.CompileDynamicAssemblySlice (assembly : Assembly) =
             if assembly.IsDynamic then
                 let newSlices = compile [assembly]
-                newSlices |> List.map (fun slice -> exportingAgent.Invoke slice.Assembly)
+                newSlices |> List.map (fun slice -> exporter.Invoke slice.Assembly)
 
             else invalidArg assembly.FullName "Vagrant: not a dynamic assembly."
 
         member __.ResolveDynamicDependenciesRequiringCompilation(obj : obj) : Assembly list =
             let dependencies = gatherObjectDependencies obj
-            getDynamicDependenciesRequiringCompilation compilationAgent.CurrentState dependencies
+            getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
 
         member __.GetDynamicAssemblySlices(assembly : Assembly) =
-            match compilationAgent.CurrentState.DynamicAssemblies.TryFind assembly.FullName with
+            match compiler.CurrentState.DynamicAssemblies.TryFind assembly.FullName with
             | None -> []
             | Some info ->
                 info.GeneratedSlices
@@ -71,7 +65,7 @@
                 |> Seq.map (fun (_,s) -> s.Assembly)
                 |> Seq.toList
 
-        member __.GetDependencyInfo(assembly : Assembly) = exportingAgent.Invoke assembly
+        member __.GetDependencyInfo(assembly : Assembly) = exporter.Invoke assembly
 
         member __.ComputeObjectDependencies(obj : obj, ?allowCompilation : bool) : DependencyInfo list =
             let allowCompilation = defaultArg allowCompilation false
@@ -79,9 +73,9 @@
             let dependencies = gatherObjectDependencies obj
 
             if allowCompilation then
-                let assemblies = getDynamicDependenciesRequiringCompilation compilationAgent.CurrentState dependencies
+                let assemblies = getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
                 let _ = compile assemblies in ()
 
-            let remapped = remapDependencies compilationAgent.CurrentState dependencies
+            let remapped = remapDependencies compiler.CurrentState dependencies
 
-            remapped |> List.map exportingAgent.Invoke
+            remapped |> List.map exporter.Invoke

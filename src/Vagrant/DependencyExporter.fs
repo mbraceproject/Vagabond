@@ -78,11 +78,11 @@
                 loadState.Add(info.Assembly.FullName, info.BlobGeneration)
 
 
-    let mkDependencyExporter (pickler : FsPickler) (stateF : unit -> GlobalDynamicAssemblyState) =
-        mkStatefulWrapper Map.empty (fun state a -> mkDependencyInfo pickler (stateF()) state a)
+    let mkExporterAgent (pickler : FsPickler) (stateF : unit -> GlobalDynamicAssemblyState) =
+        mkStatefulAgent Map.empty (fun state a -> mkDependencyInfo pickler (stateF()) state a)
+//
+//
+//    type DependencyLoader = StatefulAgent<Map<string,int>, DependencyInfo, unit>
 
-
-    type DependencyLoader = StatefulWrapper<Map<string,int>, DependencyInfo, unit>
-
-    let mkDependencyLoader (pickler : FsPickler) (localServerId : Guid option) : DependencyLoader =
-        mkStatefulWrapper Map.empty (fun state i -> loadDependencyInfo pickler localServerId state i, ())
+    let mkLoaderAgent (pickler : FsPickler) (localServerId : Guid option) =
+        mkStatefulAgent Map.empty (fun state i -> loadDependencyInfo pickler localServerId state i, ())

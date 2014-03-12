@@ -94,14 +94,12 @@
         member t.ContainingAssembly =
             match t.Scope with
             | :? AssemblyNameReference as a -> Some a.FullName
-//            | :? ModuleReference as m -> m.
             | _ -> None
 
 
-    // Stateful actor
+    /// A stateful agent implementation with published state support
 
-
-    type StatefulWrapper<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
+    type StatefulAgent<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
         
         let stateRef = ref init
 
@@ -118,6 +116,7 @@
                     with e ->
                         state, Choice2Of2 e
 
+                // published state must be updated *before* replying
                 stateRef := state
                 rc.Reply reply
 
@@ -138,4 +137,4 @@
             member __.Dispose () = cts.Cancel()
 
 
-    let mkStatefulWrapper (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulWrapper<'S,'I,'O>(init, f)
+    let mkStatefulAgent (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulAgent<'S,'I,'O>(init, f)

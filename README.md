@@ -1,4 +1,4 @@
-Nessos.DistribFsi
-=================
+Nessos.Vagrant
+==============
 
-F# Interactive Extensions for Distributable REPLs.
+A library for distributing dynamic assemblies.

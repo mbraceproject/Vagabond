@@ -11,13 +11,18 @@
     open Microsoft.FSharp.Quotations.DerivedPatterns
     open Microsoft.FSharp.Quotations.ExprShape
 
+    open Mono.Cecil
+    open Mono.Reflection
+
     open Nessos.Vagrant.Utils
 
     open FsPickler
 
     /// gathers all types that occur in an object graph
 
-    let gatherTypesInObjectGraph (obj:obj) =
+    type Dependencies = (Assembly * seq<Type>) list
+
+    let gatherObjectDependencies (obj:obj) : Dependencies =
         let gathered = new HashSet<Type>()
         let tracker = new ObjectTracker()
         let inline add t = gathered.Add t |> ignore
@@ -27,6 +32,12 @@
             | null -> ()
             | :? Type as t -> traverseType t
             | :? MemberInfo as m -> traverseType m.DeclaringType
+            | :? Delegate as d -> 
+                traverseType <| d.GetType()
+                traverseType d.Method.DeclaringType
+                traverseObj d.Target
+                for d' in d.GetInvocationList() do
+                    if d <> d' then traverseObj d'
             | _ ->
                 if tracker.IsFirstOccurence obj then
                     let t = obj.GetType()
@@ -57,58 +68,33 @@
                 add t
 
         do traverseObj obj
-        gathered |> Seq.toList
+        gathered 
+        |> Seq.groupBy (fun t -> t.Assembly)
+        |> Seq.toList
 
+    let getLoadedAssemblies () =
+        System.AppDomain.CurrentDomain.GetAssemblies()
+        |> Seq.map (fun a -> a.FullName, a)
+        |> Map.ofSeq
 
-//    /// matches quotations of form <@ symbol @>
-//    let (|SymbolExpr|_|) (expr : Expr) =
-//        let rec peel expr =
-//            match expr with
-//            | Lambda(_,body) -> peel body
-//            | Call(_,meth,_) -> meth :> MemberInfo |> Some
-//            | PropertyGet(_,prop,_) -> prop :> MemberInfo |> Some
-//            | _ -> None
-//
-//        peel expr
-//
-//    /// gathers all memberInfo's that occur in quotation
-//    let gatherMembersOfExpr (expr : Expr) =
-//        let gathered = new HashSet<MemberInfo> ()
-//        let inline add x = gathered.Add x |> ignore
-//        let rec aux (e : Expr) =
-//            try add e.Type with _ -> ()
-//            match e with
-//            | ShapeVar _ -> ()
-//            | ShapeLambda(_, body) -> aux body
-//            | ShapeCombination(_,exprs) -> 
-//                match e with
-//                | Call(_,m,_) -> add m
-//                | PropertyGet(_,p,_) -> add p
-//                | _ -> ()
-//
-//                for e in exprs do aux e
-//
-//        do aux expr
-//        gathered |> Seq.toList
+    let isSystemAssembly =
+        let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
+        let systemPkt = getPublicKey typeof<int>.Assembly
+        fun (a:Assembly) -> getPublicKey a = systemPkt
 
     // recursively traverse assembly dependency graph
     let traverseDependencies (assemblies : seq<Assembly>) =
 
-        let ignoredAssemblies = 
-            [| typeof<int> ; typeof<int option> |]
-            |> Array.map (fun t -> t.Assembly)
-
-        let isIgnoredAssembly a = Array.exists ((=) a) ignoredAssemblies
+        let loadedAssemblies = getLoadedAssemblies ()
 
         let tryResolveLoadedAssembly (an : AssemblyName) =
-            System.AppDomain.CurrentDomain.GetAssemblies() 
-            |> Array.tryFind (fun a -> a.FullName = an.FullName)
-            |> Option.filter (not << isIgnoredAssembly)
+            loadedAssemblies.TryFind an.FullName
+            |> Option.filter (not << isSystemAssembly)
 
         let rec traverseDependencyGraph (graph : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph |> Map.toList |> List.map snd
-            | a :: tail when graph.ContainsKey a.FullName || isIgnoredAssembly a -> traverseDependencyGraph graph tail
+            | a :: tail when graph.ContainsKey a.FullName || isSystemAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
                 let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
                 traverseDependencyGraph (graph.Add(a.FullName, (a, dependencies))) (dependencies @ tail)
@@ -119,137 +105,73 @@
         |> getTopologicalOrdering
 
 
+    let parseDynamicAssemblies (state : GlobalDynamicAssemblyState) (assemblies : seq<Assembly>) =
 
-    let computeObjectDependencies (state : GlobalDynamicAssemblyState) (obj : obj) =
-
-        let types = gatherTypesInObjectGraph obj
-        let assemblyInfo = types |> Seq.groupBy (fun t -> t.Assembly) |> Seq.toList
-
-        let allAssemblies = assemblyInfo |> Seq.map fst |> traverseDependencies
-
-        let topLevelDynamicAssemblies =
-            assemblyInfo 
-            |> Seq.map (fun (a, types) -> 
-                let requiresCompilation =
-                    match state.DynamicAssemblies.TryFind a.FullName with
-                    | None -> true // always attempt to compile dynamic assemblies whose types do not directly appear in the object graph
-                    | Some info -> types |> Seq.forall (fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
-
-                a.FullName, requiresCompilation)
-            |> Map.ofSeq
+        let domainAssemblies = getLoadedAssemblies()
+        let getReferencedAssemblies (def : AssemblyDefinition) =
+            def.Modules 
+            |> Seq.collect(fun modl -> modl.AssemblyReferences |> Seq.map (fun ar -> domainAssemblies.[ar.FullName]))
+            |> Seq.toList
 
         let isDynamicAssemblyRequiringCompilation (a : Assembly) =
             if a.IsDynamic then
-                match topLevelDynamicAssemblies.TryFind a.FullName with
-                | None -> true
-                | Some requires -> requires
+                state.DynamicAssemblies.TryFind a.FullName 
+                |> Option.forall (fun info -> info.HasFreshTypes)
             else
                 false
 
-        let slices = 
-            allAssemblies 
-            |> List.filter isDynamicAssemblyRequiringCompilation 
-            |> List.choose compiler.TryCompileNextSlice
+        let rec traverse (graph : Map<string, Assembly * AssemblyDefinition * Assembly list>) (remaining : Assembly list) =
+            match remaining with
+            | [] -> graph
+            | a :: rest when graph.ContainsKey a.FullName || not <| isDynamicAssemblyRequiringCompilation a -> traverse graph rest
+            | a :: rest ->
+                // parse dynamic assembly
+                let snapshot = AssemblySaver.Read a
 
-        let exportedAssemblies =
-            [
-                for a in allAssemblies do
-                    match compiler.State.DynamicAssemblies.TryFind a.FullName with
-                    | None -> yield a
-                    | Some d -> yield! d.GeneratedSlices |> Seq.map (fun s -> s.Assembly)
-            ]
+                // Assembly.GetReferencedAssemblies is unreliable with dynamic assemblies;
+                // Use Cecil to correctly resolve dependencies
+                let assemblyReferences = getReferencedAssemblies snapshot
 
-        slices, exportedAssemblies
-
-
-    //
-    //
-    //
-
-//    let getDynamicAssemblySlice (compiler : SliceCompilationServer) (a : Assembly) =
-//        assert a.IsDynamic
-//        
-//        traverseDependencies [a] 
-//        |> List.filter (fun a -> a.IsDynamic)
-//        |> List.choose compiler.TryCompileNextSlice
-//
-//
-//
-
-            
+                let graph' = graph.Add(a.FullName, (a, snapshot, assemblyReferences))
+                
+                traverse graph' (rest @ assemblyReferences)
 
 
+        let dynamicAssemblies = traverse Map.empty <| Seq.toList assemblies
+
+        dynamicAssemblies 
+        |> Map.toList
+        |> List.map (fun (_,(a,_,deps)) -> (a, deps |> List.filter (fun a -> dynamicAssemblies.ContainsKey a.FullName)))
+        |> getTopologicalOrdering
+        |> List.map (fun a -> dynamicAssemblies.[a.FullName])
+
+    let getDynamicDependenciesRequiringCompilation (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
+        dependencies
+        |> List.filter(fun (a,types) ->
+            if a.IsDynamic then
+                match state.DynamicAssemblies.TryFind a.FullName with
+                | Some info -> types |> Seq.forall(fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
+                | None -> true
+            else
+                false)
+        |> List.map fst
 
 
-//        let newSliceInfo = ref []
-//
-//        let exportedDependencies =
-//            [
-//                for a in allAssemblies do
-//                    if a.IsDynamic then 
-//                        if isDynamicAssemblyRequiringCompilation a then
-//                            let slice = compiler.TryCompileNextSlice(a).Value
-//                            newSliceInfo := slice :: !newSliceInfo
-//
-//                        let assemblyInfo = compiler.State.DynamicAssemblies.[a.FullName]
-//                        yield! assemblyInfo.CompiledAssemblies
-//
-//                    else 
-//                        yield a
-//            ]
-//
-//        exported
-        
+    let remapDependencies (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
+        let rec remap (a : Assembly, ts : seq<Type>) =
+            if a.IsDynamic then
+                match state.DynamicAssemblies.TryFind a.FullName with
+                | None -> failwithf "Vagrant: no slices have been created for assembly '%s'." a.FullName
+                | Some info ->
+                    seq {
+                        yield! info.AssemblyReferences |> Seq.collect (fun a -> remap (a,[]))
 
+                        for t in ts do
+                            match info.TypeIndex.TryFind t.FullName with 
+                            | None -> failwithf "Vagrant: no slice has been created for dynamic type '%O'." t
+                            | Some i -> yield i.Assembly
+                    }
 
-//        if not a.IsDynamic then invalidArg a.FullName "not a dynamic assembly."
-//
-//        let dependencies = 
+            else Seq.singleton a
 
-//    let getExportableDynamicAssemblyInfo (pickler : FsPickler) (info : DynamicAssemblyInfo) =
-//        let fieldPickles, pickleFailures =
-//            info.StaticFields
-//            |> List.map(fun fI -> 
-//                try
-//                    let value = fI.GetValue(null)
-//                    let payload = (fI, value)
-//                    let pickle = pickler.Pickle<FieldInfo * obj>(payload)
-//                    Choice1Of2 (fI.ToString(), pickle)
-//                with e -> Choice2Of2 (e, fI))
-//            |> Choice2.partition
-//
-//        let exportable = { ActualName = info.Assembly.FullName ; Slices = info.CompiledAssemblies ; ValueInitializationBlobs = fieldPickles }
-//
-//        exportable, pickleFailures
-//
-
-//
-//    let getPortableDependencyInfo (pickler : FsPickler) (sourceId : string) (assemblies : Assembly list) (info : DynamicAssemblyInfo list) =
-//        let info, failures = info |> List.map (getExportableDynamicAssemblyInfo pickler) |> List.unzip
-//        let failures = List.concat failures
-//        let depInfo = {
-//            SourceId = sourceId
-//            AllDependencies = assemblies
-//            DynamicAssemblies = info
-//        }
-//
-//        depInfo, failures
-//
-//
-//    let loadPortableDependencyInfo (pickler : FsPickler) (info : PortableDependencyInfo) =
-//        info.DynamicAssemblies |> List.iter (loadExportedDynamicAssemblyInfo pickler)
-//
-//
-//
-//    let computeObjectDependencies (state : GlobalDynamicAssemblyState) (obj:obj) =
-//
-
-
-//
-//        // traverse and compile
-//        let state = ref state
-
-//
-//        exportedAssemblies, !dynamicAssemblies, !state
-//
-//
+        dependencies |> Seq.collect remap |> traverseDependencies

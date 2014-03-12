@@ -1,15 +1,13 @@
-﻿#r "bin/Debug/FsPickler.dll"
-#r "bin/Debug/Mono.Cecil.dll"
-#r "bin/Debug/Mono.Reflection.dll"
-#r "bin/Debug/Vagrant.Cecil.dll"
-//#r "../packages/Mono.Cecil.0.9.5.4/lib/net40/Mono.Cecil.Rocks.dll"
-
-open Mono.Cecil
-open Mono.Reflection
+﻿#I "bin/Debug/"
+#r "Vagrant.dll"
 
 open Nessos.Vagrant
 
-let srv = CompilationServer.Create(path = "C:/mbrace/")
+let srv = new VagrantServer("C:/mbrace/")
+
+let dyn = System.Reflection.Assembly.GetExecutingAssembly()
+
+srv.CompileDynamicAssemblySlice dyn
 
 type Foo<'T> (x : 'T) =
     member __.Value = x
@@ -26,16 +24,3 @@ type Bar<'T>(x : 'T, y : string) =
     member __.Value2 = y
     member __.Copy = copy
     member __.GetLam() = fun x -> copy.GetHashCode() + x
-
-
-let deps = srv.ComputePortableDependencies <@ foo @>
-
-
-
-#I "C:/Users/eirik/Desktop"
-#r "a.dll"
-#r "b.dll"
-
-#time
-let ass= System.Reflection.Assembly.GetExecutingAssembly()
-let foo = AssemblySaver.Read(ass)

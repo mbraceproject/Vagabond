@@ -1,4 +1,4 @@
-﻿module Nessos.Vagrant.TypeRefUpdater
+﻿module internal Nessos.Vagrant.TypeRefUpdater
 
     open System
     open System.Collections.Generic

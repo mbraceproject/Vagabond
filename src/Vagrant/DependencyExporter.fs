@@ -1,13 +1,10 @@
-﻿module Nessos.Vagrant.DependencyExporter
+﻿module internal Nessos.Vagrant.DependencyExporter
 
     open System
     open System.Reflection
 
-    open Microsoft.FSharp.Control
-
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.SliceCompiler
 
     open FsPickler
 
@@ -16,9 +13,10 @@
                             (generationIdx : Map<string, int>) 
                             (assembly : Assembly) =
 
-        assert (not assembly.IsDynamic)
+        if assembly.IsDynamic then invalidOp "Dynamic assembly not exportable."
 
-        match state.TryGetDynamicAssemblyName assembly.FullName with
+        let an = assembly.GetName()
+        match state.TryGetDynamicAssemblyName an.Name with
         | None ->
             let info =
                 {
@@ -33,11 +31,12 @@
                     ActualQualifiedName = assembly.FullName
                 }
 
-            info, generationIdx
+            generationIdx, info
 
-        | Some dynamicAssembly ->
+        | Some dynamicAssemblyName ->
+            an.Name <- dynamicAssemblyName
             let sliceInfo = 
-                state.DynamicAssemblies.[dynamicAssembly].GeneratedSlices 
+                state.DynamicAssemblies.[an.FullName].GeneratedSlices 
                 |> List.find (fun s -> s.Assembly = assembly)
 
             let fieldPickles, pickleFailures =
@@ -67,77 +66,28 @@
 
             let generationIdx = generationIdx.Add(assembly.FullName, generation)
 
-            info, generationIdx
+            generationIdx, info
 
 
-    let loadDependencyInfo (pickler : FsPickler) (info : DependencyInfo) =
-        for fI, blob in info.TypeInitializationBlobs do
-            let value = pickler.UnPickle<obj>(blob)
-            fI.SetValue(null, value)
-
-
-    type ExporterMsg = Assembly * AsyncReplyChannel<Choice<DependencyInfo, exn>>
-
-    type DependencyExporter (compiler : SliceCompilationServer, pickler : FsPickler) =
-
-        let blobGenerationCounter = ref Map.empty<string, int>
-
-        let rec export (mailbox : MailboxProcessor<ExporterMsg>) = async {
-            let! assembly,rc = mailbox.Receive()
-
-            let reply =
-                try
-                    let info, counter = mkDependencyInfo pickler compiler.State blobGenerationCounter.Value assembly
-
-                    do blobGenerationCounter := counter
-
-                    Choice1Of2 info
-
-                with e -> Choice2Of2 e
-
-            rc.Reply reply
-
-            return! export mailbox
-        }
-
-        let exporter = MailboxProcessor.Start(export)
-
-        member __.GetAssemblyInfo (a : Assembly) =
-            match exporter.PostAndReply <| fun ch -> a,ch with
-            | Choice1Of2 info -> info
-            | Choice2Of2 e -> raise e
-
-
-
-    type LoaderMsg = DependencyInfo * AsyncReplyChannel<exn option>
-
-    type DependencyLoader (serverId : Guid option, pickler : FsPickler) =
-        
-        let genCounter = ref Map.empty<string, int>
-
-        let rec load (mailbox : MailboxProcessor<LoaderMsg>) = async {
-        
-            let! info, rc = mailbox.Receive()
-
-            match serverId, genCounter.Value.TryFind info.Assembly.FullName with
-            | Some id, _ when id = info.SourceId -> rc.Reply None
-            | _, Some gen when gen >= info.BlobGeneration -> rc.Reply None
+    let loadDependencyInfo (pickler : FsPickler) (localServerId : Guid option) (loadState : Map<string, int>) (info : DependencyInfo) =
+        match localServerId with
+        | Some id when id = info.SourceId -> loadState
+        | _ ->
+            match loadState.TryFind info.Assembly.FullName with
+            | Some gen when gen >= info.BlobGeneration -> loadState
             | _ ->
-                let reply =
-                    try loadDependencyInfo pickler info ; None
-                    with e -> Some e
+                for fI, blob in info.TypeInitializationBlobs do
+                    let value = pickler.UnPickle<obj>(blob)
+                    fI.SetValue(null, value)
 
-                genCounter := genCounter.Value.Add(info.Assembly.FullName, info.BlobGeneration)
-
-                rc.Reply reply
-
-            return! load mailbox
-        }
+                loadState.Add(info.Assembly.FullName, info.BlobGeneration)
 
 
-        let loader = MailboxProcessor.Start load
+    let mkDependencyExporter (pickler : FsPickler) (stateF : unit -> GlobalDynamicAssemblyState) =
+        mkStatefulWrapper Map.empty (fun state a -> mkDependencyInfo pickler (stateF()) state a)
 
-        member __.LoadDependencyInfo (info : DependencyInfo) =
-            match loader.PostAndReply <| fun ch -> info, ch with
-            | None -> ()
-            | Some e -> raise e
+
+    type DependencyLoader = StatefulWrapper<Map<string,int>, DependencyInfo, unit>
+
+    let mkDependencyLoader (pickler : FsPickler) (localServerId : Guid option) : DependencyLoader =
+        mkStatefulWrapper Map.empty (fun state i -> loadDependencyInfo pickler localServerId state i, ())

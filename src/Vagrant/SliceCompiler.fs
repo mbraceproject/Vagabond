@@ -1,4 +1,4 @@
-﻿module Nessos.Vagrant.SliceCompiler
+﻿module internal Nessos.Vagrant.SliceCompiler
 
     open System
     open System.IO
@@ -13,26 +13,12 @@
     open Nessos.Vagrant.TypeRefUpdater
     open Nessos.Vagrant.DependencyAnalysis
 
-    let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
-        if t = null then None
-        else
-            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
-
-            match state.DynamicAssemblies.TryFind assemblyName with
-            | None -> None
-            | Some info ->
-                let name = t.CanonicalName
-                match info.TypeIndex.TryFind name with
-                | None -> None
-                | Some a ->
-                    let rt = a.Assembly.GetType(name, true)
-                    let tI = assembly.MainModule.Import(rt)
-                    Some tI
 
 
     let initGlobalState (outDirectory : string) =
         let uuid = Guid.NewGuid()
-        let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]*" uuid)
+        let mkSliceName (name : string) (id : int) = sprintf "%s_%O_%d" name uuid id
+        let assemblyRegex = Regex(sprintf "^(.*)_%O_[0-9]+" uuid)
         let tryExtractDynamicAssemblyName (assemblyName : string) =
             let m = assemblyRegex.Match(assemblyName)
             if m.Success then Some <| m.Groups.[1].Value
@@ -41,9 +27,28 @@
         {
             ServerId = Guid.NewGuid()
             OutputDirectory = outDirectory
-            TryGetDynamicAssemblyName = tryExtractDynamicAssemblyName
             DynamicAssemblies = Map.empty
+
+            TryGetDynamicAssemblyName = tryExtractDynamicAssemblyName
+            GetAssemblySliceName = mkSliceName
         }
+
+    let tryUpdateTypeReference (assembly : AssemblyDefinition) (state : GlobalDynamicAssemblyState) (t : TypeReference) =
+        if t = null then None
+        else
+            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
+
+            match state.DynamicAssemblies.TryFind assemblyName with
+            | None -> None // referenced assembly not dynamic
+            | Some info ->
+                let name = t.CanonicalName
+                match info.TypeIndex.TryFind name with
+                | None when assemblyName = assembly.FullName -> None // the type will be compiled in current slice; do not remap
+                | None -> failwithf "Vagrant error: referencing type '%O' from dynamic assembly '%s' which has not been sliced." name assemblyName
+                | Some a ->
+                    let rt = a.Assembly.GetType(name, true)
+                    let tI = assembly.MainModule.Import(rt)
+                    Some tI
 
     //
     //  TODO: for performance reasons, it would be a good idea to merge Mono.Reflection's AssemblySaver and the slicer
@@ -107,7 +112,6 @@
 
     let allStatic = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Static
 
-
     let eraseStaticInitializers (eraseF : Type -> bool) (assembly : Assembly) (typeDef : TypeDefinition) =
         // static initializers for generic types not supported
         if typeDef.GenericParameters.Count > 0 then [||]
@@ -145,109 +149,61 @@
             SliceId = sliceId
         }
 
-    let tryCompileDynamicAssemblySlice (state : GlobalDynamicAssemblyState) (assembly : Assembly) =
-        
-        if not assembly.IsDynamic then invalidArg assembly.FullName "not a dynamic assembly."
+    let compileDynamicAssemblySlice (state : GlobalDynamicAssemblyState) 
+                                        (dynamicAssembly : Assembly) 
+                                        (dependencies : Assembly list) 
+                                        (snapshot : AssemblyDefinition) =
 
         let assemblyState =
-            match state.DynamicAssemblies.TryFind assembly.FullName with
-            | None -> DynamicAssemblyState.Init assembly
+            match state.DynamicAssemblies.TryFind dynamicAssembly.FullName with
+            | None -> DynamicAssemblyState.Init(dynamicAssembly)
             | Some info -> info
 
-        if not assemblyState.HasFreshTypes then None
-        else
-            // parse dynamic assembly
-            let snapshot = AssemblySaver.Read assemblyState.DynamicAssembly
+        // update snapshot to only contain current slice
+        let freshTypes = mkAssemblyDefinitionSlice assemblyState snapshot
 
-            // update snapshot to only contain current slice
-            let freshTypes = mkAssemblyDefinitionSlice assemblyState snapshot
+        // remap typeRefs so that slices are correctly referenced
+        do remapTypeReferences (memoize <| tryUpdateTypeReference snapshot state) freshTypes
 
-            // remap typeRefs so that slices are correctly referenced
-            do remapTypeReferences (memoize <| tryUpdateTypeReference snapshot state) freshTypes
+        // erase type initializers where applicable
+        let staticFields = freshTypes |> Array.map (eraseStaticInitializers (fun _ -> true) assemblyState.DynamicAssembly)
 
-            // erase type initializers where applicable
-            let staticFields = freshTypes |> Array.map (eraseStaticInitializers (fun _ -> true) assemblyState.DynamicAssembly)
+        // compile
 
-            // compile
+        let sliceId = assemblyState.GeneratedSlices.Length + 1
+        let name = state.GetAssemblySliceName assemblyState.Name.Name sliceId
+        let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
 
-            let sliceId = assemblyState.GeneratedSlices.Length + 1
-            let name = sprintf "%s_%O_%03d" assemblyState.Name.Name state.ServerId sliceId
-            let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
+        do snapshot.Name.Name <- name
+        do snapshot.Write(target)
 
-            do snapshot.Name.Name <- name
-            do snapshot.Write(target)
+        // update type index & compiled assembly info
+        let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+        let sliceInfo = mkSliceInfo assemblyState.DynamicAssembly sliceId staticFields assembly
+        let generatedSlices = sliceInfo :: assemblyState.GeneratedSlices
+        let typeIndex = freshTypes |> Seq.map (fun t -> t.CanonicalName, sliceInfo) |> Map.addMany assemblyState.TypeIndex
 
-            // update type index & compiled assembly info
-            let assembly = Assembly.ReflectionOnlyLoadFrom(target)
-            let sliceInfo = mkSliceInfo assemblyState.DynamicAssembly sliceId staticFields assembly
-            let generatedSlices = sliceInfo :: assemblyState.GeneratedSlices
-            let typeIndex = freshTypes |> Seq.map (fun t -> t.CanonicalName, sliceInfo) |> Map.addMany assemblyState.TypeIndex
-            
+        let assemblyState = { assemblyState with GeneratedSlices = generatedSlices ; TypeIndex = typeIndex ; AssemblyReferences = dependencies }
+        let dynamicAssemblyIndex = state.DynamicAssemblies.Add(assemblyState.DynamicAssembly.FullName, assemblyState)
+        let state = { state with DynamicAssemblies = dynamicAssemblyIndex}
 
-            let assemblyState = { assemblyState with GeneratedSlices = generatedSlices ; TypeIndex = typeIndex }
-            let dynamicAssemblyIndex = state.DynamicAssemblies.Add(assemblyState.DynamicAssembly.FullName, assemblyState)
-            let state = { state with DynamicAssemblies = dynamicAssemblyIndex}
-
-            Some (sliceInfo, state)
+        sliceInfo, state
 
 
-//    let compileDynamicAssemblySlices (state : GlobalDynamicAssemblyState) (assemblies : seq<Assembly>) =
-//        let foldF ((state : GlobalDynamicAssemblyState, slices : AssemblySliceInfo list) as s) (a : Assembly) =
-//            match tryCompileDynamicAssemblySlice state a with
-//            | None -> s
-//            | Some(slice',state') -> (state', slice' :: slices)
-//            
-//        // need to find all dynamic assemblies in dependency tree
-//        let dynamicAssemblies = assemblies |> traverseDependencies |> List.filter (fun a -> a.IsDynamic)
-//
-//        let state, slices = List.fold foldF (state, []) dynamicAssemblies
-//
-//        List.rev slices, state
+    let compileDynamicAssemblySlices (state : GlobalDynamicAssemblyState) (assemblies : Assembly list) =
+        // resolve dynamic assembly dependency graph
+        let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
-
-    type ServerMsg = Assembly * AsyncReplyChannel<Choice<AssemblySliceInfo option, exn>>
-
-    type SliceCompilationServer (?outPath : string) =
-
-        let outPath = 
-            match outPath with
-            | Some path when Directory.Exists path -> path
-            | Some _ -> invalidArg "outPath" "not a valid directory."
-            | None -> Path.GetTempPath()
-
-        let globalStateContainer = ref <| initGlobalState outPath
-
-        // sequentialize compilation requests
-        let rec compiler (mailbox : MailboxProcessor<ServerMsg>) = async {
-            let! assembly, rc = mailbox.Receive()
-
-            let result =
+        // the returned state should reflect the last successful compilation
+        let compileSlice (state : GlobalDynamicAssemblyState, acc : Choice<AssemblySliceInfo list, exn>) 
+                            (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
+            match acc with
+            | Choice1Of2 slices ->
                 try
-                    match tryCompileDynamicAssemblySlice globalStateContainer.Value assembly with
-                    | None -> Choice1Of2 None
-                    | Some (slice,state) ->
-                        do globalStateContainer := state
-                        Choice1Of2 <| Some slice
+                    let slice, state = compileDynamicAssemblySlice state dynamic references snapshot
+                    state, Choice1Of2 (slice :: slices)
+                with e ->
+                    state, Choice2Of2 e
+            | Choice2Of2 _ -> state, acc // discard the remaining list
 
-                with e -> Choice2Of2 e
-
-            rc.Reply result
-
-            return! compiler mailbox
-        }
-
-        let compilationActor = MailboxProcessor.Start compiler
-
-        let tryCompileNextSlice (a : Assembly) =
-            match compilationActor.PostAndReply <| fun ch -> a,ch with
-            | Choice1Of2 slice -> slice
-            | Choice2Of2 e -> raise e
-
-        member __.UUId = globalStateContainer.Value.ServerId
-        member __.State = !globalStateContainer
-
-        member __.CompileNextSlices (assemblies : seq<Assembly>) =
-            assemblies 
-            |> traverseDependencies 
-            |> List.filter(fun a -> a.IsDynamic)
-            |> List.choose tryCompileNextSlice
+        List.fold compileSlice (state, Choice1Of2 []) parsedDynamicAssemblies

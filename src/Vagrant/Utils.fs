@@ -6,6 +6,8 @@
     open System
     open System.Reflection
 
+    open Microsoft.FSharp.Control
+
 
     module Map =
         let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
@@ -94,3 +96,46 @@
             | :? AssemblyNameReference as a -> Some a.FullName
 //            | :? ModuleReference as m -> m.
             | _ -> None
+
+
+    // Stateful actor
+
+
+    type StatefulWrapper<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
+        
+        let stateRef = ref init
+
+        let cts = new System.Threading.CancellationTokenSource()
+
+        let rec behaviour (state : 'State) (mailbox : MailboxProcessor<'Input * AsyncReplyChannel<Choice<'Output, exn>>>) =
+            async {
+                let! input, rc = mailbox.Receive()
+
+                let state, reply = 
+                    try 
+                        let state, output = f state input
+                        state, Choice1Of2 output
+                    with e ->
+                        state, Choice2Of2 e
+
+                rc.Reply reply
+                stateRef := state
+
+                return! behaviour state mailbox
+            }
+
+        let actor = MailboxProcessor.Start (behaviour init, cts.Token)
+
+        member __.CurrentState = !stateRef
+        member __.Invoke input =
+            match actor.PostAndReply <| fun ch -> input,ch with
+            | Choice1Of2 output -> output
+            | Choice2Of2 e -> raise e
+
+        member __.Dispose () = cts.Cancel()
+
+        interface IDisposable with
+            member __.Dispose () = cts.Cancel()
+
+
+    let mkStatefulWrapper (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulWrapper<'S,'I,'O>(init, f)

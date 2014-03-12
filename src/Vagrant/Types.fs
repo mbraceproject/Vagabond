@@ -17,46 +17,7 @@
         }
 
 
-//            DynamicAssemblySliceInfo : DynamicAssemblySliceInfo option
-//        }
-//
-//    with
-//        member __.IsDynamicAssemblySlice = __.DynamicAssemblySliceInfo.IsSome
-//
-//    and DynamicAssemblySliceInfo =
-//        {
-//            SourceId : string
-//            Generation : int
-//            TypeInitializationBlobs : (string * byte []) []
-//        }
-
-
-//    type PortableDependencyInfo =
-//        {
-//            SourceId : string
-//            AllDependencies : Assembly list
-//            DynamicAssemblies : DynamicAssemblyInfo list
-//        }
-//
-//    and Pickle =
-//        {
-//            Pickle : byte []
-//            DependencyInfo : PortableDependencyInfo
-//        }
-//
-//    and DynamicAssemblyInfo =
-//        {
-//            ActualName : string
-//            Iteration : int
-//            Slices : Assembly list
-//            ValueInitializationBlobs : (string * byte []) list
-//        }
-
-
-
-    // internal types
-
-    type AssemblySliceInfo =
+    and internal AssemblySliceInfo =
         {
             Assembly : Assembly
             DynamicAssemblyName : string
@@ -64,9 +25,10 @@
             StaticFields : (FieldInfo * FieldInfo) list
         }
 
-    type DynamicAssemblyState =
+    and internal DynamicAssemblyState =
         {
             DynamicAssembly : Assembly
+            AssemblyReferences : Assembly list
             GeneratedSlices : AssemblySliceInfo list
             TypeIndex : Map<string, AssemblySliceInfo>
         }
@@ -81,14 +43,17 @@
         static member Init(a : Assembly) =
             {
                 DynamicAssembly = a
+                AssemblyReferences = []
                 GeneratedSlices = []
                 TypeIndex = Map.empty
             }
 
-    and GlobalDynamicAssemblyState =
+    and internal GlobalDynamicAssemblyState =
         {
             ServerId : Guid
             OutputDirectory : string
             DynamicAssemblies : Map<string, DynamicAssemblyState>
+
             TryGetDynamicAssemblyName : string -> string option
+            GetAssemblySliceName : string -> int -> string
         }

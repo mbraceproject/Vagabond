@@ -16,19 +16,21 @@
 
         let lockObj = obj ()
 
-        let distribFsiClient = CompilationClient.Create()
+        let client = new VagrantClient()
 
-        member __.EvaluateThunk(pickle : byte [], assemblyLocations : string list) =
+        member __.EvaluateThunk(assemblyLocations : string list, data : byte []) =
             lock lockObj (fun () ->
                 // 1. load dependencies to AppDomain
                 for location in assemblyLocations do
                     Assembly.LoadFrom(location) |> ignore
 
-                // 2. now, unpickle
-                let pickle = distribFsiClient.Pickler.UnPickle<Pickle>(pickle)
+                // 2. unpickle payload
+                let info, ty, thunk = client.Pickler.UnPickle<DependencyInfo list * Type * (unit -> obj)>(data)
 
-                // 3. load pickle data
-                let ty, thunk = distribFsiClient.LoadPortablePickle pickle |> unbox<Type * (unit -> obj)>
+                // 3. load assembly dependency info
+                do client.LoadDependencyInfo info
+
+                // 4. evaluate
                 printfn "Evaluating thunk of type '%O'" ty
                 let result = 
                     try 
@@ -39,7 +41,7 @@
                         printfn "Execution failed with: %A" e
                         Choice2Of2 e
 
-                distribFsiClient.Pickler.Pickle<Choice<obj, exn>>(result))
+                client.Pickler.Pickle<Choice<obj, exn>>(result))
 
         static member internal Init(serverId:string) =
             printf "Initializing Thunk Server (%s)... " serverId
@@ -61,16 +63,18 @@
 
     type ThunkClient private (serverProc : Process, server : ThunkServer) =
 
-        let distribFsiServer = CompilationServer.CreateServer()
+        static let vagrant = new VagrantServer()
 
         member __.EvaluateThunk(f : unit -> 'T) =
-            let payload = typeof<'T>, fun () -> f () :> obj
-            let pickle, errors = distribFsiServer.ComputePortablePickle payload
-            let data = distribFsiServer.Pickler.Pickle<Pickle> pickle
-            let assemblies = pickle.DependencyInfo.AllDependencies |> List.map (fun a -> a.Location)
-            let resultData = server.EvaluateThunk(data, assemblies) 
-            let result = distribFsiServer.Pickler.UnPickle<Choice<obj,exn>> resultData
+            let dependencies = vagrant.ComputeObjectDependencies(f, allowCompilation = true)
+            let data = vagrant.Pickler.Pickle<DependencyInfo list * Type * (unit -> obj)>((dependencies, typeof<'T>, fun () -> f () :> obj))
+            let assemblyPaths = 
+                dependencies 
+                |> List.filter (fun d -> not d.Assembly.GlobalAssemblyCache)
+                |> List.map (fun d -> d.Assembly.Location)
 
+            let resultData = server.EvaluateThunk(assemblyPaths, data)
+            let result = vagrant.Pickler.UnPickle<Choice<obj,exn>> resultData
             match result with
             | Choice1Of2 o -> o :?> 'T
             | Choice2Of2 e -> raise e

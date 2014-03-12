@@ -8,7 +8,7 @@
     <ProjectGuid>2e62b639-1560-46eb-8528-a604b5d194fb</ProjectGuid>
     <OutputType>Library</OutputType>
     <RootNamespace>Vagrant.Cecil</RootNamespace>
-    <AssemblyName>Vagrant.Cecil</AssemblyName>
+    <AssemblyName>Vagrant</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <Name>Vagrant</Name>
@@ -54,11 +54,12 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
-    <Compile Include="TypeRefUpdater.fs" />
-    <Compile Include="DependencyAnalysis.fs" />
-    <Compile Include="SliceCompiler.fs" />
     <Compile Include="Serialization.fs" />
+    <Compile Include="DependencyAnalysis.fs" />
+    <Compile Include="TypeRefUpdater.fs" />
+    <Compile Include="SliceCompiler.fs" />
     <Compile Include="DependencyExporter.fs" />
+    <Compile Include="CompilationClient.fs" />
     <Compile Include="CompilationServer.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />

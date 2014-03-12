@@ -8,16 +8,13 @@
     open FsPickler
 
     open Nessos.Vagrant
-    open Nessos.Vagrant.SliceCompiler
 
-    type VagrantTypeNameConverter(compiler : SliceCompilationServer) =
-
-
+    type VagrantTypeNameConverter(stateF : unit -> GlobalDynamicAssemblyState) =
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
                 let qname = typeInfo.AssemblyQualifiedName
-                match compiler.State.DynamicAssemblies.TryFind qname with
+                match stateF().DynamicAssemblies.TryFind qname with
                 | None -> typeInfo
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
@@ -25,15 +22,14 @@
                     | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                match compiler.State.TryGetDynamicAssemblyName typeInfo.AssemblyQualifiedName with
+                match stateF().TryGetDynamicAssemblyName typeInfo.AssemblyQualifiedName with
                 | None -> typeInfo
                 | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
 
 
+    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (stateF : unit -> GlobalDynamicAssemblyState) =
 
-    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (compiler : SliceCompilationServer) =
-
-        let tyConv = new VagrantTypeNameConverter(compiler) :> ITypeNameConverter
+        let tyConv = new VagrantTypeNameConverter(stateF) :> ITypeNameConverter
 
         let registry =
             match registry with

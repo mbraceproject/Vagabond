@@ -34,6 +34,8 @@
 
         | Some sliceInfo ->
 
+            // create pickled type initializers
+
             let fieldPickles, pickleFailures =
                 sliceInfo.StaticFields
                 |> List.map(fun (sourceField, targetField) -> 
@@ -80,9 +82,6 @@
 
     let mkExporterAgent (pickler : FsPickler) (stateF : unit -> GlobalDynamicAssemblyState) =
         mkStatefulAgent Map.empty (fun state a -> mkDependencyInfo pickler (stateF()) state a)
-//
-//
-//    type DependencyLoader = StatefulAgent<Map<string,int>, DependencyInfo, unit>
 
     let mkLoaderAgent (pickler : FsPickler) (localServerId : Guid option) =
         mkStatefulAgent Map.empty (fun state i -> loadDependencyInfo pickler localServerId state i, ())

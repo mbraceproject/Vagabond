@@ -59,8 +59,8 @@
     <Compile Include="AssemblyDefinitionVisitors.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="DependencyExporter.fs" />
-    <Compile Include="CompilationClient.fs" />
-    <Compile Include="CompilationServer.fs" />
+    <Compile Include="Utilities.fs" />
+    <Compile Include="Vagrant.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
   </ItemGroup>

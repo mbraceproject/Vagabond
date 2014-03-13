@@ -205,8 +205,7 @@
         // resolve dynamic assembly dependency graph
         let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
-        // exceptions are handled locally so that returned state reflects
-        // the last successful compilation
+        // exceptions are handled locally so that returned state reflects the last successful compilation
         let compileSlice (state : GlobalDynamicAssemblyState, acc : Choice<AssemblySliceInfo list, exn>) 
                             (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
             match acc with
@@ -216,7 +215,7 @@
                     state, Choice1Of2 (slice :: slices)
                 with e ->
                     state, Choice2Of2 e
-            | Choice2Of2 _ -> state, acc // discard the remaining list
+            | Choice2Of2 _ -> state, acc // exception state, discard all remaining inputs
 
         List.fold compileSlice (state, Choice1Of2 []) parsedDynamicAssemblies
 

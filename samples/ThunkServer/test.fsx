@@ -17,7 +17,8 @@ let y = client.EvaluateThunk <| fun () -> incr x
 let z = client.EvaluateThunk <| fun () -> let (Bar x) = x in let (Bar y) = y in Bar(x+y)
 
 let w = 1
-let w = client.EvaluateThunk <| fun () -> Bar(w)
+let w1 = client.EvaluateThunk <| fun () -> Bar(w)
+let w2 = client.EvaluateThunk <| fun () -> Bar(w1)
 
 // Example : Async
 

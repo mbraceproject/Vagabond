@@ -28,7 +28,7 @@
                 let info, ty, thunk = client.Pickler.UnPickle<DependencyInfo list * Type * (unit -> obj)>(data)
 
                 // 3. load assembly dependency info
-                do client.LoadDependencyInfo info
+                do client.LoadTypeInitializers info
 
                 // 4. evaluate
                 printfn "Evaluating thunk of type '%O'" ty
@@ -66,7 +66,8 @@
         static let vagrant = new VagrantServer()
 
         member __.EvaluateThunk(f : unit -> 'T) =
-            let dependencies = vagrant.ComputeObjectDependencies(f, allowCompilation = true)
+            let assemblies = vagrant.ComputeObjectDependencies(f, permitCompilation = true)
+            let dependencies = vagrant.GetDependencyInfo assemblies
             let data = vagrant.Pickler.Pickle<DependencyInfo list * Type * (unit -> obj)>((dependencies, typeof<'T>, fun () -> f () :> obj))
             let assemblyPaths = 
                 dependencies 

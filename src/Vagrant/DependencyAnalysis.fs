@@ -6,11 +6,6 @@
     open System.Runtime.Serialization
     open System.Reflection
 
-    open Microsoft.FSharp.Quotations
-    open Microsoft.FSharp.Quotations.Patterns
-    open Microsoft.FSharp.Quotations.DerivedPatterns
-    open Microsoft.FSharp.Quotations.ExprShape
-
     open Mono.Cecil
     open Mono.Reflection
 
@@ -20,9 +15,7 @@
 
     /// gathers all types that occur in an object graph
 
-    type Dependencies = (Assembly * seq<Type>) list
-
-    let gatherObjectDependencies (obj:obj) : Dependencies =
+    let gatherObjectDependencies (obj:obj) : Type [] =
         let gathered = new HashSet<Type>()
         let tracker = new ObjectTracker()
         let inline add t = gathered.Add t |> ignore
@@ -68,16 +61,17 @@
                 add t
 
         do traverseObj obj
-        gathered 
-        |> Seq.groupBy (fun t -> t.Assembly)
-        |> Seq.toList
+        Seq.toArray gathered
+
+    /// gets an index of all assemblies loaded in the current AppDomain
 
     let getLoadedAssemblies () =
         System.AppDomain.CurrentDomain.GetAssemblies()
         |> Seq.map (fun a -> a.FullName, a)
         |> Map.ofSeq
 
-    // recursively traverse assembly dependency graph
+    /// recursively traverse assembly dependency graph
+
     let traverseDependencies (state : GlobalDynamicAssemblyState option) (assemblies : seq<Assembly>) =
 
         let loadedAssemblies = getLoadedAssemblies ()
@@ -108,6 +102,8 @@
         |> traverseDependencyGraph Map.empty
         |> getTopologicalOrdering
 
+    /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation
+    /// the dynamic assemblies are then parsed to Cecil and sorted topologically for correct compilation order.
 
     let parseDynamicAssemblies (state : GlobalDynamicAssemblyState) (assemblies : seq<Assembly>) =
 
@@ -145,9 +141,21 @@
 
         dynamicAssemblies 
         |> Map.toList
+        // only keep the dynamic assembly subgraph
         |> List.map (fun (_,(a,_,deps)) -> (a, deps |> List.filter (fun a -> dynamicAssemblies.ContainsKey a.FullName)))
         |> getTopologicalOrdering
         |> List.map (fun a -> dynamicAssemblies.[a.FullName])
+
+
+
+    type Dependencies = (Assembly * seq<Type>) list
+
+    let computeDependencies (obj:obj) : Dependencies =
+        gatherObjectDependencies obj 
+        |> Seq.groupBy (fun t -> t.Assembly)
+        |> Seq.toList
+
+    /// determines the assemblies that require slice compilation based on the given dependency input
 
     let getDynamicDependenciesRequiringCompilation (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
         dependencies
@@ -160,6 +168,8 @@
                 false)
         |> List.map fst
 
+
+    /// reassigns assemblies so that the correct assembly slices are matched
 
     let remapDependencies (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
         let remap (a : Assembly, ts : seq<Type>) =

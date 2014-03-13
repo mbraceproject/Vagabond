@@ -4,9 +4,45 @@
     open Mono.Collections.Generic
 
     open System
+    open System.Threading
     open System.Reflection
+    open System.Runtime.Serialization
 
     open Microsoft.FSharp.Control
+
+    type Atom<'T when 'T : not struct>(value : 'T) =
+        let refCell = ref value
+    
+        let rec swap f = 
+            let currentValue = !refCell
+            let result = Interlocked.CompareExchange<'T>(refCell, f currentValue, currentValue)
+            if obj.ReferenceEquals(result, currentValue) then ()
+            else Thread.SpinWait 20; swap f
+
+        let transact f =
+            let output = ref Unchecked.defaultof<'S>
+            let f' x = let t,s = f x in output := s ; t
+            swap f' ; !output
+        
+        member __.Value with get() : 'T = !refCell
+        member __.Swap (f : 'T -> 'T) : unit = swap f
+        member __.Set (v : 'T) : unit = swap (fun _ -> v)
+        member __.Transact (f : 'T -> 'T * 'S) : 'S = transact f
+
+
+    type Singleton<'T> () =
+        let state = new Atom<'T option> (None)
+
+        member __.Content = state.Value
+        member __.TryAcquire (value : 'T) =
+            state.Transact(fun s ->
+                match s with
+                | None -> Some value, true
+                | Some _ -> s, false)
+//            lock state (fun () ->
+//                match !state with
+//                | None -> state := Some id
+//                | Some id -> invalidOp <| sprintf "Vagrant: an instance of '%O' has already been initialized." id)
 
 
     module Map =
@@ -95,7 +131,6 @@
             match t.Scope with
             | :? AssemblyNameReference as a -> Some a.FullName
             | _ -> None
-
 
     /// A stateful agent implementation with published state support
 

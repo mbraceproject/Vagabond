@@ -34,3 +34,27 @@ let test = async {
 let result = runAsync test
 
 client.EvaluateThunk <| fun () -> result.Length
+
+
+//
+//  LinqOptimizer tests
+//
+
+#r "bin/Debug/LinqOptimizer.Base.dll"
+#r "bin/Debug/LinqOptimizer.Core.dll"
+#r "bin/Debug/LinqOptimizer.FSharp.dll"
+
+open LinqOptimizer.FSharp
+
+
+let nums = [|1..10000000|]
+
+let query = 
+    nums
+    |> Query.ofSeq
+    |> Query.filter (fun num -> num % 2 = 0)
+    |> Query.map (fun num -> num * num)
+    |> Query.sum
+    |> Query.compile
+
+client.EvaluateThunk query

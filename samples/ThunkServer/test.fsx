@@ -25,8 +25,14 @@ let runAsync (wf : Async<'T>) =
     client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
 
 let test = async {
+
+    let worker i = async {
+        do printfn "processing job #%d" i
+        return Bar (i+1)
+    }
+
     let (Bar value) = x
-    let! results = [|1..value|] |> Array.map (fun i -> async { return Bar (i + 1) }) |> Async.Parallel
+    let! results = [|1..value|] |> Array.map worker |> Async.Parallel
 
     return results
 }
@@ -56,5 +62,7 @@ let query =
     |> Query.map (fun num -> num * num)
     |> Query.sum
     |> Query.compile
+
+query ()
 
 client.EvaluateThunk query

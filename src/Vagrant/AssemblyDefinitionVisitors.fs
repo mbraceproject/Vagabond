@@ -18,21 +18,31 @@
     //    2. Makes all member definitions public if enabled
     //
 
-    let updateTypeReferences makePublicMembers (updateF : TypeReference -> TypeReference option) (ts : seq<TypeDefinition>) : unit =
+    let updateTypeReferences makePublicMembers (updateF : TypeReference -> TypeReference option) (types : seq<TypeDefinition>) : unit =
 
-        let tracker = new ObjectTracker()          
+        // keeps track of all traversed objects in the Assembly definition.
+        let tracker = new ObjectTracker()
+        let types = new HashSet<_>(types)  
 
+        // the updateF function is expected to only handle named types
+        // this adds support for things like type parameters, arrays and generic instances
         let rec updateTypeReference (t : TypeReference) =
             match t with
+            // if is type definition within the current processing set
+            // leave to the updateMethodDefinition function
+            | :? TypeDefinition as td when types.Contains td -> t
+            // do not handle the same instance twice
+            | t when not <| tracker.IsFirstOccurence t -> t
             | :? GenericParameter as p ->
                 match p.DeclaringMethod with
                 | null ->
                     let dt : TypeReference = updateTypeReference p.DeclaringType
-                    let p' = dt.GenericParameters |> Seq.find (fun p' -> p.Name = p.Name)
+                    let p' = dt.GenericParameters |> Seq.find (fun p' -> p'.Name = p.Name)
                     p' :> TypeReference
                 | m -> updateMethodReference m ; p :> TypeReference
 
             | :? GenericInstanceType as gi ->
+                // need to define a new generic instance for this
                 let updated = updateTypeReference gi.ElementType
                 let genericType = new GenericInstanceType(updated)
 
@@ -76,34 +86,11 @@
                     Seq.iter updateCustomAttribute gparam.CustomAttributes
 
                 for param in m.Parameters do
+                    Seq.iter updateCustomAttribute param.CustomAttributes
                     param.ParameterType <- updateTypeReference param.ParameterType
-
-        and updateTypeDefinition (t : TypeDefinition) =
-            if not <| tracker.IsFirstOccurence t then () else
-
-            if makePublicMembers then
-                if t.IsNested then t.IsNestedPublic <- true
-                else t.IsPublic <- true
-
-            if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
-
-            Seq.iter updateCustomAttribute t.CustomAttributes
-
-            for gparam in t.GenericParameters do
-                Collection.update updateTypeReference gparam.Constraints
-                Seq.iter updateCustomAttribute gparam.CustomAttributes
-
-            Collection.update updateTypeReference t.Interfaces
-
-            Seq.iter updateFieldReference t.Fields
-
-            Seq.iter updatePropertyReference t.Properties
-
-            Seq.iter updateEventReference t.Events
-
-            Seq.iter updateMethodDefinition t.Methods
-
-            Seq.iter updateTypeDefinition t.NestedTypes
+                    match param.Method with
+                    | :? MethodReference as m -> updateMethodReference m
+                    | _ -> ()
 
         and updateCustomAttribute (attr : CustomAttribute) =
             do updateMethodReference attr.Constructor
@@ -164,5 +151,31 @@
             | :? (Instruction []) as instructions -> Array.iter updateInstruction instructions
             | _ -> ()
 
+        and updateTypeDefinition (t : TypeDefinition) =
+            tracker.IsFirstOccurence t |> ignore
 
-        Seq.iter updateTypeDefinition ts
+            if makePublicMembers then
+                if t.IsNested then t.IsNestedPublic <- true
+                else t.IsPublic <- true
+
+            if t.BaseType <> null then t.BaseType <- updateTypeReference t.BaseType
+
+            Seq.iter updateCustomAttribute t.CustomAttributes
+
+            for gparam in t.GenericParameters do
+                Collection.update updateTypeReference gparam.Constraints
+                Seq.iter updateCustomAttribute gparam.CustomAttributes
+
+            Collection.update updateTypeReference t.Interfaces
+
+            Seq.iter updateFieldReference t.Fields
+
+            Seq.iter updatePropertyReference t.Properties
+
+            Seq.iter updateEventReference t.Events
+
+            Seq.iter updateMethodDefinition t.Methods
+
+//            Seq.iter updateTypeDefinition t.NestedTypes
+
+        Seq.iter updateTypeDefinition types

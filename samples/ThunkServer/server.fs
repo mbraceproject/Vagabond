@@ -79,12 +79,14 @@
             | Choice1Of2 o -> o :?> 'T
             | Choice2Of2 e -> raise e
 
-            member __.Kill() = serverProc.Kill ()
+        member __.EvaluateDelegate(f : Func<'T>) = __.EvaluateThunk(f.Invoke)
 
-            static member Init() =
-                let serverId = Guid.NewGuid().ToString()
-                let self = Assembly.GetExecutingAssembly().Location
-                let proc = Process.Start(self, serverId)
-                do System.Threading.Thread.Sleep(1000)
-                let server = ThunkServer.Connect(serverId)
-                new ThunkClient(proc, server)
+        member __.Kill() = serverProc.Kill ()
+
+        static member Init() =
+            let serverId = Guid.NewGuid().ToString()
+            let self = Assembly.GetExecutingAssembly().Location
+            let proc = Process.Start(self, serverId)
+            do System.Threading.Thread.Sleep(1000)
+            let server = ThunkServer.Connect(serverId)
+            new ThunkClient(proc, server)

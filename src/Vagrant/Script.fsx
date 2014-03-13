@@ -3,7 +3,7 @@
 
 open Nessos.Vagrant
 
-let srv = new VagrantServer("C:/mbrace/")
+let srv = new VagrantServer()
 
 let dyn = System.Reflection.Assembly.GetExecutingAssembly()
 

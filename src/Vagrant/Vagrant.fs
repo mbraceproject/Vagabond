@@ -12,7 +12,7 @@
     open Nessos.Vagrant.DependencyExporter
     open Nessos.Vagrant.SliceCompiler
 
-    module internal Singleton =
+    module private Singleton =
         let singleton = new Singleton<string>()
 
         let acquire (id : string) =
@@ -70,7 +70,7 @@
             | Some _ -> invalidArg "outPath" "not a valid directory."
             | None -> Path.GetTempPath()
 
-        do Singleton.acquire "VagrantClient"
+        do Singleton.acquire "VagrantServer"
 
         // initialize agents
 

@@ -9,9 +9,9 @@
     open Mono.Cecil
     open Mono.Reflection
 
-    open Nessos.Vagrant.Utils
+    open Nessos.FsPickler
 
-    open FsPickler
+    open Nessos.Vagrant.Utils
 
     /// gathers all types that occur in an object graph
 

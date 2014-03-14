@@ -5,8 +5,7 @@
     open System.Text.RegularExpressions
     open System.Reflection
 
-    open FsPickler
-
+    open Nessos.FsPickler
     open Nessos.Vagrant
 
     type VagrantTypeNameConverter(stateF : unit -> GlobalDynamicAssemblyState) =

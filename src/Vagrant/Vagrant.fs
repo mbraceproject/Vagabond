@@ -4,7 +4,7 @@
     open System.IO
     open System.Reflection
 
-    open FsPickler
+    open Nessos.FsPickler
 
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Serialization

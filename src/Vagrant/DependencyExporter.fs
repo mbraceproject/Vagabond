@@ -3,10 +3,10 @@
     open System
     open System.Reflection
 
+    open Nessos.FsPickler
+
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
-
-    open FsPickler
 
     let mkDependencyInfo (pickler : FsPickler) 
                             (state : GlobalDynamicAssemblyState) 

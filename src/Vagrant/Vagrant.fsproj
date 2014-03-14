@@ -63,10 +63,11 @@
     <Compile Include="Vagrant.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
+    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FsPickler">
-      <HintPath>..\..\packages\FsPickler.0.8.5.3\lib\net45\FsPickler.dll</HintPath>
+      <HintPath>..\..\packages\FsPickler.0.8.6\lib\net45\FsPickler.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Cecil">

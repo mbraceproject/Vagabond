@@ -65,8 +65,17 @@
 
         static let vagrant = new VagrantServer()
 
+        static let sliceGenerationIdx = new System.Collections.Generic.Dictionary<Assembly, int> ()
+
         member __.EvaluateThunk(f : unit -> 'T) =
-            let assemblies = vagrant.ComputeObjectDependencies(f, permitCompilation = true)
+            let dynamicDependencies = vagrant.ResolveDynamicDependenciesRequiringCompilation f
+            let slices = vagrant.CompileDynamicAssemblySlices dynamicDependencies
+            for slice in slices do sliceGenerationIdx.Add(slice.Assembly, 0)
+            let allDependencies = vagrant.ComputeObjectDependencies(f, permitCompilation = false)
+
+
+
+
             let dependencies = vagrant.GetDependencyInfo assemblies
             let data = vagrant.Pickler.Pickle<DependencyInfo list * Type * (unit -> obj)>((dependencies, typeof<'T>, fun () -> f () :> obj))
             let assemblyPaths = 

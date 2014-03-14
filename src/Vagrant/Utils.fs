@@ -41,6 +41,31 @@
                 | Some _ -> s, false)
 
 
+    /// Value or exception
+    type Exn<'T> =
+        | Success of 'T
+        | Error of exn
+    with
+        /// evaluate, re-raising the exception if failed
+        member e.Value =
+            match e with
+            | Success t -> t
+            | Error e -> raise e
+
+    module Exn =
+        let catch (f : unit -> 'T) =
+            try f () |> Success with e -> Error e
+
+        let map (f : 'T -> 'S) (x : Exn<'T>) =
+            match x with
+            | Success x -> Success (f x)
+            | Error e -> Error e
+
+        let bind (f : 'T -> 'S) (x : Exn<'T>) =
+            match x with
+            | Success x -> try Success <| f x with e -> Error e
+            | Error e -> Error e
+
     module Map =
         let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
             Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs

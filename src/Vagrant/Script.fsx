@@ -23,4 +23,4 @@ type Bar<'T>(x : 'T, y : string) =
 
     member __.Value2 = y
     member __.Copy = copy
-    member __.GetLam() = fun x -> copy.GetHashCode() + x
+    member __.GetLam() = (fun x -> copy.GetHashCode() + x)

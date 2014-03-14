@@ -9,12 +9,44 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.DependencyAnalysis
-    open Nessos.Vagrant.DependencyExporter
+    open Nessos.Vagrant.BlobManagement
     open Nessos.Vagrant.SliceCompiler
 
-    module Test =
+    /// <summary>
+    ///     A collection of general purpose utilities used by Vagrant
+    /// </summary>
+    type Utilities =
 
-        type Foo = class end
+        /// <summary>
+        ///     Returns all type instances that appear in given object graph.
+        /// </summary>
+        /// <param name="obj">object graph to be traversed</param>
+        static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj
+
+        /// <summary>
+        ///     Resolves all assembly dependencies of given object graph.
+        /// </summary>
+        /// <param name="obj">object graph to be traversed</param>
+        static member ComputeAssemblyDependencies(obj:obj) =
+            computeDependencies obj 
+            |> Seq.map fst
+            |> traverseDependencies None
+
+        /// <summary>
+        ///     Resolves all assembly dependencies of given assembly.
+        /// </summary>
+        /// <param name="assembly">assembly to be traversed</param>
+        static member ComputeAssemblyDependencies(assembly:Assembly) = 
+            traverseDependencies None [assembly]
+
+        /// <summary>
+        ///     Resolves all assembly dependencies of given assemblies.
+        /// </summary>
+        /// <param name="assemblies"></param>
+        static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = 
+            traverseDependencies None assemblies
+
+
 
     module private Singleton =
         let singleton = new Singleton<string>()
@@ -49,14 +81,22 @@
         ///     Loads the type initializers from given dependency package.
         /// </summary>
         /// <param name="info">Dependency info package to be loaded.</param>
-        member __.LoadTypeInitializers(info : DependencyInfo) = loader.Invoke info
+        member __.LoadTypeInitializers(info : DynamicAssemblySliceInfo) = loader.Invoke info
 
         /// <summary>
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
         /// <param name="info">Dependency info packages to be loaded.</param>
-        member __.LoadTypeInitializers(info : seq<DependencyInfo>) =
-            for i in info do loader.Invoke i
+        member __.LoadTypeInitializers(info : seq<DynamicAssemblySliceInfo>) =
+            info |> Seq.collect loader.Invoke |> Seq.toList
+
+        /// <summary>
+        ///     Get latest generation of initialization blobs for given assembly
+        /// </summary>
+        /// <param name="assembly">given loaded assembly</param>
+        member __.TryGetLoadedGenerationForAssembly(assembly : Assembly) =
+            loader.CurrentState.TryFind assembly.FullName
+            
 
 
     /// <summary>
@@ -88,10 +128,7 @@
         let exporter = mkExporterAgent pickler (fun () -> compiler.CurrentState)
         let client = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)
 
-        let compile (assemblies : Assembly list) =
-            match compiler.Invoke assemblies with
-            | Choice1Of2 slices -> slices
-            | Choice2Of2 e -> raise e
+        let compile (assemblies : Assembly list) = compiler.Invoke(assemblies).Value
 
         /// Unique identifier for the slice compiler
         member __.UUId = compiler.CurrentState.ServerId
@@ -101,15 +138,22 @@
         member __.Client = client
 
         /// <summary>
-        ///     Compiles a slice for given dynamic assembly, if required.
+        ///     Compiles slices for given dynamic assembly, if required.
         /// </summary>
         /// <param name="assembly">a dynamic assembly</param>
         member __.CompileDynamicAssemblySlice (assembly : Assembly) =
-            if assembly.IsDynamic then
-                let newSlices = compile [assembly]
-                newSlices |> List.map (fun slice -> exporter.Invoke slice.Assembly)
+            if assembly.IsDynamic then 
+                compile [assembly] |> List.map (fun slice -> exporter.Invoke (true, slice.Assembly))
 
             else invalidArg assembly.FullName "Vagrant: not a dynamic assembly."
+
+        /// <summary>
+        ///     Compiles slices for given dynamic assembly, if required.
+        /// </summary>
+        /// <param name="assembly">a dynamic assembly</param>
+        /// <param name="generateTypeInitializer">generate a type initialization blob for the assembly. Defaults to true.</param>
+        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>, ?generateTypeInitializer : bool) =
+            compile (Seq.toList assemblies) |> List.map (fun slice -> exporter.Invoke (true, slice.Assembly))
 
         /// <summary>
         ///     Returns a list of dynamic assemblies that require slice compilation
@@ -129,24 +173,29 @@
             | None -> []
             | Some info ->
                 info.GeneratedSlices
-                |> Map.toSeq
-                |> Seq.sortBy (fun (_,s) -> s.SliceId) 
-                |> Seq.map (fun (_,s) -> s.Assembly)
-                |> Seq.toList
+                |> Map.toList
+                |> List.map (fun (_,(_,s)) -> s)
 
         /// <summary>
         ///     Creates an exportable DependencyInfo bundle for given assembly.
         ///     This includes potential type initialization data for dynamic assembly slices.
         /// </summary>
         /// <param name="assembly">a static assembly</param>
-        member __.GetDependencyInfo(assembly : Assembly) = exporter.Invoke assembly
+        /// <param name="getTypeInitializationBlobs">include dump of designated static field pickles. Defaults to true.</param>
+        member __.GetDependencyInfo(assembly : Assembly, ?getTypeInitializationBlobs) = 
+            let getTypeInitializationBlobs = defaultArg getTypeInitializationBlobs true
+            exporter.Invoke (getTypeInitializationBlobs, assembly)
 
         /// <summary>
         ///     Creates exportable DependencyInfo bundles for given assemblies.
         ///     This includes potential type initialization data for dynamic assembly slices.
         /// </summary>
         /// <param name="assemblies">a collection of static assemblies.</param>
-        member __.GetDependencyInfo(assemblies : seq<Assembly>) = Seq.map exporter.Invoke assemblies |> Seq.toList
+        /// <param name="getTypeInitializationBlobs">include dump of designated static field pickles. Defaults to true.</param>
+        member c.GetDependencyInfo(assemblies : seq<Assembly>, ?getTypeInitializationBlobs) =
+            assemblies 
+            |> Seq.map (fun a -> c.GetDependencyInfo(a, ?getTypeInitializationBlobs = getTypeInitializationBlobs)) 
+            |> Seq.toList
 
 
         /// <summary>

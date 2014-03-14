@@ -17,6 +17,28 @@
         }
 
 
+    /// customizes slicing behaviour on given dynamic assembly
+    and IDynamicAssemblyProfile =
+
+        /// identifies dynamic assemblies that match this profile
+        abstract IsMatch : Assembly -> bool
+
+        /// a short description of the profile
+        abstract Description : string
+        
+        /// Specifies if type is to be included in every iteration of the slice
+        abstract AlwaysIncludeType: Type -> bool
+
+        /// Specifies if type is to be erased from slices
+        abstract EraseType : Type -> bool
+
+        /// Specifies if static constructor is to be erased
+        abstract EraseStaticConstructor : Type -> bool
+
+        /// Specifies if static field is to be pickled
+        abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
+
+
     and internal AssemblySliceInfo =
         {
             Assembly : Assembly
@@ -29,6 +51,7 @@
         {
             DynamicAssembly : Assembly
             AssemblyReferences : Assembly list
+            Profile : IDynamicAssemblyProfile
             GeneratedSlices : Map<string, AssemblySliceInfo>
             TypeIndex : Map<string, AssemblySliceInfo>
         }
@@ -40,19 +63,21 @@
 
         member i.Name = i.DynamicAssembly.GetName()
 
-        static member Init(a : Assembly) =
+        static member Init(a : Assembly, profile : IDynamicAssemblyProfile) =
             {
                 DynamicAssembly = a
+                Profile = profile
                 AssemblyReferences = []
                 GeneratedSlices = Map.empty
                 TypeIndex = Map.empty
             }
 
-    and internal GlobalDynamicAssemblyState =
+    and internal DynamicAssemblyCompilerState =
         {
             ServerId : Guid
             OutputDirectory : string
             DynamicAssemblies : Map<string, DynamicAssemblyState>
+            Profiles : IDynamicAssemblyProfile list
 
             TryGetDynamicAssemblyName : string -> string option
             CreateAssemblySliceName : string -> int -> string

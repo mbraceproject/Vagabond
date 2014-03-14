@@ -9,7 +9,7 @@
     open Nessos.Vagrant.Utils
 
     let mkDependencyInfo (pickler : FsPickler) 
-                            (state : GlobalDynamicAssemblyState) 
+                            (state : DynamicAssemblyCompilerState) 
                             (generationIdx : Map<string, int>) 
                             (assembly : Assembly) =
 
@@ -80,7 +80,7 @@
                 loadState.Add(info.Assembly.FullName, info.BlobGeneration)
 
 
-    let mkExporterAgent (pickler : FsPickler) (stateF : unit -> GlobalDynamicAssemblyState) =
+    let mkExporterAgent (pickler : FsPickler) (stateF : unit -> DynamicAssemblyCompilerState) =
         mkStatefulAgent Map.empty (fun state a -> mkDependencyInfo pickler (stateF()) state a)
 
     let mkLoaderAgent (pickler : FsPickler) (localServerId : Guid option) =

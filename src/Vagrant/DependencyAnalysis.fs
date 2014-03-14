@@ -72,7 +72,7 @@
 
     /// recursively traverse assembly dependency graph
 
-    let traverseDependencies (state : GlobalDynamicAssemblyState option) (assemblies : seq<Assembly>) =
+    let traverseDependencies (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
 
         let loadedAssemblies = getLoadedAssemblies ()
 
@@ -105,7 +105,7 @@
     /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation
     /// the dynamic assemblies are then parsed to Cecil and sorted topologically for correct compilation order.
 
-    let parseDynamicAssemblies (state : GlobalDynamicAssemblyState) (assemblies : seq<Assembly>) =
+    let parseDynamicAssemblies (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
         let domainAssemblies = getLoadedAssemblies()
         let getReferencedAssemblies (def : AssemblyDefinition) =
@@ -157,7 +157,7 @@
 
     /// determines the assemblies that require slice compilation based on the given dependency input
 
-    let getDynamicDependenciesRequiringCompilation (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
+    let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
         dependencies
         |> List.filter(fun (a,types) ->
             if a.IsDynamic then
@@ -171,7 +171,7 @@
 
     /// reassigns assemblies so that the correct assembly slices are matched
 
-    let remapDependencies (state : GlobalDynamicAssemblyState) (dependencies : Dependencies) =
+    let remapDependencies (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
         let remap (a : Assembly, ts : seq<Type>) =
             if a.IsDynamic then
                 match state.DynamicAssemblies.TryFind a.FullName with

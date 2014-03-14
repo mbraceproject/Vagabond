@@ -8,7 +8,7 @@
     open Nessos.FsPickler
     open Nessos.Vagrant
 
-    type VagrantTypeNameConverter(stateF : unit -> GlobalDynamicAssemblyState) =
+    type VagrantTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
@@ -26,7 +26,7 @@
                 | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
 
 
-    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (stateF : unit -> GlobalDynamicAssemblyState) =
+    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (stateF : unit -> DynamicAssemblyCompilerState) =
 
         let tyConv = new VagrantTypeNameConverter(stateF) :> ITypeNameConverter
 

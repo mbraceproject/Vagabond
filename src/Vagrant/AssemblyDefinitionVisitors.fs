@@ -176,6 +176,4 @@
 
             Seq.iter updateMethodDefinition t.Methods
 
-//            Seq.iter updateTypeDefinition t.NestedTypes
-
         Seq.iter updateTypeDefinition types

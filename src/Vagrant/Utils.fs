@@ -39,10 +39,6 @@
                 match s with
                 | None -> Some value, true
                 | Some _ -> s, false)
-//            lock state (fun () ->
-//                match !state with
-//                | None -> state := Some id
-//                | Some id -> invalidOp <| sprintf "Vagrant: an instance of '%O' has already been initialized." id)
 
 
     module Map =

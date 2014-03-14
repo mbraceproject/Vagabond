@@ -12,6 +12,10 @@
     open Nessos.Vagrant.DependencyExporter
     open Nessos.Vagrant.SliceCompiler
 
+    module Test =
+
+        type Foo = class end
+
     module private Singleton =
         let singleton = new Singleton<string>()
 
@@ -62,7 +66,7 @@
     /// <param name="picklerRegistry">specifies a custom pickler registry.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantServer(?outpath : string, ?picklerRegistry : CustomPicklerRegistry) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list ,?picklerRegistry : CustomPicklerRegistry) =
 
         let outpath = 
             match outpath with
@@ -70,11 +74,16 @@
             | Some _ -> invalidArg "outPath" "not a valid directory."
             | None -> Path.GetTempPath()
 
+        let dynamicAssemblyProfiles = 
+            match dynamicAssemblyProfiles with
+            | Some ps -> ps
+            | None -> [ new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile ]
+
         do Singleton.acquire "VagrantServer"
 
         // initialize agents
 
-        let compiler = mkCompilationAgent outpath
+        let compiler = mkCompilationAgent dynamicAssemblyProfiles outpath
         let pickler = mkFsPicklerInstance picklerRegistry (fun () -> compiler.CurrentState)
         let exporter = mkExporterAgent pickler (fun () -> compiler.CurrentState)
         let client = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)

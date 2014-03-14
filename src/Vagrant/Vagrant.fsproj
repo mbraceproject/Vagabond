@@ -54,6 +54,7 @@
   <ItemGroup>
     <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="AssemblyProfiles.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="AssemblyDefinitionVisitors.fs" />

@@ -70,8 +70,8 @@
         let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
             Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
 
-    module Choice2 =
-        let partition (inputs : Choice<'T,'S> list) =
+    module Choice =
+        let partition2 (inputs : Choice<'T,'S> list) =
             let rec aux p1 p2 rest =
                 match rest with
                 | Choice1Of2 t :: tl -> aux (t :: p1) p2 tl
@@ -161,16 +161,16 @@
 
         let cts = new System.Threading.CancellationTokenSource()
 
-        let rec behaviour (state : 'State) (mailbox : MailboxProcessor<'Input * AsyncReplyChannel<Choice<'Output, exn>>>) =
+        let rec behaviour (state : 'State) (mailbox : MailboxProcessor<'Input * AsyncReplyChannel<Exn<'Output>>>) =
             async {
                 let! input, rc = mailbox.Receive()
 
                 let state, reply = 
                     try 
                         let state, output = f state input
-                        state, Choice1Of2 output
+                        state, Success output
                     with e ->
-                        state, Choice2Of2 e
+                        state, Error e
 
                 // published state must be updated *before* replying
                 stateRef := state
@@ -179,13 +179,10 @@
                 return! behaviour state mailbox
             }
 
-        let actor = MailboxProcessor.Start (behaviour init, cts.Token)
+        let agent = MailboxProcessor.Start (behaviour init, cts.Token)
 
         member __.CurrentState = !stateRef
-        member __.Invoke input =
-            match actor.PostAndReply <| fun ch -> input,ch with
-            | Choice1Of2 output -> output
-            | Choice2Of2 e -> raise e
+        member __.Invoke input = agent.PostAndReply(fun ch -> input,ch).Value
 
         member __.Dispose () = cts.Cancel()
 

@@ -9,7 +9,7 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.DependencyAnalysis
-    open Nessos.Vagrant.BlobManagement
+    open Nessos.Vagrant.StaticInitialization
     open Nessos.Vagrant.SliceCompiler
 
     /// <summary>
@@ -47,6 +47,24 @@
             traverseDependencies None assemblies
 
 
+        static member TryGetFsiDynamicAssembly() =
+            System.AppDomain.CurrentDomain.GetAssemblies() 
+            |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = "FSI-ASSEMBLY")
+
+
+        static member TryGetFsiInteractionTypes () =
+            match Utilities.TryGetFsiDynamicAssembly() with
+            | None -> None
+            | Some a ->
+                let fsiRegex = new System.Text.RegularExpressions.Regex("^FSI_[0-9]{4}$")
+                a.GetTypes() |> Array.filter (fun t -> fsiRegex.IsMatch t.Name) |> Some
+
+        static member TryGetLatestFsiInteraction () =
+            Utilities.TryGetFsiInteractionTypes() 
+            |> Option.map (fun ts -> ts |> Seq.sortBy (fun t -> t.Name) |> Seq.last)
+
+
+
 
     module private Singleton =
         let singleton = new Singleton<string>()
@@ -81,13 +99,13 @@
         ///     Loads the type initializers from given dependency package.
         /// </summary>
         /// <param name="info">Dependency info package to be loaded.</param>
-        member __.LoadTypeInitializers(info : DynamicAssemblySliceInfo) = loader.Invoke info
+        member __.LoadTypeInitializers(info : DynamicAssemblySlice) = loader.Invoke info
 
         /// <summary>
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
         /// <param name="info">Dependency info packages to be loaded.</param>
-        member __.LoadTypeInitializers(info : seq<DynamicAssemblySliceInfo>) =
+        member __.LoadTypeInitializers(info : seq<DynamicAssemblySlice>) =
             info |> Seq.collect loader.Invoke |> Seq.toList
 
         /// <summary>
@@ -106,7 +124,7 @@
     /// <param name="picklerRegistry">specifies a custom pickler registry.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list ,?picklerRegistry : CustomPicklerRegistry) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?picklerRegistry : CustomPicklerRegistry) =
 
         let outpath = 
             match outpath with
@@ -128,7 +146,17 @@
         let exporter = mkExporterAgent pickler (fun () -> compiler.CurrentState)
         let client = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)
 
-        let compile (assemblies : Assembly list) = compiler.Invoke(assemblies).Value
+
+        let compile generateTypeInitializers (assemblies : Assembly list) = 
+            let generateTypeInitializers = defaultArg generateTypeInitializers true
+            let slices = compiler.Invoke(assemblies).Value
+            if generateTypeInitializers then slices
+            else
+                slices |> List.map (fun s -> exporter.Invoke s.Assembly)
+
+        static let checkIsDynamic(a : Assembly) = 
+            if a.IsDynamic then () 
+            else invalidArg a.FullName "Vagrant: not a dynamic assembly"
 
         /// Unique identifier for the slice compiler
         member __.UUId = compiler.CurrentState.ServerId
@@ -141,19 +169,18 @@
         ///     Compiles slices for given dynamic assembly, if required.
         /// </summary>
         /// <param name="assembly">a dynamic assembly</param>
-        member __.CompileDynamicAssemblySlice (assembly : Assembly) =
-            if assembly.IsDynamic then 
-                compile [assembly] |> List.map (fun slice -> exporter.Invoke (true, slice.Assembly))
-
-            else invalidArg assembly.FullName "Vagrant: not a dynamic assembly."
+        /// <param name="generateTypeInitializers">generate a type initialization blob for the compiled slices. Defaults to true.</param>
+        member __.CompileDynamicAssemblySlice (assembly : Assembly, ?generateTypeInitializers) =
+            do checkIsDynamic assembly
+            compile generateTypeInitializers [assembly]
 
         /// <summary>
         ///     Compiles slices for given dynamic assembly, if required.
         /// </summary>
         /// <param name="assembly">a dynamic assembly</param>
-        /// <param name="generateTypeInitializer">generate a type initialization blob for the assembly. Defaults to true.</param>
-        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>, ?generateTypeInitializer : bool) =
-            compile (Seq.toList assemblies) |> List.map (fun slice -> exporter.Invoke (true, slice.Assembly))
+        /// <param name="generateTypeInitializers">generate a type initialization blob for the compiled slices. Defaults to true.</param>
+        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>, ?generateTypeInitializers : bool) =
+            compile generateTypeInitializers <| Seq.toList assemblies
 
         /// <summary>
         ///     Returns a list of dynamic assemblies that require slice compilation
@@ -168,34 +195,29 @@
         ///     Returns *all* assembly slices of given dynamic assembly.
         /// </summary>
         /// <param name="assembly">a dynamic assembly.</param>
-        member __.GetDynamicAssemblySlices(assembly : Assembly) =
+        /// <param name="generateTypeInitializers">generate a type initialization blob for the compiled slices. Defaults to true.</param>
+        member __.GetDynamicAssemblySlices(assembly : Assembly, ?generateTypeInitializers : bool) =
+            let generateTypeInitializers = defaultArg generateTypeInitializers true
+            do checkIsDynamic assembly
             match compiler.CurrentState.DynamicAssemblies.TryFind assembly.FullName with
             | None -> []
             | Some info ->
                 info.GeneratedSlices
                 |> Map.toList
-                |> List.map (fun (_,(_,s)) -> s)
+                |> List.map (fun (_,(_,s)) -> if generateTypeInitializers then exporter.Invoke(s.Assembly) else s)
 
         /// <summary>
         ///     Creates an exportable DependencyInfo bundle for given assembly.
         ///     This includes potential type initialization data for dynamic assembly slices.
         /// </summary>
-        /// <param name="assembly">a static assembly</param>
-        /// <param name="getTypeInitializationBlobs">include dump of designated static field pickles. Defaults to true.</param>
-        member __.GetDependencyInfo(assembly : Assembly, ?getTypeInitializationBlobs) = 
-            let getTypeInitializationBlobs = defaultArg getTypeInitializationBlobs true
-            exporter.Invoke (getTypeInitializationBlobs, assembly)
-
-        /// <summary>
-        ///     Creates exportable DependencyInfo bundles for given assemblies.
-        ///     This includes potential type initialization data for dynamic assembly slices.
-        /// </summary>
-        /// <param name="assemblies">a collection of static assemblies.</param>
-        /// <param name="getTypeInitializationBlobs">include dump of designated static field pickles. Defaults to true.</param>
-        member c.GetDependencyInfo(assemblies : seq<Assembly>, ?getTypeInitializationBlobs) =
-            assemblies 
-            |> Seq.map (fun a -> c.GetDependencyInfo(a, ?getTypeInitializationBlobs = getTypeInitializationBlobs)) 
-            |> Seq.toList
+        /// <param name="assembly">a dunamic assembly slice</param>
+        /// <param name="generateTypeInitializers">generate a static initializer for the slice. Defaults to true.</param>
+        member __.GetSliceInfo(assembly : Assembly, ?generateTypeInitializers) =
+            let generateTypeInitializers = defaultArg generateTypeInitializers true
+            match compiler.CurrentState.TryFindSliceInfo assembly.FullName with
+            | None -> invalidArg assembly.FullName "not a dynamic assembly slice"
+            | Some (_,slice) ->
+                if generateTypeInitializers then exporter.Invoke slice.Assembly else slice
 
 
         /// <summary>
@@ -204,24 +226,29 @@
         /// </summary>
         /// <param name="obj">A given object graph</param>
         /// <param name="permitCompilation">Compile new slices as required. Defaults to false.</param>
-        member __.ComputeObjectDependencies(obj : obj, ?permitCompilation : bool) : Assembly list =
+        /// <param name="generateTypeInitializers">generate a static initializer for the slice. Defaults to true.</param>
+        member __.ComputeObjectDependencies(obj : obj, ?permitCompilation : bool, ?generateTypeInitializers) =
             let allowCompilation = defaultArg permitCompilation false
 
             let dependencies = computeDependencies obj
 
-            if allowCompilation then
-                let assemblies = getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
-                let _ = compile assemblies in ()
+            let newSlices =
+                if allowCompilation then
+                    let assemblies = getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
+                    compile generateTypeInitializers assemblies
+                else
+                    []
 
-            remapDependencies compiler.CurrentState dependencies
+            let dependencies = remapDependencies compiler.CurrentState dependencies
+
+            newSlices, dependencies
 
         /// <summary>
-        ///     Returns an exportable pickle and a collection of all assemblies that the given object depends on.
-        ///     Dynamic assemblies are substituted for their corresponding static slices.
+        ///     Returns the dynamic assembly slice corresponding to the given type, if exists.
         /// </summary>
-        /// <param name="obj">A given object graph</param>
-        /// <param name="permitCompilation">Compile new slices as required. Defaults to false.</param>
-        member __.ComputePickle(obj, ?permitCompilation : bool) : byte [] * Assembly list =
-            let dependencies = __.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
-            let pickle = pickler.Pickle obj
-            pickle, dependencies
+        /// <param name="t"></param>
+        member __.TryGetSliceOfType(t : Type) =
+            let t = if t.IsGenericType then t.GetGenericTypeDefinition() else t
+            match compiler.CurrentState.DynamicAssemblies.TryFind t.Assembly.FullName with
+            | None -> None
+            | Some dyn -> dyn.TypeIndex.TryFind t.FullName

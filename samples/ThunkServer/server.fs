@@ -11,6 +11,8 @@
 
     open Nessos.Vagrant
 
+    type Data = DynamicAssemblySlice list * Type * (unit -> obj)
+
     type ThunkServer private () =
         inherit System.MarshalByRefObject()
 
@@ -18,17 +20,17 @@
 
         let client = new VagrantClient()
 
-        member __.EvaluateThunk(assemblyLocations : string list, data : byte []) =
+        member __.EvaluateThunk(assemblyLocations : string list, bytes : byte []) =
             lock lockObj (fun () ->
                 // 1. load dependencies to AppDomain
                 for location in assemblyLocations do
                     Assembly.LoadFrom(location) |> ignore
 
                 // 2. unpickle payload
-                let info, ty, thunk = client.Pickler.UnPickle<DependencyInfo list * Type * (unit -> obj)>(data)
+                let slices, ty, thunk = client.Pickler.UnPickle<Data>(bytes)
 
                 // 3. load assembly dependency info
-                do client.LoadTypeInitializers info
+                let errors = client.LoadTypeInitializers slices
 
                 // 4. evaluate
                 printfn "Evaluating thunk of type '%O'" ty
@@ -65,23 +67,44 @@
 
         static let vagrant = new VagrantServer()
 
-        static let sliceGenerationIdx = new System.Collections.Generic.Dictionary<Assembly, int> ()
+        static let lastFsiSlice : DynamicAssemblySlice option ref = ref None
+
+        static let tryFindLatestFsiSlice(slices : DynamicAssemblySlice list) =
+            match Utilities.TryGetFsiDynamicAssembly() with
+            | None -> None
+            | Some a ->
+                slices |> List.tryFind(fun s -> s.DynamicAssemblyQualifiedName = a.FullName)
+
+        static let getLatestSliceUpdate () =
+            match !lastFsiSlice with
+            | None -> None
+            | Some slice ->
+                // TODO : check scripts!
+                let currentInteraction = Utilities.TryGetLatestFsiInteraction().Value
+                match vagrant.TryGetSliceOfType currentInteraction with
+                | Some sl when sl.SliceId = slice.SliceId ->
+                    // slice pending execution, do not erase yet
+                    ()
+                | _ ->
+                    // slice has completed execution, remove from temporary state
+                    lastFsiSlice := None
+
+                // regenerate type initializers for the asssembly
+                Some <| vagrant.GetSliceInfo(slice.Assembly, generateTypeInitializers = true)
+
 
         member __.EvaluateThunk(f : unit -> 'T) =
-            let dynamicDependencies = vagrant.ResolveDynamicDependenciesRequiringCompilation f
-            let slices = vagrant.CompileDynamicAssemblySlices dynamicDependencies
-            for slice in slices do sliceGenerationIdx.Add(slice.Assembly, 0)
-            let allDependencies = vagrant.ComputeObjectDependencies(f, permitCompilation = false)
+            // get values from previous slice if necessary
+            let previous = getLatestSliceUpdate ()
+            // traverse dependencies & compile if necessary
+            let newSlices, dependencies = vagrant.ComputeObjectDependencies(f, permitCompilation = true, generateTypeInitializers = true)
+            // record latest fsi slice, if such a slice exists
+            do tryFindLatestFsiSlice newSlices |> Option.iter (fun sl -> lastFsiSlice := Some sl)
 
-
-
-
-            let dependencies = vagrant.GetDependencyInfo assemblies
-            let data = vagrant.Pickler.Pickle<DependencyInfo list * Type * (unit -> obj)>((dependencies, typeof<'T>, fun () -> f () :> obj))
+            let data = vagrant.Pickler.Pickle<Data>((Option.toList previous @ newSlices, typeof<'T>, fun () -> f () :> obj))
             let assemblyPaths = 
                 dependencies 
-                |> List.filter (fun d -> not d.Assembly.GlobalAssemblyCache)
-                |> List.map (fun d -> d.Assembly.Location)
+                |> List.choose (fun a -> if a.GlobalAssemblyCache then None else Some a.Location)
 
             let resultData = server.EvaluateThunk(assemblyPaths, data)
             let result = vagrant.Pickler.UnPickle<Choice<obj,exn>> resultData

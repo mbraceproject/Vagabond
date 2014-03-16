@@ -120,39 +120,6 @@
                 |> Array.filter (fun f -> not f.IsLiteral && state.Profile.PickleStaticField (f, eraseCctor))
 
         Array.collect erase types
-                
-//            let pickledFields, uninitializedFields =
-//                stat
-//                && state.Profile.PickleStaticField(f, eraseCctor))
-
-//    let mkSliceInfo (dynamicAssembly : Assembly) (sliceId : int) (staticFields : (Type * FieldInfo []) []) (slice : Assembly) =
-//        let mapFieldInfo (declaringType : Type, dynamicFields : FieldInfo []) =
-//            if dynamicFields.Length = 0 then [||]
-//            else
-//                let mappedFields = 
-//                    slice
-//                        .GetType(declaringType.FullName, true)
-//                        .GetFields(BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
-//                    |> Seq.map (fun fI -> fI.Name, fI)
-//                    |> Map.ofSeq
-//
-//                dynamicFields 
-//                |> Array.map (fun fI -> 
-//                    match mappedFields.TryFind fI.Name with
-//                    | None -> failwithf "field '%O' was null." fI 
-//                    | Some fI' -> fI, fI')
-//
-//        let staticFields = staticFields |> Seq.collect mapFieldInfo |> Seq.toList
-//
-//        {
-//            Assembly = slice
-//            DynamicAssemblyName = dynamicAssembly.FullName
-//            StaticFields = staticFields
-//            SliceId = sliceId
-//        }
-
-//    let mkSliceInfo 
-
 
     /// type reference updating logic : consult the compiler state to update TypeReferences to dynamic assemblies
 
@@ -214,7 +181,7 @@
                 Assembly = assembly 
                 DynamicAssemblyQualifiedName = dynamicAssembly.FullName 
                 SliceId = sliceId 
-                TypeInitializationBlob = None
+                StaticInitializationData = None
             }
 
         // update type index & compiled assembly info
@@ -236,7 +203,7 @@
         let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
         // exceptions are handled locally so that returned state reflects the last successful compilation
-        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySliceInfo list>) 
+        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>) 
                             (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
 
             match accumulator with

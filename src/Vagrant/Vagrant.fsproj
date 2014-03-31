@@ -58,9 +58,9 @@
     <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="AssemblyDefinitionVisitors.fs" />
+    <Compile Include="SliceCompilerImpl.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="StaticInitialization.fs" />
-    <Compile Include="Vagrant.fs" />
     <None Include="Script.fsx" />
     <None Include="packages.config" />
     <None Include="app.config" />

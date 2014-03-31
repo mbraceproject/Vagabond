@@ -21,9 +21,9 @@
                     | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                match stateF().TryGetDynamicAssemblyName typeInfo.AssemblyQualifiedName with
+                match stateF().TryGetDynamicAssemblyId typeInfo.AssemblyQualifiedName with
                 | None -> typeInfo
-                | Some assemblyName -> { typeInfo with AssemblyName = assemblyName }
+                | Some (assemblyName,_) -> { typeInfo with AssemblyName = assemblyName }
 
 
     let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (stateF : unit -> DynamicAssemblyCompilerState) =

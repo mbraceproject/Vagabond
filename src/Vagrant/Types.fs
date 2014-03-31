@@ -13,15 +13,15 @@
             SliceId : int
             Assembly : Assembly
 
-            StaticInitializationData : StaticInitializationData option
+            StaticFields : FieldInfo []
         }
 
-    and StaticInitializationData =
-        {
-            Generation : int
-            Data : (FieldInfo * byte []) []
-            Errors : (FieldInfo * exn) []
-        }
+//    and StaticInitializationData =
+//        {
+//            Generation : int
+//            Data : (FieldInfo * byte []) []
+//            Errors : (FieldInfo * exn) []
+//        }
 
     /// customizes slicing behaviour on given dynamic assembly
     and IDynamicAssemblyProfile =
@@ -44,14 +44,15 @@
         /// Specifies if static field is to be pickled
         abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
 
-
+        /// Decides if given slices requires fresh evaluation of assemblies
+        abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> DynamicAssemblySlice option) -> DynamicAssemblySlice -> bool
 
     and internal DynamicAssemblyState =
         {
             DynamicAssembly : Assembly
             AssemblyReferences : Assembly list
             Profile : IDynamicAssemblyProfile
-            GeneratedSlices : Map<string, FieldInfo [] * DynamicAssemblySlice>
+            GeneratedSlices : Map<int, DynamicAssemblySlice>
             TypeIndex : Map<string, DynamicAssemblySlice>
         }
     with
@@ -61,6 +62,8 @@
             assemblyTypeCount > compiledTypeCount
 
         member i.Name = i.DynamicAssembly.GetName()
+
+        member i.LatestSlice = i.GeneratedSlices.TryFind i.GeneratedSlices.Count
 
         static member Init(a : Assembly, profile : IDynamicAssemblyProfile) =
             {
@@ -79,15 +82,16 @@
 
             DynamicAssemblies : Map<string, DynamicAssemblyState>
             
-            TryGetDynamicAssemblyName : string -> string option
+            TryGetDynamicAssemblyId : string -> (string * int) option
             CreateAssemblySliceName : string -> int -> string
         }
     with
         member s.TryFindSliceInfo(sliceName : string) =
-            match s.TryGetDynamicAssemblyName sliceName with
-            | Some name ->
+            match s.TryGetDynamicAssemblyId sliceName with
+            | Some(dynamicAssemblyName, id) ->
                 let an = new AssemblyName(sliceName)
-                do an.Name <- name
-                s.DynamicAssemblies.TryFind(an.FullName) 
-                |> Option.bind(fun info -> info.GeneratedSlices.TryFind sliceName)
+                do an.Name <- dynamicAssemblyName
+                match s.DynamicAssemblies.TryFind an.FullName with
+                | None -> None
+                | Some info -> info.GeneratedSlices.TryFind id
             | None -> None

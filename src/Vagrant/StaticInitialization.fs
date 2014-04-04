@@ -1,5 +1,8 @@
 ﻿module internal Nessos.Vagrant.StaticInitialization
 
+
+    
+
 //    open System
 //    open System.Reflection
 //

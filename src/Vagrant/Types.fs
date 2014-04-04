@@ -16,13 +16,6 @@
             StaticFields : FieldInfo []
         }
 
-//    and StaticInitializationData =
-//        {
-//            Generation : int
-//            Data : (FieldInfo * byte []) []
-//            Errors : (FieldInfo * exn) []
-//        }
-
     /// customizes slicing behaviour on given dynamic assembly
     and IDynamicAssemblyProfile =
 
@@ -46,6 +39,39 @@
 
         /// Decides if given slices requires fresh evaluation of assemblies
         abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> DynamicAssemblySlice option) -> DynamicAssemblySlice -> bool
+
+    and PortableAssembly =
+        {
+            FullName : string
+            Image : byte [] option
+            DynamicAssemblyInfo : DynamicAssemblyInfo option
+        }
+
+    and DynamicAssemblyInfo =
+        {
+            SourceId : Guid
+            DynamicAssemblyName : string
+            SliceId : int
+
+            // static initialization data
+            IsPartiallyEvaluated : bool
+            Generation : int
+            StaticInitializationData : StaticInitializationData option
+        }
+
+    and StaticInitializationData =
+        {
+            Pickles : (FieldInfo * byte []) []
+            Errors : (FieldInfo * exn) []
+        }
+
+    and AssemblyResponse =
+        | Loaded
+        | MissingImage
+        | MissingStaticInitializer
+//        | MissingImage of assemblyName:string
+//        | MissingStaticInitializer of assemblyName:string
+
 
     and internal DynamicAssemblyState =
         {
@@ -93,5 +119,5 @@
                 do an.Name <- dynamicAssemblyName
                 match s.DynamicAssemblies.TryFind an.FullName with
                 | None -> None
-                | Some info -> info.GeneratedSlices.TryFind id
+                | Some info -> info.GeneratedSlices.TryFind id |> Option.map (fun slice -> info, slice)
             | None -> None

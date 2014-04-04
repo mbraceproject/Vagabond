@@ -18,17 +18,23 @@
 
     type FsiDynamicAssemblyProfile () =
 
+        let fsiAssemblyName = "FSI-ASSEMBLY"
         let fsiRegex = new Regex("^FSI_([0-9]{4})$")
+        let fsiAssembly = ref None
 
         let tryGetCurrentInteractionType () =
-            let fsiAssembly =
-                System.AppDomain.CurrentDomain.GetAssemblies() 
-                |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = "FSI-ASSEMBLY")
+            match !fsiAssembly with
+            | None ->
+                let result =
+                    System.AppDomain.CurrentDomain.GetAssemblies() 
+                    |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = fsiAssemblyName)
+                fsiAssembly := result
+            | _ -> ()
 
-            match fsiAssembly with
+            match !fsiAssembly with
             | None -> None
             | Some a ->
-                a.GetTypes() 
+                a.GetTypes()
                 |> Seq.choose (fun t ->
                     let m = fsiRegex.Match t.Name 
                     if m.Success then
@@ -41,7 +47,7 @@
 
         interface IDynamicAssemblyProfile with
             member __.IsMatch (a : Assembly) =
-                let an = a.GetName() in an.Name = "FSI-ASSEMBLY"
+                let an = a.GetName() in an.Name = fsiAssemblyName
 
             member __.Description = "F# Interactive dynamic assembly profile."
 

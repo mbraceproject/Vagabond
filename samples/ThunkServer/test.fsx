@@ -8,7 +8,7 @@ let client = ThunkClient.Init()
 
 type Foo<'T> = Bar of 'T
 
-let x = client.EvaluateThunk <| fun () -> Bar 42
+let x = client.EvaluateThunk (fun () -> Bar 42)
 
 let incr (Bar x) = Bar (x + 1)
 

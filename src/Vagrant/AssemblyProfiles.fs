@@ -63,7 +63,7 @@
             member __.PickleStaticField (f : FieldInfo, isErasedCctor) =
                 isErasedCctor && not <| f.FieldType.Name.StartsWith("$")
 
-            member __.IsPartiallyEvaluatedSlice (sliceResolver : Type -> DynamicAssemblySlice option) (slice : DynamicAssemblySlice) =
-                match tryGetCurrentInteractionType () |> Option.bind sliceResolver with
-                | Some s when s.SliceId = slice.SliceId -> true
-                | _ -> false
+            member __.IsPartiallyEvaluatedSlice (sliceResolver : Type -> Assembly option) (slice : Assembly) =
+                tryGetCurrentInteractionType () 
+                |> Option.bind sliceResolver
+                |> Option.exists (fun a -> a = slice)

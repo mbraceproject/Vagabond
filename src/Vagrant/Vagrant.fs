@@ -9,7 +9,7 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.DependencyAnalysis
-//    open Nessos.Vagrant.StaticInitialization
+    open Nessos.Vagrant.AssemblyExporter
     open Nessos.Vagrant.SliceCompilerImpls
 
     /// <summary>
@@ -66,54 +66,47 @@
 
 
 
-//    module private Singleton =
-//        let singleton = new Singleton<string>()
-//
-//        let acquire (id : string) =
-//            if singleton.TryAcquire id then ()
-//            else
-//                invalidOp <| sprintf "Vagrant: an instance of '%s' has already been initialized." singleton.Content.Value
-//
-//    /// <summary>
-//    ///     Client for loading type initialization blobs of dynamic assembly slices.
-//    /// </summary>
-//    [<Sealed>]
-//    [<AutoSerializable(false)>]
-//    type VagrantClient internal (pickler : FsPickler, localServerId : Guid option) =
-//
-//        let loader = mkLoaderAgent pickler localServerId
-//
-//        /// <summary>
-//        ///     Client for loading type initialization blobs of dynamic assembly slices.
-//        /// </summary>
-//        /// <param name="pickler">Specify a custom pickler instance.</param>
-//        new (?pickler : FsPickler) =
-//            Singleton.acquire "VagrantClient"
-//            let pickler = match pickler with None -> new FsPickler() | Some p -> p
-//            new VagrantClient(pickler, None)
-//
-//        /// Returns pickler used in type initialization.
-//        member __.Pickler = pickler
-//
-//        /// <summary>
-//        ///     Loads the type initializers from given dependency package.
-//        /// </summary>
-//        /// <param name="info">Dependency info package to be loaded.</param>
-//        member __.LoadTypeInitializers(info : DynamicAssemblySlice) = loader.Invoke info
-//
-//        /// <summary>
-//        ///     Loads the type initializers from given dependency packages.
-//        /// </summary>
-//        /// <param name="info">Dependency info packages to be loaded.</param>
-//        member __.LoadTypeInitializers(info : seq<DynamicAssemblySlice>) =
-//            info |> Seq.collect loader.Invoke |> Seq.toList
-//
-//        /// <summary>
-//        ///     Get latest generation of initialization blobs for given assembly
-//        /// </summary>
-//        /// <param name="assembly">given loaded assembly</param>
-//        member __.TryGetLoadedGenerationForAssembly(assembly : Assembly) =
-//            loader.CurrentState.TryFind assembly.FullName
+    module private Singleton =
+        let singleton = new Singleton<string>()
+
+        let acquire (id : string) =
+            if singleton.TryAcquire id then ()
+            else
+                invalidOp <| sprintf "Vagrant: an instance of '%s' has already been initialized." singleton.Content.Value
+
+    /// <summary>
+    ///     Client for loading type initialization blobs of dynamic assembly slices.
+    /// </summary>
+    [<Sealed>]
+    [<AutoSerializable(false)>]
+    type VagrantClient internal (pickler : FsPickler, localServerId : Guid option) =
+
+        let loader = mkAssemblyLoader pickler localServerId
+
+        /// <summary>
+        ///     Client for loading type initialization blobs of dynamic assembly slices.
+        /// </summary>
+        /// <param name="pickler">Specify a custom pickler instance.</param>
+        new (?pickler : FsPickler) =
+            Singleton.acquire "VagrantClient"
+            let pickler = match pickler with None -> new FsPickler() | Some p -> p
+            new VagrantClient(pickler, None)
+
+        /// Returns pickler used in type initialization.
+        member __.Pickler = pickler
+
+        /// <summary>
+        ///     Loads the type initializers from given dependency package.
+        /// </summary>
+        /// <param name="info">Dependency info package to be loaded.</param>
+        member __.LoadPortableAssembly(assembly : PortableAssembly) = loader.PostAndReply assembly
+
+        /// <summary>
+        ///     Loads the type initializers from given dependency packages.
+        /// </summary>
+        /// <param name="info">Dependency info packages to be loaded.</param>
+        member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>) =
+            assemblies |> Seq.map loader.PostAndReply |> Seq.toList
             
 
 
@@ -124,7 +117,7 @@
     /// <param name="picklerRegistry">specifies a custom pickler registry.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type SliceCompiler(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?picklerRegistry : CustomPicklerRegistry) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?picklerRegistry : CustomPicklerRegistry) =
 
         let outpath = 
             match outpath with
@@ -141,7 +134,9 @@
 
         let compiler = mkCompilationAgent dynamicAssemblyProfiles outpath
         let pickler = mkFsPicklerInstance picklerRegistry (fun () -> compiler.CurrentState)
-        let compile (assemblies : Assembly list) =  compiler.Invoke(assemblies).Value
+        let exporter = mkAssemblyExporter pickler (fun () -> compiler.CurrentState)
+        let loader = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)
+        let compile (assemblies : Assembly list) = compiler.PostAndReply(assemblies).Value
 
         static let checkIsDynamic(a : Assembly) = 
             if a.IsDynamic then () 
@@ -152,20 +147,22 @@
         /// Returns the pickler used by the slice compiler
         member __.Pickler = pickler
 
+        member __.Client = loader
+
         /// <summary>
         ///     Compiles slices for given dynamic assembly, if required.
         /// </summary>
         /// <param name="assembly">a dynamic assembly</param>
         member __.CompileDynamicAssemblySlice (assembly : Assembly) =
             do checkIsDynamic assembly
-            compile [assembly]
+            compile [assembly] |> List.map (fun a -> a.Assembly)
 
-        /// <summary>
-        ///     Compiles slices for given dynamic assembly, if required.
-        /// </summary>
-        /// <param name="assembly">a dynamic assembly</param>
-        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>) =
-            compile (Seq.toList assemblies)
+//        /// <summary>
+//        ///     Compiles slices for given dynamic assembly, if required.
+//        /// </summary>
+//        /// <param name="assembly">a dynamic assembly</param>
+//        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>) =
+//            compile (Seq.toList assemblies)
 
         /// <summary>
         ///     Returns a list of dynamic assemblies that require slice compilation
@@ -185,17 +182,17 @@
             match compiler.CurrentState.DynamicAssemblies.TryFind assembly.FullName with
             | None -> []
             | Some info ->
-                info.GeneratedSlices |> Map.toList |> List.map snd
+                info.GeneratedSlices |> Seq.map (function KeyValue(_,s) -> s.Assembly) |> Seq.toList
 
-        /// <summary>
-        ///     Creates an exportable DependencyInfo bundle for given assembly.
-        ///     This includes potential type initialization data for dynamic assembly slices.
-        /// </summary>
-        /// <param name="assembly">a dunamic assembly slice</param>
-        member __.GetSliceInfo(assembly : Assembly) =
-            match compiler.CurrentState.TryFindSliceInfo assembly.FullName with
-            | None -> invalidArg assembly.FullName "not a dynamic assembly slice"
-            | Some slice -> slice
+//        /// <summary>
+//        ///     Creates an exportable DependencyInfo bundle for given assembly.
+//        ///     This includes potential type initialization data for dynamic assembly slices.
+//        /// </summary>
+//        /// <param name="assembly">a dunamic assembly slice</param>
+//        member __.TryGetSliceInfo(assembly : Assembly) =
+//            match compiler.CurrentState.TryFindSliceInfo assembly.FullName with
+//            | None -> None
+//            | Some (_,slice) -> Some slice
 
 
         /// <summary>
@@ -209,16 +206,11 @@
 
             let dependencies = computeDependencies obj
 
-            let newSlices =
-                if allowCompilation then
-                    let assemblies = getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
-                    compile assemblies
-                else
-                    []
+            if allowCompilation then
+                let assemblies = getDynamicDependenciesRequiringCompilation compiler.CurrentState dependencies
+                let _ = compile assemblies in ()
 
-            let dependencies = remapDependencies compiler.CurrentState dependencies
-
-            newSlices, dependencies
+            remapDependencies compiler.CurrentState dependencies
 
         /// <summary>
         ///     Returns the dynamic assembly slice corresponding to the given type, if exists.
@@ -228,4 +220,15 @@
             let t = if t.IsGenericType && not t.IsGenericTypeDefinition then t.GetGenericTypeDefinition() else t
             match compiler.CurrentState.DynamicAssemblies.TryFind t.Assembly.FullName with
             | None -> None
-            | Some dyn -> dyn.TypeIndex.TryFind t.FullName
+            | Some dyn -> dyn.TypeIndex.TryFind t.FullName |> Option.map (fun s -> s.Assembly)
+
+        member __.MakePortableAssembly(assembly : Assembly, includeAssemblyImage:bool, includeStaticInitializers:bool) =
+            exporter.PostAndReply(assembly, includeAssemblyImage, includeStaticInitializers)
+
+        member __.SubmitAssemblies(submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>, assemblies : Assembly list) =
+            assemblySubmitProtocol exporter submitF assemblies
+
+        member __.SubmitObjectDependencies(submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>, obj:obj, ?permitCompilation) =
+            let assemblies = __.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
+            __.SubmitAssemblies(submitF, assemblies)
+            

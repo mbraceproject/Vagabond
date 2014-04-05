@@ -11,8 +11,6 @@
 
     open Nessos.Vagrant
 
-    type Data = DynamicAssemblySlice list * Type * (unit -> obj)
-
     type ThunkServer private () =
         inherit System.MarshalByRefObject()
 
@@ -20,19 +18,21 @@
 
         let client = new VagrantClient()
 
-        member __.EvaluateThunk(assemblyLocations : string list, bytes : byte []) =
+        member __.LoadAssemblies(data : byte []) =
+            // BinaryFormatter - the default .NET remoting serializer will not work correctly in some cases
+            // explicitly pickle the data instead
+            let assemblies = client.Pickler.UnPickle<PortableAssembly list>(data)
+            let response = client.LoadPortableAssemblies(assemblies)
+            client.Pickler.Pickle response
+
+        member __.EvaluateThunk(bytes : byte []) =
+            // BinaryFormatter - the default .NET remoting serializer will not work correctly in some cases
+            // explicitly pickle the data instead
             lock lockObj (fun () ->
-                // 1. load dependencies to AppDomain
-                for location in assemblyLocations do
-                    Assembly.LoadFrom(location) |> ignore
+                
+                // unpickle payload
+                let ty, thunk = client.Pickler.UnPickle<Type * (unit -> obj)>(bytes)
 
-                // 2. unpickle payload
-                let slices, ty, thunk = client.Pickler.UnPickle<Data>(bytes)
-
-                // 3. load assembly dependency info
-                let errors = client.LoadTypeInitializers slices
-
-                // 4. evaluate
                 printfn "Evaluating thunk of type '%O'" ty
                 let result = 
                     try 
@@ -67,47 +67,23 @@
 
         static let vagrant = new VagrantServer()
 
-        static let lastFsiSlice : DynamicAssemblySlice option ref = ref None
-
-        static let tryFindLatestFsiSlice(slices : DynamicAssemblySlice list) =
-            match Utilities.TryGetFsiDynamicAssembly() with
-            | None -> None
-            | Some a ->
-                slices |> List.tryFind(fun s -> s.DynamicAssemblyQualifiedName = a.FullName)
-
-        static let getLatestSliceUpdate () =
-            match !lastFsiSlice with
-            | None -> None
-            | Some slice ->
-                // TODO : check scripts!
-                let currentInteraction = Utilities.TryGetLatestFsiInteraction().Value
-                match vagrant.TryGetSliceOfType currentInteraction with
-                | Some sl when sl.SliceId = slice.SliceId ->
-                    // slice pending execution, do not erase yet
-                    ()
-                | _ ->
-                    // slice has completed execution, remove from temporary state
-                    lastFsiSlice := None
-
-                // regenerate type initializers for the asssembly
-                Some <| vagrant.GetSliceInfo(slice.Assembly, generateTypeInitializers = true)
-
-
         member __.EvaluateThunk(f : unit -> 'T) =
-            // get values from previous slice if necessary
-            let previous = getLatestSliceUpdate ()
-            // traverse dependencies & compile if necessary
-            let newSlices, dependencies = vagrant.ComputeObjectDependencies(f, permitCompilation = true, generateTypeInitializers = true)
-            // record latest fsi slice, if such a slice exists
-            do tryFindLatestFsiSlice newSlices |> Option.iter (fun sl -> lastFsiSlice := Some sl)
+            let submitAssemblies (pas : PortableAssembly list) = async {
+                let pickle = vagrant.Pickler.Pickle(pas)
+                let response = server.LoadAssemblies(pickle)
+                return vagrant.Pickler.UnPickle<AssemblyLoadResponse list>(response)
+            }
 
-            let data = vagrant.Pickler.Pickle<Data>((Option.toList previous @ newSlices, typeof<'T>, fun () -> f () :> obj))
-            let assemblyPaths = 
-                dependencies 
-                |> List.choose (fun a -> if a.GlobalAssemblyCache then None else Some a.Location)
+            // submit dependencies to thunkServer
+            let errors = vagrant.SubmitObjectDependencies(submitAssemblies, f, permitCompilation = true) |> Async.RunSynchronously
 
-            let resultData = server.EvaluateThunk(assemblyPaths, data)
-            let result = vagrant.Pickler.UnPickle<Choice<obj,exn>> resultData
+            // evaluate thunk
+            let payload = typeof<'T>, fun () -> f () :> obj
+            let data = vagrant.Pickler.Pickle<Type * (unit -> obj)> payload
+
+            let reply = server.EvaluateThunk data
+
+            let result = vagrant.Pickler.UnPickle<Choice<obj,exn>> reply
             match result with
             | Choice1Of2 o -> o :?> 'T
             | Choice2Of2 e -> raise e

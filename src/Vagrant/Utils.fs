@@ -153,7 +153,7 @@
             | :? AssemblyNameReference as a -> Some a.FullName
             | _ -> None
 
-    /// A stateful agent implementation with published state support
+    /// A stateful agent implementation with readable inner state
 
     type StatefulAgent<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
         
@@ -182,7 +182,7 @@
         let agent = MailboxProcessor.Start (behaviour init, cts.Token)
 
         member __.CurrentState = !stateRef
-        member __.Invoke input = agent.PostAndReply(fun ch -> input,ch).Value
+        member __.PostAndReply input = agent.PostAndReply(fun ch -> input,ch).Value
 
         member __.Dispose () = cts.Cancel()
 

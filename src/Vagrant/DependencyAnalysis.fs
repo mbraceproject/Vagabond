@@ -86,7 +86,7 @@
             | Some a, _ when isSystemAssembly a -> None
             | Some _ as s, _ -> s
             // query the slice compiler when present: this is needed since slices are not loaded in the appdomain
-            | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun s -> s.Assembly)
+            | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun (_,s) -> s.Assembly)
             | None, None -> None
 
         let rec traverseDependencyGraph (graph : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
@@ -155,14 +155,14 @@
         |> Seq.groupBy (fun t -> t.Assembly)
         |> Seq.toList
 
-    /// determines the assemblies that require slice compilation based on the given dependency input
+    /// determines the assemblies that require slice compilation based on given dependency input
 
     let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
         dependencies
         |> List.filter(fun (a,types) ->
             if a.IsDynamic then
                 match state.DynamicAssemblies.TryFind a.FullName with
-                | Some info -> types |> Seq.forall(fun t -> info.TypeIndex.ContainsKey t.FullName) |> not
+                | Some info -> types |> Seq.exists(fun t -> not <| info.TypeIndex.ContainsKey t.FullName)
                 | None -> true
             else
                 false)

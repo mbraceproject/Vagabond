@@ -5,19 +5,38 @@
 
     open Nessos.FsPickler
 
-    type DynamicAssemblySlice =
+
+    type PortableAssembly =
         {
-            SourceId : Guid
-            DynamicAssemblyQualifiedName : string
-
-            SliceId : int
-            Assembly : Assembly
-
-            StaticFields : FieldInfo []
+            FullName : string
+            Image : byte [] option
+            DynamicAssemblyInfo : DynamicAssemblyInfo option
         }
 
+    and DynamicAssemblyInfo =
+        {
+            SourceId : Guid
+            DynamicAssemblyName : string
+            SliceId : int
+
+            RequiresStaticInitializaters : bool
+            IsPartiallyEvaluated : bool
+            StaticInitializerGeneration : int option
+            StaticInitializerData : byte [] option
+        }
+
+    and AssemblyLoadResponse =
+        | Loaded of string * (FieldInfo * exn) []
+        | MissingAssemblyImage of string
+        | MissingStaticInitializer of string * int option
+    with
+        member r.FullName = match r with | Loaded(name,_) | MissingAssemblyImage(name) | MissingStaticInitializer(name,_) -> name
+        member r.Errors = match r with | Loaded(_,errors) -> errors | _ -> [||]
+
+
+
     /// customizes slicing behaviour on given dynamic assembly
-    and IDynamicAssemblyProfile =
+    type IDynamicAssemblyProfile =
 
         /// identifies dynamic assemblies that match this profile
         abstract IsMatch : Assembly -> bool
@@ -38,40 +57,25 @@
         abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
 
         /// Decides if given slices requires fresh evaluation of assemblies
-        abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> DynamicAssemblySlice option) -> DynamicAssemblySlice -> bool
+        abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
 
-    and PortableAssembly =
-        {
-            FullName : string
-            Image : byte [] option
-            DynamicAssemblyInfo : DynamicAssemblyInfo option
-        }
 
-    and DynamicAssemblyInfo =
+    
+//    and IServerTransportImplementation =
+//        abstract Submit : assemblies:seq<PortableAssembly> -> Async<AssemblyLoadResponse list>
+
+    // internal compiler data structures
+
+    type internal DynamicAssemblySlice =
         {
             SourceId : Guid
-            DynamicAssemblyName : string
+            DynamicAssemblyQualifiedName : string
+
             SliceId : int
+            Assembly : Assembly
 
-            // static initialization data
-            IsPartiallyEvaluated : bool
-            Generation : int
-            StaticInitializationData : StaticInitializationData option
+            StaticFields : FieldInfo []
         }
-
-    and StaticInitializationData =
-        {
-            Pickles : (FieldInfo * byte []) []
-            Errors : (FieldInfo * exn) []
-        }
-
-    and AssemblyResponse =
-        | Loaded
-        | MissingImage
-        | MissingStaticInitializer
-//        | MissingImage of assemblyName:string
-//        | MissingStaticInitializer of assemblyName:string
-
 
     and internal DynamicAssemblyState =
         {

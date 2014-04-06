@@ -26,8 +26,6 @@
             client.Pickler.Pickle response
 
         member __.EvaluateThunk(bytes : byte []) =
-            // BinaryFormatter - the default .NET remoting serializer will not work correctly in some cases
-            // explicitly pickle the data instead
             lock lockObj (fun () ->
                 
                 // unpickle payload

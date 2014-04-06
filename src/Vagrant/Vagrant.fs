@@ -9,8 +9,8 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.DependencyAnalysis
+    open Nessos.Vagrant.SliceCompiler
     open Nessos.Vagrant.AssemblyExporter
-    open Nessos.Vagrant.SliceCompilerImpls
 
     /// <summary>
     ///     A collection of general purpose utilities used by Vagrant
@@ -47,25 +47,6 @@
             traverseDependencies None assemblies
 
 
-        static member TryGetFsiDynamicAssembly() =
-            System.AppDomain.CurrentDomain.GetAssemblies() 
-            |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = "FSI-ASSEMBLY")
-
-
-        static member TryGetFsiInteractionTypes () =
-            match Utilities.TryGetFsiDynamicAssembly() with
-            | None -> None
-            | Some a ->
-                let fsiRegex = new System.Text.RegularExpressions.Regex("^FSI_[0-9]{4}$")
-                a.GetTypes() |> Array.filter (fun t -> fsiRegex.IsMatch t.Name) |> Some
-
-        static member TryGetLatestFsiInteraction () =
-            Utilities.TryGetFsiInteractionTypes() 
-            |> Option.map (fun ts -> ts |> Seq.sortBy (fun t -> t.Name) |> Seq.last)
-
-
-
-
     module private Singleton =
         let singleton = new Singleton<string>()
 
@@ -98,13 +79,13 @@
         /// <summary>
         ///     Loads the type initializers from given dependency package.
         /// </summary>
-        /// <param name="info">Dependency info package to be loaded.</param>
+        /// <param name="assembly">Portable assembly package to be loaded.</param>
         member __.LoadPortableAssembly(assembly : PortableAssembly) = loader.PostAndReply assembly
 
         /// <summary>
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
-        /// <param name="info">Dependency info packages to be loaded.</param>
+        /// <param name="assemblies">Portable assembly packages to be loaded.</param>
         member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>) =
             assemblies |> Seq.map loader.PostAndReply |> Seq.toList
             
@@ -129,6 +110,8 @@
             match dynamicAssemblyProfiles with
             | Some ps -> ps
             | None -> [ new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile ]
+
+        do Singleton.acquire "VagrantServer"
 
         // initialize agents
 
@@ -157,13 +140,6 @@
             do checkIsDynamic assembly
             compile [assembly] |> List.map (fun a -> a.Assembly)
 
-//        /// <summary>
-//        ///     Compiles slices for given dynamic assembly, if required.
-//        /// </summary>
-//        /// <param name="assembly">a dynamic assembly</param>
-//        member __.CompileDynamicAssemblySlices (assemblies : seq<Assembly>) =
-//            compile (Seq.toList assemblies)
-
         /// <summary>
         ///     Returns a list of dynamic assemblies that require slice compilation
         ///     for the given object graph to be exportable.
@@ -183,17 +159,6 @@
             | None -> []
             | Some info ->
                 info.GeneratedSlices |> Seq.map (function KeyValue(_,s) -> s.Assembly) |> Seq.toList
-
-//        /// <summary>
-//        ///     Creates an exportable DependencyInfo bundle for given assembly.
-//        ///     This includes potential type initialization data for dynamic assembly slices.
-//        /// </summary>
-//        /// <param name="assembly">a dunamic assembly slice</param>
-//        member __.TryGetSliceInfo(assembly : Assembly) =
-//            match compiler.CurrentState.TryFindSliceInfo assembly.FullName with
-//            | None -> None
-//            | Some (_,slice) -> Some slice
-
 
         /// <summary>
         ///     Returns a collection of all assemblies that the given object depends on.
@@ -222,12 +187,33 @@
             | None -> None
             | Some dyn -> dyn.TypeIndex.TryFind t.FullName |> Option.map (fun s -> s.Assembly)
 
+        /// <summary>
+        ///     Builds a portable assembly bundle for given input.
+        /// </summary>
+        /// <param name="assembly">Given assembly.</param>
+        /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
+        /// <param name="includeStaticInitializers">Include static initialization data in the bundle, if required.</param>
         member __.MakePortableAssembly(assembly : Assembly, includeAssemblyImage:bool, includeStaticInitializers:bool) =
             exporter.PostAndReply(assembly, includeAssemblyImage, includeStaticInitializers)
 
-        member __.SubmitAssemblies(submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>, assemblies : Assembly list) =
-            assemblySubmitProtocol exporter submitF assemblies
+        /// <summary>
+        ///     Apply the built-in assembly distribution protocol using user-defined submit function.
+        /// </summary>
+        /// <param name="postAndReplyF">User provided assembly submit operation.</param>
+        /// <param name="assemblies">Assemblies to be exported.</param>
+        member __.SubmitAssemblies(postAndReplyF : PortableAssembly list -> Async<AssemblyLoadResponse list>, assemblies : Assembly list) =
+            for a in assemblies do
+                if a.IsDynamic then
+                    invalidArg a.FullName "cannot submit dynamic assemblies."
 
+            assemblySubmitProtocol exporter postAndReplyF assemblies
+
+        /// <summary>
+        ///     Apply the built-in assembly distribution protocol using user-defined function.
+        /// </summary>
+        /// <param name="submitF">User provided assembly submit operation.</param>
+        /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
+        /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
         member __.SubmitObjectDependencies(submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>, obj:obj, ?permitCompilation) =
             let assemblies = __.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
             __.SubmitAssemblies(submitF, assemblies)

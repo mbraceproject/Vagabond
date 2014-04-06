@@ -5,33 +5,53 @@
 
     open Nessos.FsPickler
 
-
+    /// Contains information necessary for the exportation of an assembly
     type PortableAssembly =
         {
+            /// The Qualified name of the assembly
             FullName : string
+
+            /// Raw image of the assembly
             Image : byte [] option
+
+            /// Information on originating dynamic assembly
             DynamicAssemblyInfo : DynamicAssemblyInfo option
         }
 
     and DynamicAssemblyInfo =
         {
+            /// Unique identifier of dynamic assembly source
             SourceId : Guid
+
+            /// Original dynamic assembly qualified name
             DynamicAssemblyName : string
+
+            /// Identifier of current slice
             SliceId : int
 
-            RequiresStaticInitializaters : bool
+            /// Slice contains static fields that require initialization
+            RequiresStaticInitialization : bool
+
+            /// Dynamic assembly requires further evaluation ; 
+            /// will require static initialization revision in the future.
             IsPartiallyEvaluated : bool
+
+            /// Generation of latest static initialization data
             StaticInitializerGeneration : int option
+
+            /// Static initialization data
             StaticInitializerData : byte [] option
         }
 
+
     and AssemblyLoadResponse =
         | Loaded of string * (FieldInfo * exn) []
+        | LoadFault of string * exn
         | MissingAssemblyImage of string
         | MissingStaticInitializer of string * int option
     with
-        member r.FullName = match r with | Loaded(name,_) | MissingAssemblyImage(name) | MissingStaticInitializer(name,_) -> name
-        member r.Errors = match r with | Loaded(_,errors) -> errors | _ -> [||]
+        member r.FullName = match r with | Loaded(name,_) | LoadFault(name,_) | MissingAssemblyImage(name) | MissingStaticInitializer(name,_) -> name
+        member r.StaticInitializationErrors = match r with | Loaded(_,errors) -> errors | _ -> [||]
 
 
 
@@ -59,10 +79,6 @@
         /// Decides if given slices requires fresh evaluation of assemblies
         abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
 
-
-    
-//    and IServerTransportImplementation =
-//        abstract Submit : assemblies:seq<PortableAssembly> -> Async<AssemblyLoadResponse list>
 
     // internal compiler data structures
 

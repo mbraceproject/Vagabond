@@ -58,7 +58,7 @@
     <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="AssemblyDefinitionVisitors.fs" />
-    <Compile Include="SliceCompilerImpl.fs" />
+    <Compile Include="SliceCompiler.fs" />
     <Compile Include="AssemblyExporter.fs" />
     <Compile Include="Vagrant.fs" />
     <None Include="Script.fsx" />

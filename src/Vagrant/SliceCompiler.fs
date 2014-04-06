@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.SliceCompilerImpls
+﻿module internal Nessos.Vagrant.SliceCompiler
 
     open System
     open System.IO
@@ -205,7 +205,7 @@
         // resolve dynamic assembly dependency graph
         let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
-        // exceptions are handled locally so that returned state reflects the last successful compilation
+        // exceptions are handled explicitly so that returned state reflects the last successful compilation
         let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>) 
                             (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
 

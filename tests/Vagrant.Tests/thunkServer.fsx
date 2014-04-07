@@ -1,10 +1,10 @@
-﻿#r "bin/Debug/ThunkServer.exe"
+﻿#r "bin/Debug/Vagrant.Tests.exe"
 
-open Nessos.Vagrant.Sample
+open Nessos.Vagrant.Tests.ThunkServer
 
-let client = ThunkClient.Init()
+let client = ThunkClient.InitLocal()
 
-// Example : incremental custom types
+// Example 1 : incremental custom types
 
 type Foo<'T> = Bar of 'T
 
@@ -20,7 +20,7 @@ let w = 1
 let w1 = client.EvaluateThunk <| fun () -> Bar(w)
 let w2 = client.EvaluateThunk <| fun () -> Bar(w1)
 
-// Example : Async
+// Example 2 : Async
 
 let runAsync (wf : Async<'T>) =
     client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
@@ -51,10 +51,10 @@ client.EvaluateThunk <| fun () -> result.Length
 #r "bin/Debug/LinqOptimizer.Core.dll"
 #r "bin/Debug/LinqOptimizer.FSharp.dll"
 
-open LinqOptimizer.FSharp
+open Nessos.LinqOptimizer.FSharp
 
 
-let nums = [|1..10000000|]
+let nums = [|1..100000|]
 
 let query = 
     nums

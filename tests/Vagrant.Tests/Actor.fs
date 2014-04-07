@@ -84,20 +84,22 @@
 
                 let! (bytes : byte []) = stream.AsyncReadBytes()
 
-                let respond (r : ServerResponse) = 
-                    async { let bytes = pickler.Pickle r in do! stream.AsyncWriteBytes bytes }
+                let! response = async {
+                    try
+                        let request = pickler.UnPickle<ServerRequest<'T>> bytes
 
-                try
-                    let request = pickler.UnPickle<ServerRequest<'T>> bytes
+                        match request with
+                        | Post msg -> 
+                            do mailbox.Post msg
+                            return Acknowledge
+                        | PostWithReply rcc ->
+                            let! reply = rcc.PostWithReply mailbox
+                            return Reply reply
+                    with e -> return Fault e
+                }
 
-                    match request with
-                    | Post msg -> 
-                        do mailbox.Post msg
-                        do! respond Acknowledge
-                    | PostWithReply rcc ->
-                        let! reply = rcc.PostWithReply mailbox
-                        do! respond <| Reply reply
-                with e -> do! respond <| Fault e
+                let bytes = pickler.Pickle response
+                do! stream.AsyncWriteBytes bytes
 
             with e -> printfn "Server error: %A" e
 

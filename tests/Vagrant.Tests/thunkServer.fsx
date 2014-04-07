@@ -1,4 +1,4 @@
-﻿#r "bin/Debug/Vagrant.Tests.exe"
+﻿#r "bin/Release/Vagrant.Tests.exe"
 
 open Nessos.Vagrant.Tests.ThunkServer
 

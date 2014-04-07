@@ -15,7 +15,7 @@
 
     type AsyncBuilder with
         member __.Bind(f : Task<'T>, g : 'T -> Async<'S>) = __.Bind(Async.AwaitTask f, g)
-        member __.Bind(f : Task, g : unit -> Async<'S>) = __.Bind(f.ContinueWith ignore |> Async.AwaitTask, g)
+        member __.Bind(f : Task, g : unit -> Async<'S>) = __.Bind(f.ContinueWith ignore, g)
 
     type Stream with
         member s.AsyncWriteBytes (bytes : byte []) =
@@ -51,12 +51,14 @@
     // existentially pack reply channels
 
     type private IReplyChannelContainer<'T> =
-        abstract PostWithReply : MailboxProcessor<'T> -> obj
+        abstract PostWithReply : MailboxProcessor<'T> -> Async<obj>
 
     and private ReplyChannelContainer<'T, 'R>(msgB : AsyncReplyChannel<'R> -> 'T) =
         interface IReplyChannelContainer<'T> with
-            member __.PostWithReply (mb : MailboxProcessor<'T>) =
-                mb.PostAndReply msgB :> obj
+            member __.PostWithReply (mb : MailboxProcessor<'T>) = async {
+                let! r = mb.PostAndAsyncReply msgB
+                return r :> obj
+            }
 
     type private ServerRequest<'T> =
         | Post of 'T
@@ -82,22 +84,20 @@
 
                 let! (bytes : byte []) = stream.AsyncReadBytes()
 
-                let response =
-                    try
-                        let request = pickler.UnPickle<ServerRequest<'T>> bytes
+                let respond (r : ServerResponse) = 
+                    async { let bytes = pickler.Pickle r in do! stream.AsyncWriteBytes bytes }
 
-                        match request with
-                        | Post msg -> 
-                            do mailbox.Post msg
-                            Acknowledge
-                        | PostWithReply rcc ->
-                            let reply = rcc.PostWithReply mailbox
-                            Reply reply
+                try
+                    let request = pickler.UnPickle<ServerRequest<'T>> bytes
 
-                    with e -> Fault e
-
-                let bytes = pickler.Pickle response
-                do! stream.AsyncWriteBytes bytes
+                    match request with
+                    | Post msg -> 
+                        do mailbox.Post msg
+                        do! respond Acknowledge
+                    | PostWithReply rcc ->
+                        let! reply = rcc.PostWithReply mailbox
+                        do! respond <| Reply reply
+                with e -> do! respond <| Fault e
 
             with e -> printfn "Server error: %A" e
 
@@ -160,11 +160,6 @@
             let ipAddr = Dns.GetHostAddresses(tokens.[0]).[0]
             let port = int <| tokens.[1]
             new IPEndPoint(ipAddr, port)
-
-        static let getPickler (p : FsPickler option) =
-            match p with
-            | None -> new FsPickler ()
-            | Some p -> p
 
         static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : IPEndPoint, ?pickler : FsPickler) =
             let mailbox = MailboxProcessor.Start behaviour

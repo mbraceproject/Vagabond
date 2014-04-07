@@ -15,9 +15,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60BC93-E09B-4E5F-9D85-95A519479D54}"
 	ProjectSection(SolutionItems) = preProject
 		build.fsx = build.fsx
-		nuget\Vagrant.nuspec = nuget\Vagrant.nuspec
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
+		nuget\Vagrant.nuspec = nuget\Vagrant.nuspec
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{83F16175-43B1-4C90-A1EE-8E351C33435D}"
@@ -46,6 +46,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ThunkServer", "samples\Thun
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant", "src\Vagrant\Vagrant.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant.Tests", "Vagrant.Tests\Vagrant.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -60,6 +62,10 @@ Global
 		{2E62B639-1560-46EB-8528-A604B5D194FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E62B639-1560-46EB-8528-A604B5D194FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E62B639-1560-46EB-8528-A604B5D194FB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

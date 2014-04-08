@@ -64,7 +64,7 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Actor.fs" />
+    <Compile Include="TcpActor.fs" />
     <Compile Include="ThunkServer.fs" />
     <Compile Include="FsiTests.fs" />
     <Compile Include="main.fs" />

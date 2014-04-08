@@ -54,16 +54,24 @@
 
     type ThunkClient internal (?serverEndPoint : string, ?proc : Process) =
 
-        static let vagrant = new VagrantServer()
+        let vagrant = new VagrantServer()
+        do TcpActor.SetDefaultPickler(vagrant.Pickler)
 
         let serverEndPoint = defaultArg serverEndPoint defaultConnectionString
-        let client = TcpActor.Connect<ServerMsg>(serverEndPoint, vagrant.Pickler)
+        let client = TcpActor.Connect<ServerMsg>(serverEndPoint)
+
+        member __.UploadDependenciesAsync (obj : obj) = async {
+            let postDependencies pas = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas, ch))
+            let! errors = vagrant.SubmitObjectDependencies(postDependencies, obj, permitCompilation = true)
+            return ()
+        }
+
+        member __.UploadDependencies (obj:obj) = __.UploadDependenciesAsync obj |> Async.RunSynchronously
 
         member __.EvaluateThunkAsync (f : unit -> 'T) = async {
 
             // load dependencies to server
-            let postDependencies pas = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas, ch))
-            let! errors = vagrant.SubmitObjectDependencies(postDependencies, f, permitCompilation = true)
+            do! __.UploadDependenciesAsync f
 
             // evaluate thunk
             let! result = client.PostAndReplyAsync(fun ch -> EvaluteThunk(typeof<'T>, (fun () -> f () :> obj), ch))

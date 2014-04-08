@@ -14,6 +14,7 @@
     [<TestFixture>]
     module FsiTests =
 
+        // leave this to force static dependency on LinqOptimizer
         let private linqOptBinder () = Nessos.LinqOptimizer.FSharp.Query.ofSeq [] |> ignore
 
         // by default, NUnit copies test assemblies to a temp directory
@@ -28,9 +29,13 @@
 
         type FsiEvaluationSession with
         
-            member fsi.AddReference (path : string) =
-                let directive = sprintf "#r %s" <| getPathLiteral path
-                fsi.EvalInteraction directive
+            member fsi.AddReferences (paths : string list) =
+                let directives = 
+                    paths 
+                    |> Seq.map (fun p -> sprintf "#r %s" <| getPathLiteral p)
+                    |> String.concat "\n"
+
+                fsi.EvalInteraction directives
 
             member fsi.LoadScript (path : string) =
                 let directive = sprintf "#load %s" <| getPathLiteral path
@@ -64,6 +69,15 @@
                         let fsi = new FsiEvaluationSession(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, Console.Out, Console.Error)
                         container := Some fsi; fsi)
 
+            static member Stop () =
+                lock container (fun () ->
+                    match !container with
+                    | None -> invalidOp "No fsi sessions are running"
+                    | Some fsi ->
+                        // need a 'stop' operation here
+                        container := None)
+
+
             static member Value =
                 match !container with
                 | None -> invalidOp "No fsi session is running."
@@ -78,21 +92,28 @@
             let fsi = FsiSession.Start()
             let thisExe = getPathLiteral <| Assembly.GetExecutingAssembly().GetName().Name + ".exe"
 
-            // need access
-
             // add dependencies
 
-            fsi.AddReference "FsPickler.dll"
-            fsi.AddReference "Mono.Cecil.dll"
-            fsi.AddReference "Mono.Reflection.dll"
-            fsi.AddReference "Vagrant.dll"
-            fsi.AddReference "Vagrant.Tests.exe"
+            fsi.AddReferences 
+                [
+                    "FsPickler.dll"
+                    "Mono.Cecil.dll"
+                    "Mono.Reflection.dll"
+                    "Vagrant.dll"
+                    "LinqOptimizer.Base.dll"
+                    "LinqOptimizer.Core.dll"
+                    "LinqOptimizer.FSharp.dll"
+                    "Vagrant.Tests.exe"
+                ]
 
             fsi.EvalInteraction "open Nessos.Vagrant.Tests.ThunkServer"
             fsi.EvalInteraction <| "let client = ThunkClient.InitLocal(serverExecutable = " + thisExe + ")"
 
         [<TestFixtureTearDown>]
-        let stopFsiSession () = ()
+        let stopFsiSession () =
+            FsiSession.Value.Interrupt()
+            FsiSession.Value.EvalInteraction "client.Kill()"
+            FsiSession.Stop()
 
         [<Test>]
         let ``1. Simple thunk execution`` () =
@@ -111,3 +132,141 @@
             fsi.EvalInteraction "let randomFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName())"
             fsi.EvalExpression """client.EvaluateThunk <| fun () -> File.WriteAllText(randomFile, "foo") """ |> shouldEqual ()
             fsi.EvalExpression "File.ReadAllText randomFile" |> shouldEqual "foo"
+
+
+        [<Test>]
+        let ``3. Fsi top-level bindings`` () =
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction("let x = client.EvaluateThunk <| fun () -> [| 1 .. 100 |]")
+            fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.sum x") |> shouldEqual 5050
+
+
+        [<Test>]
+        let ``4. Custom type execution`` () =
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction "type Foo<'T> = { Value : 'T }"
+            fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> { Value = 41 + 1 }"
+            fsi.EvalExpression "x.Value" |> shouldEqual 42
+
+
+        [<Test>]
+        let ``5. Custom functions on custom types`` () =
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
+            fsi.EvalInteraction "module Bar = let map f (Bar x) = Bar (f x)"
+            fsi.EvalInteraction "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)"
+            fsi.EvalInteraction "let x = Bar 10"
+            fsi.EvalInteraction "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x"
+            fsi.EvalExpression "y = factorial 10" |> shouldEqual true
+
+        [<Test>]
+        let ``6. Custom generic type execution`` () =
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
+            fsi.EvalInteraction "let x = 1"
+            fsi.EvalInteraction "let y = 1"
+            for i in 1 .. 10 do
+                fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> Bar x"
+                fsi.EvalInteraction "let y = Bar y"
+
+            fsi.EvalExpression "x = y" |> shouldEqual true
+
+        [<Test>]
+        let ``7. Asynchronous workflows`` () =
+
+            let code = """
+
+            type Bar<'T> = Bar of 'T
+   
+            let runAsync (wf : Async<'T>) =
+                client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
+
+            let n = 100
+
+            let testWorkflow = async {
+
+                let worker i = async {
+                    do printfn "processing job #%d" i
+                    return Bar (i+1)
+                }
+
+                let! results = [|1..n|] |> Array.map worker |> Async.Parallel
+
+                return results
+}
+"""
+            let fsi = FsiSession.Value
+            fsi.EvalInteraction code
+            fsi.EvalInteraction "let results = runAsync testWorkflow"
+            fsi.EvalExpression "results.Length = n" |> shouldEqual true
+
+
+        [<Test>]
+        let ``8. Deploy LinqOptimizer dynamic assemblies`` () =
+        
+            let code = """
+
+            open Nessos.LinqOptimizer.FSharp
+        
+            let nums = [|1..100000|]
+
+            let query = 
+                nums
+                |> Query.ofSeq
+                |> Query.filter (fun num -> num % 2 = 0)
+                |> Query.map (fun num -> num * num)
+                |> Query.sum
+                |> Query.compile
+"""
+
+            let fsi = FsiSession.Value
+            fsi.EvalInteraction code
+            fsi.EvalInteraction "let result = client.EvaluateThunk query"
+            fsi.EvalExpression "result = query ()" |> shouldEqual true
+
+        
+        [<Test>]
+        let ``9. Remotely deploy an actor definition`` () =
+
+            let code = """
+            open Microsoft.FSharp.Control
+            open Nessos.Vagrant.Tests.TcpActor
+
+            // takes an input, replies with an aggregate sum
+            let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
+                async {
+                    let! msg, rc = inbox.Receive ()
+
+                    printfn "Received %d. Thanks!" msg
+
+                    rc.Reply state
+
+                    return! loop (state + msg) inbox
+                }
+
+            let deployActor () = 
+                printfn "deploying actor..."
+                let a = TcpActor.Create(loop 0, "localhost:18979")
+                printfn "done"
+                a.GetClient()
+"""
+
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction code
+            fsi.EvalInteraction "let actorRef = client.EvaluateThunk deployActor"
+            fsi.EvalInteraction "let postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch"
+            fsi.EvalInteraction "do client.UploadDependencies postAndReply"
+
+            for i in 1 .. 100 do
+                fsi.EvalInteraction "let _ = postAndReply 1"
+
+            fsi.EvalExpression "postAndReply 0" |> shouldEqual 100

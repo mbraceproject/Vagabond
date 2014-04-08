@@ -48,6 +48,18 @@
                 return! s.AsyncReadBytes length
             }
 
+    type private PicklerRegistry () =
+        static let container = ref None
+
+        static member SetDefaultPickler(p : FsPickler, ?overwrite) =
+            let overwrite = defaultArg overwrite false
+            lock container (fun () ->
+                match !container with
+                | Some _ when not overwrite -> invalidOp "A default pickler has already been registered."
+                | _ -> container := Some p)
+
+        static member DefaultPickler = match !container with None -> new FsPickler () | Some p -> p
+
     // existentially pack reply channels
 
     type private IReplyChannelContainer<'T> =
@@ -72,7 +84,7 @@
         
     type TcpActor<'T> (mailbox : MailboxProcessor<'T>, endpoint : IPEndPoint, ?pickler : FsPickler) =
 
-        let pickler = match pickler with None -> new FsPickler() | Some p -> p
+        let pickler = match pickler with None -> PicklerRegistry.DefaultPickler | Some p -> p
         let listener = new TcpListener(endpoint)
 
         let rec serverLoop () = async {
@@ -113,12 +125,15 @@
 
         member __.Stop () = cts.Cancel() ; listener.Stop()
         member __.MailboxProcessor = mailbox
-        member __.GetTcpClient () = new TcpActorClient<'T>(endpoint, pickler)
+        member __.EndPoint = endpoint
+        member __.GetClient () = new TcpActorClient<'T>(endpoint, pickler)
 
-
-    and TcpActorClient<'T>(serverEndpoint : IPEndPoint, ?pickler : FsPickler) =
+    
+    and 
+        [<CustomPickler>]
+        TcpActorClient<'T>(serverEndpoint : IPEndPoint, ?pickler : FsPickler) =
         
-        let pickler = match pickler with None -> new FsPickler() | Some p -> p
+        let pickler = match pickler with None -> PicklerRegistry.DefaultPickler | Some p -> p
 
         let sendRequest (request : ServerRequest<'T>) = async {
             use client = new TcpClient()
@@ -150,8 +165,13 @@
             | Fault e -> return raise e
         }
 
-        member __.Post (msg : 'T) = __.PostAsync msg |> Async.RunSynchronously
-        member __.PostAndReply (msgB) = __.PostAndReplyAsync msgB |> Async.RunSynchronously
+        member __.Post msg = __.PostAsync msg |> Async.RunSynchronously
+        member __.PostAndReply msgB = __.PostAndReplyAsync msgB |> Async.RunSynchronously
+        member __.ServerEndPoint = serverEndpoint
+
+        static member CreatePickler(r : IPicklerResolver) =
+            let epp = r.Resolve<IPEndPoint>()
+            Combinators.Pickler.wrap (fun ep -> new TcpActorClient<'T>(ep)) (fun c -> c.ServerEndPoint) epp
 
 
     type TcpActor private () =
@@ -159,9 +179,11 @@
         static let parseEndpoint (endpoint : string) =
             let tokens = endpoint.Split(':')
             if tokens.Length <> 2 then raise <| new FormatException("invalid endpoint")
-            let ipAddr = Dns.GetHostAddresses(tokens.[0]).[0]
+            let ipAddr = Dns.GetHostAddresses(tokens.[0]) |> Array.find (fun a -> a.AddressFamily = AddressFamily.InterNetwork)
             let port = int <| tokens.[1]
             new IPEndPoint(ipAddr, port)
+
+        static member SetDefaultPickler(p : FsPickler, ?overwrite) = PicklerRegistry.SetDefaultPickler(p, ?overwrite = overwrite)
 
         static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : IPEndPoint, ?pickler : FsPickler) =
             let mailbox = MailboxProcessor.Start behaviour

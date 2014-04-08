@@ -1,4 +1,5 @@
-﻿#r "bin/Release/Vagrant.Tests.exe"
+﻿#r "bin/Release/FsPickler.dll"
+#r "bin/Release/Vagrant.Tests.exe"
 
 open Nessos.Vagrant.Tests.ThunkServer
 
@@ -42,14 +43,52 @@ let result = runAsync test
 
 client.EvaluateThunk <| fun () -> result.Length
 
+// sample: deploy an actor
+
+
+open Microsoft.FSharp.Control
+open Nessos.Vagrant.Tests.TcpActor
+
+// takes an input, replies with an aggregate sum
+let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
+    async {
+        let! msg, rc = inbox.Receive ()
+
+        printfn "Received %d. Thanks!" msg
+
+        rc.Reply state
+
+        return! loop (state + msg) inbox
+    }
+
+let deployActor () = 
+    printfn "deploying actor..."
+    let a = TcpActor.Create(loop 0, "localhost:18979")
+    printfn "done"
+    a.GetClient()
+
+// deploy
+let actorRef = client.EvaluateThunk deployActor
+
+// define post function
+let postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch
+
+// upload dependencies for post function
+client.UploadDependencies postAndReply
+
+// send messages to actor
+postAndReply 1
+postAndReply 2
+postAndReply 3
+
 
 //
 //  LinqOptimizer tests
 //
 
-#r "bin/Debug/LinqOptimizer.Base.dll"
-#r "bin/Debug/LinqOptimizer.Core.dll"
-#r "bin/Debug/LinqOptimizer.FSharp.dll"
+#r "bin/Release/LinqOptimizer.Base.dll"
+#r "bin/Release/LinqOptimizer.Core.dll"
+#r "bin/Release/LinqOptimizer.FSharp.dll"
 
 open Nessos.LinqOptimizer.FSharp
 

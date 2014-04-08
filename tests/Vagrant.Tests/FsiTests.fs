@@ -7,7 +7,7 @@
     open NUnit.Framework
 
     open Microsoft.FSharp.Compiler.Interactive.Shell
-    open Microsoft.FSharp.Compiler.ErrorLogger
+    open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
     open Nessos.Vagrant
 
@@ -116,7 +116,7 @@
             FsiSession.Stop()
 
         [<Test>]
-        let ``1. Simple thunk execution`` () =
+        let ``01. Simple thunk execution`` () =
 
             let fsi = FsiSession.Value
 
@@ -124,7 +124,7 @@
 
 
         [<Test>]
-        let ``2. Side effect execution`` () =
+        let ``02. Side effect execution`` () =
             
             let fsi = FsiSession.Value
 
@@ -135,7 +135,7 @@
 
 
         [<Test>]
-        let ``3. Fsi top-level bindings`` () =
+        let ``03. Fsi top-level bindings`` () =
             
             let fsi = FsiSession.Value
 
@@ -144,7 +144,7 @@
 
 
         [<Test>]
-        let ``4. Custom type execution`` () =
+        let ``04. Custom type execution`` () =
             
             let fsi = FsiSession.Value
 
@@ -154,7 +154,7 @@
 
 
         [<Test>]
-        let ``5. Custom functions on custom types`` () =
+        let ``05. Custom functions on custom types`` () =
             
             let fsi = FsiSession.Value
 
@@ -166,7 +166,7 @@
             fsi.EvalExpression "y = factorial 10" |> shouldEqual true
 
         [<Test>]
-        let ``6. Custom generic type execution`` () =
+        let ``06. Custom generic type execution`` () =
             
             let fsi = FsiSession.Value
 
@@ -180,7 +180,7 @@
             fsi.EvalExpression "x = y" |> shouldEqual true
 
         [<Test>]
-        let ``7. Asynchronous workflows`` () =
+        let ``07. Asynchronous workflows`` () =
 
             let code = """
 
@@ -210,7 +210,7 @@
 
 
         [<Test>]
-        let ``8. Deploy LinqOptimizer dynamic assemblies`` () =
+        let ``08. Deploy LinqOptimizer dynamic assemblies`` () =
         
             let code = """
 
@@ -234,7 +234,7 @@
 
         
         [<Test>]
-        let ``9. Remotely deploy an actor definition`` () =
+        let ``09. Remotely deploy an actor definition`` () =
 
             let code = """
             open Microsoft.FSharp.Control
@@ -270,3 +270,62 @@
                 fsi.EvalInteraction "let _ = postAndReply 1"
 
             fsi.EvalExpression "postAndReply 0" |> shouldEqual 100
+
+        [<Test>]
+        let ``10. Add reference to external library`` () =
+            
+            let code = """
+            
+            module StaticAssemblyTest
+
+                type Test<'T> = TestCtor of 'T
+
+                let value = TestCtor (42, "42")
+            """
+
+            let scs = new SimpleSourceCodeServices()
+
+            let workDir = Path.GetTempPath()
+            let name = Path.GetRandomFileName()
+            let sourcePath = Path.Combine(workDir, Path.ChangeExtension(name, ".fs"))
+            let assemblyPath = Path.Combine(workDir, Path.ChangeExtension(name, ".dll"))
+            
+            do File.WriteAllText(sourcePath, code)
+            let errors,code = scs.Compile [| "" ; "--target:library" ; sourcePath ; "-o" ; assemblyPath |]
+            if code <> 0 then failwithf "Compiler error: %A" errors
+
+            let fsi = FsiSession.Value
+
+            fsi.AddReferences [assemblyPath]
+            fsi.EvalInteraction "open StaticAssemblyTest"
+            fsi.EvalExpression "client.EvaluateThunk <| fun () -> let (TestCtor (v,_)) = value in v" |> shouldEqual 42
+
+        [<Test>]
+        let ``11. Execute code from F# script file`` () =
+            
+            let code = """
+            module Script
+            
+                type ScriptType<'T> = ScriptCtor of 'T
+
+                let map f (ScriptCtor x) = ScriptCtor (f x)
+
+                let rec factorial n =
+                    if n <= 1 then 1
+                    else
+                        n * factorial (n-1)
+
+                let value = ScriptCtor 10
+            """
+
+            let workDir = Path.GetTempPath()
+            let name = Path.GetRandomFileName()
+            let scriptPath = Path.Combine(workDir, Path.ChangeExtension(name, ".fsx"))
+            do File.WriteAllText(scriptPath, code)
+
+            let fsi = FsiSession.Value
+
+            fsi.LoadScript scriptPath
+            fsi.EvalInteraction "open Script"
+            fsi.EvalInteraction "let r = client.EvaluateThunk <| fun () -> map factorial value"
+            fsi.EvalExpression "r = map factorial value" |> shouldEqual true

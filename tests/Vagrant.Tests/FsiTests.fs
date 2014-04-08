@@ -148,25 +148,12 @@
             
             let fsi = FsiSession.Value
 
-            fsi.EvalInteraction "type Foo<'T> = { Value : 'T }"
+            fsi.EvalInteraction "type Foo = { Value : int }"
             fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> { Value = 41 + 1 }"
             fsi.EvalExpression "x.Value" |> shouldEqual 42
 
-
         [<Test>]
-        let ``05. Custom functions on custom types`` () =
-            
-            let fsi = FsiSession.Value
-
-            fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
-            fsi.EvalInteraction "module Bar = let map f (Bar x) = Bar (f x)"
-            fsi.EvalInteraction "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)"
-            fsi.EvalInteraction "let x = Bar 10"
-            fsi.EvalInteraction "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x"
-            fsi.EvalExpression "y = factorial 10" |> shouldEqual true
-
-        [<Test>]
-        let ``06. Custom generic type execution`` () =
+        let ``05. Custom generic type execution`` () =
             
             let fsi = FsiSession.Value
 
@@ -180,7 +167,58 @@
             fsi.EvalExpression "x = y" |> shouldEqual true
 
         [<Test>]
-        let ``07. Asynchronous workflows`` () =
+        let ``06. Custom functions on custom types`` () =
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
+            fsi.EvalInteraction "module Bar = let map f (Bar x) = Bar (f x)"
+            fsi.EvalInteraction "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)"
+            fsi.EvalInteraction "let x = Bar 10"
+            fsi.EvalInteraction "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x"
+            fsi.EvalExpression "y = factorial 10" |> shouldEqual true
+
+        [<Test>]
+        let ``07. Nested module definitions`` () =
+
+            let code = """
+
+            module NestedModule =
+                
+                type NestedType = Value of int
+
+                let x = Value 41
+
+            """
+            
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction code
+            fsi.EvalInteraction "open NestedModule"
+            fsi.EvalInteraction "let (Value y) = client.EvaluateThunk <| fun () -> let (Value y) = x in Value (y+1)" 
+            fsi.EvalExpression "y" |> shouldEqual 42
+
+
+        [<Test>]
+        let ``09. Class Definitions`` () =
+            
+            let code = """
+            type Cell<'T> (x : 'T) =
+                let x = ref x
+                member __.Value
+                    with get () = !x
+                    and set y = x := y
+            """
+
+            let fsi = FsiSession.Value
+            fsi.EvalInteraction code
+            fsi.EvalInteraction "let c = Cell<int>(41)"
+            fsi.EvalInteraction "let c' = client.EvaluateThunk <| fun () -> c.Value <- c.Value + 1 ; c"
+            fsi.EvalExpression "c'.Value" |> shouldEqual 42
+
+
+        [<Test>]
+        let ``10. Asynchronous workflows`` () =
 
             let code = """
 
@@ -210,7 +248,7 @@
 
 
         [<Test>]
-        let ``08. Deploy LinqOptimizer dynamic assemblies`` () =
+        let ``11. Deploy LinqOptimizer dynamic assemblies`` () =
         
             let code = """
 
@@ -234,7 +272,7 @@
 
         
         [<Test>]
-        let ``09. Remotely deploy an actor definition`` () =
+        let ``12 Remotely deploy an actor definition`` () =
 
             let code = """
             open Microsoft.FSharp.Control
@@ -272,7 +310,7 @@
             fsi.EvalExpression "postAndReply 0" |> shouldEqual 100
 
         [<Test>]
-        let ``10. Add reference to external library`` () =
+        let ``13. Add reference to external library`` () =
             
             let code = """
             
@@ -301,7 +339,7 @@
             fsi.EvalExpression "client.EvaluateThunk <| fun () -> let (TestCtor (v,_)) = value in v" |> shouldEqual 42
 
         [<Test>]
-        let ``11. Execute code from F# script file`` () =
+        let ``14. Execute code from F# script file`` () =
             
             let code = """
             module Script

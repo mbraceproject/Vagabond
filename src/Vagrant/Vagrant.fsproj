@@ -57,6 +57,7 @@
     <Compile Include="AssemblyProfiles.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="DependencyAnalysis.fs" />
+    <Compile Include="DynamicAssemblyParser.fs" />
     <Compile Include="AssemblyDefinitionVisitors.fs" />
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="AssemblyExporter.fs" />
@@ -87,7 +88,8 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Reflection">
-      <HintPath>..\..\lib\Mono.Reflection.dll</HintPath>
+      <HintPath>..\..\packages\Mono.Reflection.1.0.0.0\lib\Mono.Reflection.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">

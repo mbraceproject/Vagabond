@@ -13,8 +13,9 @@
     open Nessos.FsPickler
 
     open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.Cecil
     open Nessos.Vagrant.Serialization
-    open Nessos.Vagrant.AssemblyDefinitionVisitors
+//    open Nessos.Vagrant.AssemblyDefinitionVisitors
     open Nessos.Vagrant.DependencyAnalysis
 
     /// create an initial, empty compiler state
@@ -57,55 +58,108 @@
     //      b) keep all others for scaffolding
     //
 
-    let mkAssemblyDefinitionSlice (state : DynamicAssemblyState) (assemblyDef : AssemblyDefinition) =
+    let parseAssemblyDefinitionSlice (state : DynamicAssemblyState) =
 
-        let gathered = HashSet<TypeDefinition * Type> ()
+        let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
+        
+        let currentTypes = ref []
+        let alwaysIncludedTypes = ref []
 
-        let eraseTypeContents(t : TypeDefinition) =
-            t.Methods.Clear() ; t.Fields.Clear()
-            t.Events.Clear() ; t.Properties.Clear()
-            t.CustomAttributes.Clear()
-            for gt in t.GenericParameters do
-                gt.CustomAttributes.Clear()
-                gt.Constraints.Clear()
+        let ignoreMemberDefinition (m : MemberInfo) =
+            match m with
+            | :? Type as t ->
+                if t.Namespace = null && t.DeclaringType = null && t.Name = "[<Module>]" then false
+                elif state.TypeIndex.ContainsKey t.FullName then true
+                elif state.Profile.EraseType t then true
+                else
+                    if state.Profile.AlwaysIncludeType t then 
+                        currentTypes := t :: !currentTypes
+                    else
+                        alwaysIncludedTypes := t :: !alwaysIncludedTypes
 
-        let rec traverseTypeDefinitions (types : Collection<TypeDefinition>) =
-            seq {
-                for t in Seq.toArray types do
-                    match t.CanonicalName with
-                    | "<Module>" -> ()
-                    | name ->
-                        // resolve reflected type from dynamic assembly
-                        let reflectedType = state.DynamicAssembly.GetType(name, true)
-                    
-                        if state.Profile.AlwaysIncludeType reflectedType then ()
-                        elif state.Profile.EraseType reflectedType then types.Remove(t) |> ignore
+                    false
 
-                        elif state.TypeIndex.ContainsKey name then
-                            // type has already been emitted, is to be kept only in event of new nested subtypes
-                            let freshNested = traverseTypeDefinitions t.NestedTypes |> Seq.toArray
+            | _ -> false
 
-                            if freshNested.Length = 0 then
-                                // no fresh nested subtypes, erase
-                                types.Remove(t) |> ignore
-                            else
-                                // has fresh nested subtypes, keep type for scaffolding but erase contents
-                                yield! freshNested
-                                do eraseTypeContents t
-                        else
-                            // new type, collect the entire nested hierarchy
-                            yield! gatherHierarchy reflectedType t
+        let rec tryRemapReference (m : MemberInfo) =
+            match m with
+            | :? Type as t ->
+                match state.TypeIndex.TryFind t.FullName with
+                | None -> None
+                | Some slice ->
+                    let t' = slice.Assembly.GetType(t.FullName, true)
+                    Some(t' :> MemberInfo)
+            | m ->
+                match tryRemapReference m.DeclaringType with
+                | None -> None
+                | Some dt ->
+                    (dt :?> Type).GetMembers(allBindings) 
+                    |> Array.find (fun m' -> m'.ToString() = m.ToString())
+                    |> Some
+
+        let remapReference = memoize (fun m -> defaultArg (tryRemapReference m) m)
+
+        let config =
+            {
+                new IAssemblyParserConfig with
+                    member __.MakePublicDefinition _ = true
+                    member __.IgnoreDefinition m = ignoreMemberDefinition m
+                    member __.RemapReference m = remapReference m
             }
 
-        and gatherHierarchy (rt : Type) (t : TypeDefinition) =
-            seq {
-                yield (rt, t)
-                for nt in t.NestedTypes do
-                    let rnt = rt.GetNestedType(nt.Name, BindingFlags.NonPublic ||| BindingFlags.Public)
-                    yield! gatherHierarchy rnt nt
-            }
+        let assemblyDefinition = AssemblyParser.Parse(state.DynamicAssembly, config)
 
-        traverseTypeDefinitions assemblyDef.MainModule.Types |> Seq.toArray
+        !currentTypes, !alwaysIncludedTypes, assemblyDefinition
+
+//    let mkAssemblyDefinitionSlice (state : DynamicAssemblyState) (assemblyDef : AssemblyDefinition) =
+//
+//        let gathered = HashSet<TypeDefinition * Type> ()
+//
+//        let eraseTypeContents(t : TypeDefinition) =
+//            t.Methods.Clear() ; t.Fields.Clear()
+//            t.Events.Clear() ; t.Properties.Clear()
+//            t.CustomAttributes.Clear()
+//            for gt in t.GenericParameters do
+//                gt.CustomAttributes.Clear()
+//                gt.Constraints.Clear()
+//
+//        let rec traverseTypeDefinitions (types : Collection<TypeDefinition>) =
+//            seq {
+//                for t in Seq.toArray types do
+//                    match t.CanonicalName with
+//                    | "<Module>" -> ()
+//                    | name ->
+//                        // resolve reflected type from dynamic assembly
+//                        let reflectedType = state.DynamicAssembly.GetType(name, true)
+//                    
+//                        if state.Profile.AlwaysIncludeType reflectedType then ()
+//                        elif state.Profile.EraseType reflectedType then types.Remove(t) |> ignore
+//
+//                        elif state.TypeIndex.ContainsKey name then
+//                            // type has already been emitted, is to be kept only in event of new nested subtypes
+//                            let freshNested = traverseTypeDefinitions t.NestedTypes |> Seq.toArray
+//
+//                            if freshNested.Length = 0 then
+//                                // no fresh nested subtypes, erase
+//                                types.Remove(t) |> ignore
+//                            else
+//                                // has fresh nested subtypes, keep type for scaffolding but erase contents
+//                                yield! freshNested
+//                                do eraseTypeContents t
+//                        else
+//                            // new type, collect the entire nested hierarchy
+//                            yield! gatherHierarchy reflectedType t
+//            }
+//
+//        and gatherHierarchy (rt : Type) (t : TypeDefinition) =
+//            seq {
+//                yield (rt, t)
+//                for nt in t.NestedTypes do
+//                    let rnt = rt.GetNestedType(nt.Name, BindingFlags.NonPublic ||| BindingFlags.Public)
+//                    yield! gatherHierarchy rnt nt
+//            }
+//
+//        traverseTypeDefinitions assemblyDef.MainModule.Types |> Seq.toArray
 
     let eraseStaticInitializers (state : DynamicAssemblyState) (types : (Type * TypeDefinition) []) =
 
@@ -162,7 +216,7 @@
         let freshTypes = mkAssemblyDefinitionSlice assemblyState snapshot
 
         // remap typeRefs so that slices are correctly referenced
-        do updateTypeReferences true (memoize <| tryUpdateTypeReference state snapshot) (Array.map snd freshTypes)
+//        do updateTypeReferences true (memoize <| tryUpdateTypeReference state snapshot) (Array.map snd freshTypes)
 
         // erase type initializers where applicable
         let staticFields = eraseStaticInitializers assemblyState freshTypes

@@ -13,15 +13,13 @@ using Mono.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-using Nessos.Vagrant.Cecil;
-
 namespace Nessos.Vagrant.Cecil
 {
-    class AssemblyParser
+    public class AssemblyParser
     {
         private const BindingFlags AllDeclared = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
-        public static AssemblyDefinition Parse(Assembly assembly, IAssemblyParseOptions options)
+        public static AssemblyDefinition Parse(Assembly assembly, IAssemblyParserConfig options)
         {
             var mapper = new AssemblyParser(assembly, options);
             return mapper.Map();
@@ -29,18 +27,18 @@ namespace Nessos.Vagrant.Cecil
 
         public static AssemblyDefinition Parse(Assembly assembly)
         {
-            var options = new DefaultAssemblyParseOptions();
+            var options = new DefaultAssemblyParserConfig();
             return AssemblyParser.Parse(assembly, options);
         }
 
         private readonly Assembly _assembly;
-        private readonly IAssemblyParseOptions _options;
+        private readonly IAssemblyParserConfig _options;
 
         private AssemblyDefinition _assembly_definition;
         private ModuleDefinition _module_definition;
         
 
-        private AssemblyParser(Assembly assembly, IAssemblyParseOptions options)
+        private AssemblyParser(Assembly assembly, IAssemblyParserConfig options)
         {
             _assembly = assembly;
             _options = options;
@@ -62,7 +60,7 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapType(Type type, TypeDefinition declaringType = null)
         {
-            if (_options.IgnoreType(type)) return;
+            if (_options.IgnoreDefinition(type)) return;
 
             var type_definition = TypeDefinitionFor(type, declaringType);
 
@@ -92,6 +90,8 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapMethod(TypeDefinition type_definition, MethodBase method)
         {
+            if (_options.IgnoreDefinition(method)) return;
+
             var method_definition = MethodDefinitionFor(method, type_definition);
 
             MapCustomAttributes(method, method_definition);
@@ -198,6 +198,8 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapField(TypeDefinition type_definition, FieldInfo field)
         {
+            if (_options.IgnoreDefinition(field)) return;
+
             var field_definition = FieldDefinitionFor(field, type_definition);
 
             if (field_definition.HasDefault)
@@ -244,6 +246,8 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapProperty(PropertyInfo property, PropertyDefinition property_definition)
         {
+            if (_options.IgnoreDefinition(property)) return;
+
             var type_definition = property_definition.DeclaringType;
 
             var getter = property.GetGetMethod(nonPublic: true);
@@ -277,6 +281,8 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapEvent(EventInfo evt, EventDefinition event_definition)
         {
+            if (_options.IgnoreDefinition(evt)) return;
+
             var type_definition = event_definition.DeclaringType;
 
             var add = evt.GetAddMethod(nonPublic: true);
@@ -514,7 +520,7 @@ namespace Nessos.Vagrant.Cecil
             if (method_info != null)
                 method_definition.ReturnType = CreateReference(method_info.ReturnType, method_definition);
 
-            if (_options.MakePublic) method_definition.IsPublic = true;
+            if (_options.MakePublicDefinition(method)) method_definition.IsPublic = true;
 
             return method_definition;
         }
@@ -540,7 +546,7 @@ namespace Nessos.Vagrant.Cecil
 
             declaringType.Fields.Add(field_definition);
 
-            if (_options.MakePublic) field_definition.IsPublic = true;
+            if (_options.MakePublicDefinition(field)) field_definition.IsPublic = true;
 
             return field_definition;
         }
@@ -571,7 +577,7 @@ namespace Nessos.Vagrant.Cecil
                 type_definition.ClassSize = layout.Size;
             }
 
-            if (_options.MakePublic)
+            if (_options.MakePublicDefinition(type))
                 if (type_definition.IsNested)
                     type_definition.IsNestedPublic = true;
                 else

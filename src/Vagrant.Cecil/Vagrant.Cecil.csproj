@@ -57,7 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyParser.cs" />
-    <Compile Include="ParserOptions.cs" />
+    <Compile Include="AssemblyParserConfig.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

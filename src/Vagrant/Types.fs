@@ -71,7 +71,7 @@
         abstract EraseType : Type -> bool
 
         /// Specifies if static constructor is to be erased
-        abstract EraseStaticConstructor : Type -> bool
+        abstract EraseStaticConstructor : ConstructorInfo -> bool
 
         /// Specifies if static field is to be pickled
         abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool

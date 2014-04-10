@@ -71,7 +71,7 @@
         abstract EraseType : Type -> bool
 
         /// Specifies if static constructor is to be erased
-        abstract EraseStaticConstructor : ConstructorInfo -> bool
+        abstract EraseStaticConstructor : Type -> bool
 
         /// Specifies if static field is to be pickled
         abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
@@ -82,7 +82,12 @@
 
     // internal compiler data structures
 
-    type internal DynamicAssemblySlice =
+    type internal DynamicTypeInfo =
+        | InNoSlice
+        | InAllSlices
+        | InSpecificSlice of DynamicAssemblySlice
+
+    and internal DynamicAssemblySlice =
         {
             SourceId : Guid
             DynamicAssemblyQualifiedName : string
@@ -96,26 +101,30 @@
     and internal DynamicAssemblyState =
         {
             DynamicAssembly : Assembly
-            AssemblyReferences : Assembly list
             Profile : IDynamicAssemblyProfile
             GeneratedSlices : Map<int, DynamicAssemblySlice>
-            TypeIndex : Map<string, DynamicAssemblySlice>
+            TypeIndex : Map<string, DynamicTypeInfo>
         }
     with
-        member i.HasFreshTypes =
-            let assemblyTypeCount = i.DynamicAssembly.GetTypes().Length
-            let compiledTypeCount = i.TypeIndex.Count
+        member s.HasFreshTypes =
+            let assemblyTypeCount = s.DynamicAssembly.GetTypes().Length
+            let compiledTypeCount = s.TypeIndex.Count
             assemblyTypeCount > compiledTypeCount
 
-        member i.Name = i.DynamicAssembly.GetName()
+        member s.Name = s.DynamicAssembly.GetName()
 
-        member i.LatestSlice = i.GeneratedSlices.TryFind i.GeneratedSlices.Count
+        member s.LatestSlice = s.GeneratedSlices.TryFind s.GeneratedSlices.Count
+
+        member i.TryGetSlice(t : Type) =
+            match i.TypeIndex.TryFind t.FullName with
+            | None -> None
+            | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant error: type '%O' does not correspond to a slice." t
+            | Some (InSpecificSlice s) -> Some s
 
         static member Init(a : Assembly, profile : IDynamicAssemblyProfile) =
             {
                 DynamicAssembly = a
                 Profile = profile
-                AssemblyReferences = []
                 GeneratedSlices = Map.empty
                 TypeIndex = Map.empty
             }

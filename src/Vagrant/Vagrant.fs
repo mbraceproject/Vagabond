@@ -185,7 +185,7 @@
             let t = if t.IsGenericType && not t.IsGenericTypeDefinition then t.GetGenericTypeDefinition() else t
             match compiler.CurrentState.DynamicAssemblies.TryFind t.Assembly.FullName with
             | None -> None
-            | Some dyn -> dyn.TypeIndex.TryFind t.FullName |> Option.map (fun s -> s.Assembly)
+            | Some dyn -> dyn.TryGetSlice t |> Option.map (fun s -> s.Assembly)
 
         /// <summary>
         ///     Builds a portable assembly bundle for given input.

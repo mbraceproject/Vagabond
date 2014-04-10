@@ -60,37 +60,51 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapType(Type type, TypeDefinition declaringType = null)
         {
-            if (_options.IgnoreDefinition(type)) return;
+            switch (_options.GetTypeParseAction(type))
+            {
+                case TypeParseAction.Ignore:
+                    break;
 
-            var type_definition = TypeDefinitionFor(type, declaringType);
+                case TypeParseAction.ParseNested:
+                    var _type_definition = TypeDefinitionFor(type, declaringType);
 
-            foreach (var field in type.GetFields(AllDeclared))
-                MapField(type_definition, field);
+                    foreach (var nested_type in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+                        MapType(nested_type, _type_definition);
 
-            foreach (var method in type.GetConstructors(AllDeclared))
-                MapMethod(type_definition, method);
+                    break;
 
-            foreach (var method in type.GetMethods(AllDeclared))
-                MapMethod(type_definition, method);
+                case TypeParseAction.ParseAll:
+                    var type_definition = TypeDefinitionFor(type, declaringType);
 
-            foreach (var property in type.GetProperties(AllDeclared))
-                MapProperty(property, PropertyDefinitionFor(property, type_definition));
+                    foreach (var field in type.GetFields(AllDeclared))
+                        MapField(type_definition, field);
 
-            foreach (var evt in type.GetEvents(AllDeclared))
-                MapEvent(evt, EventDefinitionFor(evt, type_definition));
+                    foreach (var method in type.GetConstructors(AllDeclared))
+                        MapMethod(type_definition, method);
 
-            foreach (var iface in type.GetInterfaces())
-                type_definition.Interfaces.Add(CreateReference(iface, type_definition));
+                    foreach (var method in type.GetMethods(AllDeclared))
+                        MapMethod(type_definition, method);
 
-            foreach (var nested_type in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
-                MapType(nested_type, type_definition);
+                    foreach (var property in type.GetProperties(AllDeclared))
+                        MapProperty(property, PropertyDefinitionFor(property, type_definition));
 
-            MapCustomAttributes(type, type_definition);
+                    foreach (var evt in type.GetEvents(AllDeclared))
+                        MapEvent(evt, EventDefinitionFor(evt, type_definition));
+
+                    foreach (var iface in type.GetInterfaces())
+                        type_definition.Interfaces.Add(CreateReference(iface, type_definition));
+
+                    foreach (var nested_type in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
+                        MapType(nested_type, type_definition);
+
+                    MapCustomAttributes(type, type_definition);
+                    break;
+            }
         }
 
         private void MapMethod(TypeDefinition type_definition, MethodBase method)
         {
-            if (_options.IgnoreDefinition(method)) return;
+            if (_options.EraseMember(method)) return;
 
             var method_definition = MethodDefinitionFor(method, type_definition);
 
@@ -198,7 +212,7 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapField(TypeDefinition type_definition, FieldInfo field)
         {
-            if (_options.IgnoreDefinition(field)) return;
+            if (_options.EraseMember(field)) return;
 
             var field_definition = FieldDefinitionFor(field, type_definition);
 
@@ -246,7 +260,7 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapProperty(PropertyInfo property, PropertyDefinition property_definition)
         {
-            if (_options.IgnoreDefinition(property)) return;
+            if (_options.EraseMember(property)) return;
 
             var type_definition = property_definition.DeclaringType;
 
@@ -281,7 +295,7 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapEvent(EventInfo evt, EventDefinition event_definition)
         {
-            if (_options.IgnoreDefinition(evt)) return;
+            if (_options.EraseMember(evt)) return;
 
             var type_definition = event_definition.DeclaringType;
 
@@ -520,7 +534,7 @@ namespace Nessos.Vagrant.Cecil
             if (method_info != null)
                 method_definition.ReturnType = CreateReference(method_info.ReturnType, method_definition);
 
-            if (_options.MakePublicDefinition(method)) method_definition.IsPublic = true;
+            if (_options.MakePublic(method)) method_definition.IsPublic = true;
 
             return method_definition;
         }
@@ -546,7 +560,7 @@ namespace Nessos.Vagrant.Cecil
 
             declaringType.Fields.Add(field_definition);
 
-            if (_options.MakePublicDefinition(field)) field_definition.IsPublic = true;
+            if (_options.MakePublic(field)) field_definition.IsPublic = true;
 
             return field_definition;
         }
@@ -577,7 +591,7 @@ namespace Nessos.Vagrant.Cecil
                 type_definition.ClassSize = layout.Size;
             }
 
-            if (_options.MakePublicDefinition(type))
+            if (_options.MakePublic(type))
                 if (type_definition.IsNested)
                     type_definition.IsNestedPublic = true;
                 else

@@ -6,12 +6,10 @@
     open System.Runtime.Serialization
     open System.Reflection
 
-    open Mono.Cecil
-    open Mono.Reflection
-
     open Nessos.FsPickler
 
     open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.AssemblyParser
 
     /// gathers all types that occur in an object graph
 
@@ -102,16 +100,14 @@
         |> traverseDependencyGraph Map.empty
         |> getTopologicalOrdering
 
+
+
     /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation
     /// the dynamic assemblies are then parsed to Cecil and sorted topologically for correct compilation order.
 
     let parseDynamicAssemblies (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
         let domainAssemblies = getLoadedAssemblies()
-        let getReferencedAssemblies (def : AssemblyDefinition) =
-            def.Modules 
-            |> Seq.collect(fun modl -> modl.AssemblyReferences |> Seq.map (fun ar -> domainAssemblies.[ar.FullName]))
-            |> Seq.toList
 
         let isDynamicAssemblyRequiringCompilation (a : Assembly) =
             if a.IsDynamic then
@@ -120,31 +116,30 @@
             else
                 false
 
-        let rec traverse (graph : Map<string, Assembly * AssemblyDefinition * Assembly list>) (remaining : Assembly list) =
+        let rec traverse (graph : Map<string, _>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph
             | a :: rest when graph.ContainsKey a.FullName || not <| isDynamicAssemblyRequiringCompilation a -> traverse graph rest
             | a :: rest ->
                 // parse dynamic assembly
-                let snapshot = AssemblySaver.Read a
+                let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
 
-                // Assembly.GetReferencedAssemblies is unreliable with dynamic assemblies;
-                // Use Cecil to correctly resolve dependencies
-                let assemblyReferences = getReferencedAssemblies snapshot
+                // extract dynamic assembly dependencies
+                let dependentAssemblies = dependencies |> List.map (fun d -> domainAssemblies.[d])
 
-                let graph' = graph.Add(a.FullName, (a, snapshot, assemblyReferences))
+                let graph' = graph.Add(a.FullName, (a, dependentAssemblies, sliceData))
                 
-                traverse graph' (rest @ assemblyReferences)
+                traverse graph' (rest @ dependentAssemblies)
 
 
+        // topologically sort output
         let dynamicAssemblies = traverse Map.empty <| Seq.toList assemblies
 
-        dynamicAssemblies 
-        |> Map.toList
-        // only keep the dynamic assembly subgraph
-        |> List.map (fun (_,(a,_,deps)) -> (a, deps |> List.filter (fun a -> dynamicAssemblies.ContainsKey a.FullName)))
+        dynamicAssemblies
+        |> Seq.map (function KeyValue(_, (a, deps,_)) -> a, deps |> List.filter (fun a -> a.IsDynamic))
+        |> Seq.toList
         |> getTopologicalOrdering
-        |> List.map (fun a -> dynamicAssemblies.[a.FullName])
+        |> List.map (fun a -> let _,_,data = dynamicAssemblies.[a.FullName] in data)
 
 
 
@@ -179,11 +174,10 @@
                 | Some info ->
                     let remapType (t : Type) =
                         match info.TypeIndex.TryFind t.FullName with
-                        | None -> failwithf "Vagrant: no slice has been created for dynamic type '%O'." t
-                        | Some slice -> slice.Assembly
+                        | None | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant: no slice corresponds dynamic type '%O'." t
+                        | Some (InSpecificSlice slice) -> slice.Assembly
 
                     Seq.map remapType ts
-
             else Seq.singleton a
 
         dependencies |> Seq.collect remap |> traverseDependencies (Some state)

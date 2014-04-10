@@ -1,5 +1,5 @@
-﻿#r "bin/Release/FsPickler.dll"
-#r "bin/Release/Vagrant.Tests.exe"
+﻿#r "bin/Debug/FsPickler.dll"
+#r "bin/Debug/Vagrant.Tests.exe"
 
 open Nessos.Vagrant.Tests.ThunkServer
 

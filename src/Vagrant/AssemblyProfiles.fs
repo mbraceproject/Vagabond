@@ -57,8 +57,8 @@
             member __.EraseType (t : Type) =
                 t.Name.StartsWith("$") && t.Namespace.StartsWith("<StartupCode$")
 
-            member __.EraseStaticConstructor (ctor : ConstructorInfo) =
-                Microsoft.FSharp.Reflection.FSharpType.IsModule ctor.DeclaringType
+            member __.EraseStaticConstructor (t : Type) =
+                Microsoft.FSharp.Reflection.FSharpType.IsModule t
 
             member __.PickleStaticField (f : FieldInfo, isErasedCctor) =
                 isErasedCctor && not <| f.FieldType.Name.StartsWith("$")

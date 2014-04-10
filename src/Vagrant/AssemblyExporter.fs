@@ -28,10 +28,11 @@
 
             let requiresStaticInitialization = sliceInfo.StaticFields.Length > 0
             let latestGeneration = generationIdx.TryFind assembly.FullName
-            let isPartiallyEvaluated =
+
+            let isPartiallyEvaluated = 
                 dynAssembly.Profile.IsPartiallyEvaluatedSlice 
-                    (fun t -> dynAssembly.TypeIndex.TryFind t.FullName |> Option.map (fun s -> s.Assembly)) 
-                    sliceInfo.Assembly
+                    (dynAssembly.TryGetSlice >> Option.map (fun s -> s.Assembly)) 
+                        sliceInfo.Assembly
 
             let generationIdx, generation, staticInitializer =
                 if requiresStaticInitialization && includeStaticInitializationData then

@@ -17,8 +17,11 @@
                 | None -> typeInfo
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
-                    | None -> failwithf "Vagrant: type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname
-                    | Some a -> { typeInfo with AssemblyName = a.Assembly.GetName().Name }
+                    | None | Some (InNoSlice | InAllSlices) -> 
+                        failwithf "Vagrant: type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname
+
+                    | Some (InSpecificSlice slice) -> 
+                        { typeInfo with AssemblyName = slice.Assembly.GetName().Name }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
                 match stateF().TryGetDynamicAssemblyId typeInfo.AssemblyQualifiedName with

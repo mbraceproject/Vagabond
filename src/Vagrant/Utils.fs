@@ -96,6 +96,21 @@
                 dict.Add(x,y)
                 y
 
+    let Ymemoize F =
+        let dict = new System.Collections.Generic.Dictionary<_,_>()
+        let rec f x =
+            let found, y = dict.TryGetValue x
+            if found then y
+            else
+                let y = F f x
+                dict.Add(x, y)
+                y
+        f
+
+
+    [<Literal>]
+    let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
+
     type ObjectTracker() =
         let objectCounter = new System.Runtime.Serialization.ObjectIDGenerator()
 

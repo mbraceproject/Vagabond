@@ -13,9 +13,8 @@
     open Nessos.FsPickler
 
     open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.Cecil
     open Nessos.Vagrant.Serialization
-//    open Nessos.Vagrant.AssemblyDefinitionVisitors
+    open Nessos.Vagrant.AssemblyParser
     open Nessos.Vagrant.DependencyAnalysis
 
     /// create an initial, empty compiler state
@@ -42,10 +41,9 @@
             CreateAssemblySliceName = mkSliceName
         }
 
-    let resolveProfile (state : DynamicAssemblyCompilerState) (a : Assembly) =
-        match state.Profiles |> List.tryFind(fun p -> p.IsMatch a) with
-        | Some p -> p
-        | None -> new DefaultDynamicAssemblyProfile() :> _
+
+
+
 
     //
     //  TODO: for performance reasons, it would be a good idea to merge Mono.Reflection's AssemblySaver and the slicer
@@ -58,58 +56,8 @@
     //      b) keep all others for scaffolding
     //
 
-    let parseAssemblyDefinitionSlice (state : DynamicAssemblyState) =
 
-        let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
-        
-        let currentTypes = ref []
-        let alwaysIncludedTypes = ref []
 
-        let ignoreMemberDefinition (m : MemberInfo) =
-            match m with
-            | :? Type as t ->
-                if t.Namespace = null && t.DeclaringType = null && t.Name = "[<Module>]" then false
-                elif state.TypeIndex.ContainsKey t.FullName then true
-                elif state.Profile.EraseType t then true
-                else
-                    if state.Profile.AlwaysIncludeType t then 
-                        currentTypes := t :: !currentTypes
-                    else
-                        alwaysIncludedTypes := t :: !alwaysIncludedTypes
-
-                    false
-
-            | _ -> false
-
-        let rec tryRemapReference (m : MemberInfo) =
-            match m with
-            | :? Type as t ->
-                match state.TypeIndex.TryFind t.FullName with
-                | None -> None
-                | Some slice ->
-                    let t' = slice.Assembly.GetType(t.FullName, true)
-                    Some(t' :> MemberInfo)
-            | m ->
-                match tryRemapReference m.DeclaringType with
-                | None -> None
-                | Some dt ->
-                    (dt :?> Type).GetMembers(allBindings) 
-                    |> Array.find (fun m' -> m'.ToString() = m.ToString())
-                    |> Some
-
-        let remapReference = memoize (fun m -> defaultArg (tryRemapReference m) m)
-
-        let config =
-            {
-                new IAssemblyParserConfig with
-                    member __.MakePublicDefinition _ = true
-                    member __.IgnoreDefinition m = ignoreMemberDefinition m
-                    member __.RemapReference m = remapReference m
-            }
-
-        let assemblyDefinition = AssemblyParser.Parse(state.DynamicAssembly, config)
-
-        !currentTypes, !alwaysIncludedTypes, assemblyDefinition
 
 //    let mkAssemblyDefinitionSlice (state : DynamicAssemblyState) (assemblyDef : AssemblyDefinition) =
 //
@@ -160,92 +108,90 @@
 //            }
 //
 //        traverseTypeDefinitions assemblyDef.MainModule.Types |> Seq.toArray
-
-    let eraseStaticInitializers (state : DynamicAssemblyState) (types : (Type * TypeDefinition) []) =
-
-        let erase (reflectedType : Type, typeDef : TypeDefinition) =
-            // static initializers for generic types not supported
-            if typeDef.GenericParameters.Count > 0 then [||]
-            else
-                let eraseCctor = state.Profile.EraseStaticConstructor reflectedType
-                if eraseCctor then
-                    match typeDef.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
-                    | Some cctor -> typeDef.Methods.Remove(cctor) |> ignore
-                    | None -> ()
-
-                reflectedType.GetFields(BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
-                |> Array.filter (fun f -> not f.IsLiteral && state.Profile.PickleStaticField (f, eraseCctor))
-
-        Array.collect erase types
-
-    /// type reference updating logic : consult the compiler state to update TypeReferences to dynamic assemblies
-
-    let tryUpdateTypeReference (state : DynamicAssemblyCompilerState) (assembly : AssemblyDefinition) (t : TypeReference) =
-        if t = null then None
-        else
-            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
-
-            match state.DynamicAssemblies.TryFind assemblyName with
-            | None -> None // referenced assembly not dynamic
-            | Some info ->
-                let name = t.CanonicalName
-                match info.TypeIndex.TryFind name with
-                | None when assemblyName = assembly.FullName -> None // the type will be compiled in current slice; do not remap
-                | None -> failwithf "Vagrant: referencing type '%O' from dynamic assembly '%s' which has not been sliced." name assemblyName
-                | Some sliceInfo ->
-                    let rt = sliceInfo.Assembly.GetType(name, true)
-                    let tI = assembly.MainModule.Import(rt)
-                    Some tI
+//
+//    let eraseStaticInitializers (state : DynamicAssemblyState) (types : (Type * TypeDefinition) []) =
+//
+//        let erase (reflectedType : Type, typeDef : TypeDefinition) =
+//            // static initializers for generic types not supported
+//            if typeDef.GenericParameters.Count > 0 then [||]
+//            else
+//                let eraseCctor = failwith "" //state.Profile.EraseStaticConstructor reflectedType
+//                if eraseCctor then
+//                    match typeDef.Methods |> Seq.tryFind(fun m -> m.Name = ".cctor") with
+//                    | Some cctor -> typeDef.Methods.Remove(cctor) |> ignore
+//                    | None -> ()
+//
+//                reflectedType.GetFields(BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
+//                |> Array.filter (fun f -> not f.IsLiteral && state.Profile.PickleStaticField (f, eraseCctor))
+//
+//        Array.collect erase types
+//
+//    /// type reference updating logic : consult the compiler state to update TypeReferences to dynamic assemblies
+//
+//    let tryUpdateTypeReference (state : DynamicAssemblyCompilerState) (assembly : AssemblyDefinition) (t : TypeReference) =
+//        if t = null then None
+//        else
+//            let assemblyName = defaultArg t.ContainingAssembly assembly.FullName
+//
+//            match state.DynamicAssemblies.TryFind assemblyName with
+//            | None -> None // referenced assembly not dynamic
+//            | Some info ->
+//                let name = t.CanonicalName
+//                match info.TypeIndex.TryFind name with
+//                | None when assemblyName = assembly.FullName -> None // the type will be compiled in current slice; do not remap
+//                | None -> failwithf "Vagrant: referencing type '%O' from dynamic assembly '%s' which has not been sliced." name assemblyName
+//                | Some sliceInfo -> failwith ""
+////                    let rt = sliceInfo.Assembly.GetType(name, true)
+////                    let tI = assembly.MainModule.Import(rt)
+////                    Some tI
 
 
     /// compiles a slice of given dynamic assembly snapshot
 
-    let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState) 
-                                        (dynamicAssembly : Assembly) 
-                                        (dependencies : Assembly list) 
-                                        (snapshot : AssemblyDefinition) =
+    let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
+                                    (assemblyState : DynamicAssemblyState)
+                                    (typeData : Map<string, TypeParseInfo>)
+                                    (slice : AssemblyDefinition) =
 
-        let assemblyState =
-            match state.DynamicAssemblies.TryFind dynamicAssembly.FullName with
-            | None -> 
-                let profile = resolveProfile state dynamicAssembly
-                DynamicAssemblyState.Init(dynamicAssembly, profile)
-            | Some info -> info
-
-        // update snapshot to only contain current slice
-        let freshTypes = mkAssemblyDefinitionSlice assemblyState snapshot
-
-        // remap typeRefs so that slices are correctly referenced
-//        do updateTypeReferences true (memoize <| tryUpdateTypeReference state snapshot) (Array.map snd freshTypes)
-
-        // erase type initializers where applicable
-        let staticFields = eraseStaticInitializers assemblyState freshTypes
-
-        // compile
-
+        // prepare slice info
         let sliceId = assemblyState.GeneratedSlices.Count + 1
         let name = state.CreateAssemblySliceName assemblyState.Name.Name sliceId
         let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
 
-        do snapshot.Name.Name <- name
-        do snapshot.Write(target)
+        // update assembly name & write to disk
+        do slice.Name.Name <- name
+        do slice.Write(target)
 
         // load new slice to System.Reflection
         let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+        
+        // collect pickleable static fields
+        let pickleableFields = 
+            typeData 
+            |> Seq.map (function KeyValue(_,InCurrentSlice(_,fields)) -> fields | _ -> [||] ) 
+            |> Array.concat
+
         let sliceInfo = 
             { 
                 SourceId = state.ServerId
                 Assembly = assembly 
-                DynamicAssemblyQualifiedName = dynamicAssembly.FullName 
+                DynamicAssemblyQualifiedName = assemblyState.DynamicAssembly.FullName 
                 SliceId = sliceId 
-                StaticFields = staticFields
+                StaticFields = pickleableFields
             }
 
         // update type index & compiled assembly info
         let generatedSlices = assemblyState.GeneratedSlices.Add(sliceId, sliceInfo)
-        let typeIndex = freshTypes |> Seq.map (fun (_,td) -> td.CanonicalName, sliceInfo) |> Map.addMany assemblyState.TypeIndex
+        
+        let mapTypeIndex (id : string) (info : TypeParseInfo) =
+            match info with
+            | AlwaysIncluded -> InAllSlices
+            | InCurrentSlice _ -> InSpecificSlice sliceInfo
+            | InPastSlice (slice = slice) -> InSpecificSlice slice
+            | Erased -> InNoSlice
 
-        let assemblyState = { assemblyState with GeneratedSlices = generatedSlices ; TypeIndex = typeIndex ; AssemblyReferences = dependencies }
+        let typeIndex = typeData |> Map.map mapTypeIndex
+        let assemblyState = { assemblyState with GeneratedSlices = generatedSlices ; TypeIndex = typeIndex }
         let dynamicAssemblyIndex = state.DynamicAssemblies.Add(assemblyState.DynamicAssembly.FullName, assemblyState)
         let state = { state with DynamicAssemblies = dynamicAssemblyIndex}
 
@@ -260,13 +206,13 @@
         let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
         // exceptions are handled explicitly so that returned state reflects the last successful compilation
-        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>) 
-                            (dynamic : Assembly, snapshot : AssemblyDefinition, references : Assembly list) =
+        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>)
+                            (typeData, dynAsmb, _, assemblyDef) =
 
             match accumulator with
             | Success slices ->
                 try
-                    let slice, state = compileDynamicAssemblySlice state dynamic references snapshot
+                    let slice, state = compileDynamicAssemblySlice state dynAsmb typeData assemblyDef
                     state, Success (slice :: slices)
                 with e ->
                     state, Error e

@@ -8,7 +8,6 @@
 
     open Mono.Cecil
     open Mono.Collections.Generic
-    open Mono.Reflection
 
     open Nessos.FsPickler
 

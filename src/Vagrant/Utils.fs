@@ -80,6 +80,12 @@
 
             aux [] [] inputs
 
+    type MemberInfo with
+        member m.Assembly =
+            match m with
+            | :? Type as t -> t.Assembly
+            | m -> m.DeclaringType.Assembly
+
     module Option =
         let filter (f : 'T -> bool) (x : 'T option) : 'T option = 
             match x with 

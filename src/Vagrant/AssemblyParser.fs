@@ -2,6 +2,7 @@
 
     open System
     open System.Reflection
+    open System.Collections.Generic
 
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
@@ -69,7 +70,9 @@
         and getParseInfos parent map types =
             Array.fold (getParseInfo parent) map types
 
-        state.DynamicAssembly.GetTypes() |> getParseInfos None Map.empty
+        state.DynamicAssembly.GetTypes() 
+        |> Array.filter (fun t -> not t.IsNested)
+        |> getParseInfos None Map.empty
 
 
     let remapMemberReference (state : DynamicAssemblyCompilerState) (remapF : MemberInfo -> MemberInfo) (m : MemberInfo) =
@@ -113,6 +116,12 @@
                 |> Array.find (fun m' -> m'.IsStatic = m.IsStatic && m'.ToString() = m.ToString())
                 :> MemberInfo
 
+        | :? ConstructorInfo as c ->
+            let dt = remap m.DeclaringType
+            dt.GetConstructors(allBindings)
+            |> Array.find (fun c' -> c.ToString() = c'.ToString())
+            :> MemberInfo
+
         | m ->
             let dt = remap m.DeclaringType
             dt.GetMember(m.Name, allBindings).[0]
@@ -133,7 +142,14 @@
             | Some info -> info
         
         let typeInfo = computeSliceData assemblyState
-        let remapRef = Ymemoize (remapMemberReference state)
+
+        let dependencies = new HashSet<Assembly> ()
+        let remapRef =
+            Ymemoize (fun f (m : MemberInfo) ->
+                if m.Assembly <> assembly then 
+                    dependencies.Add m.Assembly |> ignore
+
+                remapMemberReference state f m)
 
         let parseConfig =
             {
@@ -161,10 +177,6 @@
 
         let sliceDefinition = AssemblyParser.Parse(assembly, parseConfig)
 
-        let dependencies =
-            sliceDefinition.Modules
-            |> Seq.collect(fun modl -> modl.AssemblyReferences |> Seq.map (fun ar -> ar.FullName))
-            |> Seq.distinct
-            |> Seq.toList
+        let dependencies = Seq.toList dependencies
 
         typeInfo, assemblyState, dependencies, sliceDefinition

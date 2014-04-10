@@ -54,8 +54,8 @@
 
     type ThunkClient internal (?serverEndPoint : string, ?proc : Process) =
 
-        let vagrant = new VagrantServer()
-        do TcpActor.SetDefaultPickler(vagrant.Pickler)
+        static let vagrant = new VagrantServer()
+        static do TcpActor.SetDefaultPickler(vagrant.Pickler)
 
         let serverEndPoint = defaultArg serverEndPoint defaultConnectionString
         let client = TcpActor.Connect<ServerMsg>(serverEndPoint)

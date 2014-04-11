@@ -55,7 +55,10 @@
                 t.Name.StartsWith("$") && t.Namespace = null
 
             member __.EraseType (t : Type) =
-                t.Name.StartsWith("$") && t.Namespace.StartsWith("<StartupCode$")
+                t.Name.StartsWith("$") && 
+                    match t.Namespace with
+                    | null -> false
+                    | ns -> ns.StartsWith("<StartupCode$")
 
             member __.EraseStaticConstructor (t : Type) =
                 Microsoft.FSharp.Reflection.FSharpType.IsModule t

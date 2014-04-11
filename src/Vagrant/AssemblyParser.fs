@@ -4,6 +4,8 @@
     open System.Reflection
     open System.Collections.Generic
 
+    open Mono.Cecil
+
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Cecil
@@ -75,57 +77,69 @@
         |> getParseInfos None Map.empty
 
 
-    let remapMemberReference (state : DynamicAssemblyCompilerState) (remapF : MemberInfo -> MemberInfo) (m : MemberInfo) =
+//    let remapMemberReference (state : DynamicAssemblyCompilerState) (remapF : MemberInfo -> MemberInfo) (m : MemberInfo) =
+//        
+//        let inline remap (m : 'M) = (remapF m) :?> 'M
+//
+//        match m with
+//        | :? Type as t ->
+//            if t.IsGenericType && not t.IsGenericTypeDefinition then
+//                let gt = t.GetGenericTypeDefinition() |> remap
+//                let gas = t.GetGenericArguments() |> Array.map remap
+//                gt.MakeGenericType gas :> MemberInfo
+//
+//            elif t.IsGenericParameter then
+//                let parameters =
+//                    match t.DeclaringMethod with
+//                    | null -> remap(t.DeclaringType).GetGenericArguments()
+//                    | dm -> remap(dm).GetGenericArguments()
+//
+//                parameters |> Array.find(fun t' -> t'.Name = t'.Name) :> MemberInfo
+//            else
+//                // is named type
+//                match state.DynamicAssemblies.TryFind t.Assembly.FullName with
+//                | None -> t :> MemberInfo
+//                | Some dynInfo ->
+//                    match dynInfo.TypeIndex.TryFind t.FullName with
+//                    | None | Some InAllSlices -> t :> MemberInfo
+//                    | Some InNoSlice -> 
+//                        failwithf "Vagrant: error compiling slice: referenced excluded type '%O' in assembly '%O'." t dynInfo.Name
+//                    | Some (InSpecificSlice slice) ->
+//                        slice.Assembly.GetType(t.FullName, true) :> MemberInfo
+//
+//        | :? MethodInfo as m -> //as m when m.IsGenericMethod && not m.IsGenericMethodDefinition ->
+//            if m.IsGenericMethod && not m.IsGenericMethodDefinition then
+//                let gm = m.GetGenericMethodDefinition() |> remap
+//                let ga = m.GetGenericArguments() |> Array.map remap
+//                gm.MakeGenericMethod ga :> MemberInfo
+//            else
+//                let dt = remap m.DeclaringType
+//                dt.GetMethods(allBindings)
+//                |> Array.find (fun m' -> m'.IsStatic = m.IsStatic && m'.ToString() = m.ToString())
+//                :> MemberInfo
+//
+//        | :? ConstructorInfo as c ->
+//            let dt = remap m.DeclaringType
+//            dt.GetConstructors(allBindings)
+//            |> Array.find (fun c' -> c.ToString() = c'.ToString())
+//            :> MemberInfo
+//
+//        | m ->
+//            let dt = remap m.DeclaringType
+//            dt.GetMember(m.Name, allBindings).[0]
+
+    
+    let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
+        match state.DynamicAssemblies.TryFind t.Assembly.FullName with
+        | None -> None
+        | Some dynInfo ->
+            match dynInfo.TypeIndex.TryFind t.FullName with
+            | None | Some InAllSlices -> None
+            | Some InNoSlice -> 
+                failwithf "Vagrant: error compiling slice: referenced excluded type '%O' in assembly '%O'." t dynInfo.Name
+            | Some (InSpecificSlice slice) -> 
+                Some <| slice.Assembly.GetType(t.FullName, true)
         
-        let inline remap (m : 'M) = (remapF m) :?> 'M
-
-        match m with
-        | :? Type as t ->
-            if t.IsGenericType && not t.IsGenericTypeDefinition then
-                let gt = t.GetGenericTypeDefinition() |> remap
-                let gas = t.GetGenericArguments() |> Array.map remap
-                gt.MakeGenericType gas :> MemberInfo
-
-            elif t.IsGenericParameter then
-                let parameters =
-                    match t.DeclaringMethod with
-                    | null -> remap(t.DeclaringType).GetGenericArguments()
-                    | dm -> remap(dm).GetGenericArguments()
-
-                parameters |> Array.find(fun t' -> t'.Name = t'.Name) :> MemberInfo
-            else
-                // is named type
-                match state.DynamicAssemblies.TryFind t.Assembly.FullName with
-                | None -> t :> MemberInfo
-                | Some dynInfo ->
-                    match dynInfo.TypeIndex.TryFind t.FullName with
-                    | None | Some InAllSlices -> t :> MemberInfo
-                    | Some InNoSlice -> 
-                        failwithf "Vagrant: error compiling slice: referenced excluded type '%O' in assembly '%O'." t dynInfo.Name
-                    | Some (InSpecificSlice slice) ->
-                        slice.Assembly.GetType(t.FullName, true) :> MemberInfo
-
-        | :? MethodInfo as m -> //as m when m.IsGenericMethod && not m.IsGenericMethodDefinition ->
-            if m.IsGenericMethod && not m.IsGenericMethodDefinition then
-                let gm = m.GetGenericMethodDefinition() |> remap
-                let ga = m.GetGenericArguments() |> Array.map remap
-                gm.MakeGenericMethod ga :> MemberInfo
-            else
-                let dt = remap m.DeclaringType
-                dt.GetMethods(allBindings)
-                |> Array.find (fun m' -> m'.IsStatic = m.IsStatic && m'.ToString() = m.ToString())
-                :> MemberInfo
-
-        | :? ConstructorInfo as c ->
-            let dt = remap m.DeclaringType
-            dt.GetConstructors(allBindings)
-            |> Array.find (fun c' -> c.ToString() = c'.ToString())
-            :> MemberInfo
-
-        | m ->
-            let dt = remap m.DeclaringType
-            dt.GetMember(m.Name, allBindings).[0]
-
 
     let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly : Assembly) =
 
@@ -143,13 +157,7 @@
         
         let typeInfo = computeSliceData assemblyState
 
-        let dependencies = new HashSet<Assembly> ()
-        let remapRef =
-            Ymemoize (fun f (m : MemberInfo) ->
-                if m.Assembly <> assembly then 
-                    dependencies.Add m.Assembly |> ignore
-
-                remapMemberReference state f m)
+        let remap = memoize (tryRemapReferencedType state)
 
         let parseConfig =
             {
@@ -172,11 +180,18 @@
                         | Some (AlwaysIncluded _) -> TypeParseAction.ParseAll
 
                     member __.MakePublic _ = true
-                    member __.RemapReference m = remapRef m
+                    member __.RemapReference(t : Type, outType : byref<Type>) =
+                        match remap t with
+                        | None -> false
+                        | Some t' -> outType <- t'; true
             }
 
         let sliceDefinition = AssemblyParser.Parse(assembly, parseConfig)
 
-        let dependencies = Seq.toList dependencies
+        let dependencies = 
+            sliceDefinition.MainModule.AssemblyReferences
+            |> Seq.map (fun r -> r.FullName)
+            |> Seq.distinct
+            |> Seq.toList
 
         typeInfo, assemblyState, dependencies, sliceDefinition

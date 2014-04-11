@@ -62,14 +62,19 @@
         Seq.toArray gathered
 
 
+    /// gets an index of all assemblies loaded in the current AppDomain
+
+    let getLoadedAssemblies () =
+        System.AppDomain.CurrentDomain.GetAssemblies()
+        |> Seq.map (fun a -> a.FullName, a)
+        |> Map.ofSeq
+
+
     /// recursively traverse assembly dependency graph
 
     let traverseDependencies (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
 
-        let loadedAssemblies =
-            System.AppDomain.CurrentDomain.GetAssemblies()
-            |> Seq.map (fun a -> a.FullName, a)
-            |> Map.ofSeq
+        let loadedAssemblies = getLoadedAssemblies()
 
         let isSystemAssembly =
             let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
@@ -104,6 +109,8 @@
 
     let parseDynamicAssemblies (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
+        let loadedAssemblies = getLoadedAssemblies()
+
         let isDynamicAssemblyRequiringCompilation (a : Assembly) =
             if a.IsDynamic then
                 state.DynamicAssemblies.TryFind a.FullName 
@@ -118,6 +125,8 @@
             | a :: rest ->
                 // parse dynamic assembly
                 let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
+
+                let dependencies = dependencies |> List.choose loadedAssemblies.TryFind
 
                 let graph' = graph.Add(a.FullName, (a, dependencies, sliceData))
                 

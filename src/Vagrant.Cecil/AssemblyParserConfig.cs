@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Reflection;
 
+using Mono.Cecil;
+
 namespace Nessos.Vagrant.Cecil
 {
     public enum TypeParseAction { Ignore, ParseNested, ParseAll };
@@ -11,7 +13,8 @@ namespace Nessos.Vagrant.Cecil
         bool EraseMember(MemberInfo member);
 
         TypeParseAction GetTypeParseAction(Type type);
-        MemberInfo RemapReference(MemberInfo member);
+        
+        bool RemapReference(Type type, out Type outType);
     }
 
     class DefaultAssemblyParserConfig : IAssemblyParserConfig
@@ -22,6 +25,7 @@ namespace Nessos.Vagrant.Cecil
         public bool EraseMember(MemberInfo member) { return false; }
 
         public TypeParseAction GetTypeParseAction(Type type) { return TypeParseAction.ParseAll; }
-        public MemberInfo RemapReference(MemberInfo member) { return member; }
+
+        public bool RemapReference(Type type, out Type outType) { outType = null; return false; }
     }
 }

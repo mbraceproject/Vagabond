@@ -645,67 +645,76 @@ namespace Nessos.Vagrant.Cecil
 
         private TypeReference CreateReference(Type type)
         {
-            return MapReference(_module_definition.Import(type));
+            return MapReference(type, _module_definition.Import(type));
         }
 
         private TypeReference CreateReference(Type type, TypeReference context)
         {
-            return MapReference(_module_definition.Import((Type) _options.RemapReference(type), context));
+            return MapReference(type, _module_definition.Import(type, context));
         }
 
         private TypeReference CreateReference(Type type, MethodReference context)
         {
-            return MapReference(_module_definition.Import((Type) _options.RemapReference(type), context));
+            return MapReference(type, _module_definition.Import(type, context));
         }
 
         private FieldReference CreateReference(FieldInfo field, MethodReference context)
         {
-            var reference = _module_definition.Import((FieldInfo) _options.RemapReference(field), context);
-            MapReference(reference.DeclaringType);
-            MapReference(reference.FieldType);
+            var reference = _module_definition.Import(field, context);
+            MapReference(field.DeclaringType, reference.DeclaringType);
+            MapReference(field.FieldType, reference.FieldType);
             return reference;
         }
 
         private MethodReference CreateReference(MethodBase method, MethodReference context)
         {
-            var reference = _module_definition.Import((MethodBase) _options.RemapReference(method), context);
-            MapReference(reference.GetElementMethod().DeclaringType);
-            MapReference(reference.ReturnType);
-            MapGenericArguments(reference);
+            var reference = _module_definition.Import(method, context);
+            MapReference(method.DeclaringType, reference.GetElementMethod().DeclaringType);
+            MapReference(GetReturnType(method), reference.ReturnType);
+            MapGenericArguments(method, reference);
 
-            foreach (var parameter in reference.Parameters)
-                MapReference(parameter.ParameterType);
+            method.GetParameters().Zip(reference.Parameters, ((p, pr) => MapReference(p.ParameterType, pr.ParameterType))).ToList();
 
             return reference;
         }
 
-        private void MapGenericArguments(MemberReference reference)
+        private void MapGenericArguments(MethodBase method, MethodReference reference)
         {
             var instance = reference as IGenericInstance;
             if (instance == null)
                 return;
 
-            foreach (var arg in instance.GenericArguments)
-                MapReference(arg);
+            method.GetGenericArguments().Zip(instance.GenericArguments, ((ga, gar) => MapReference(ga, gar))).ToList();
         }
 
-        private TypeReference MapReference(TypeReference type)
+        private void MapGenericArguments(Type type, TypeReference reference)
+        {
+            var instance = reference as IGenericInstance;
+            if (instance == null)
+                return;
+
+            type.GetGenericArguments().Zip(instance.GenericArguments, ((ga, gar) => MapReference(ga, gar))).ToList();
+        }
+
+        private TypeReference MapReference(Type t, TypeReference type)
         {
             if (type.IsGenericParameter)
                 return type;
 
             if (type.IsPointer || type.IsByReference || type.IsPinned || type.IsArray)
             {
-                MapElementType(type);
+                MapElementType(t, type);
                 return type;
             }
 
             if (type.IsGenericInstance)
             {
-                MapGenericArguments(type);
-                MapElementType(type);
+                MapGenericArguments(t, type);
+                MapGenericTypeDefinition(t, type);
                 return type;
             }
+
+            UpdateTypeReference(t, type);
 
             if (type.Scope.MetadataScopeType != MetadataScopeType.AssemblyNameReference)
                 return type;
@@ -716,12 +725,48 @@ namespace Nessos.Vagrant.Cecil
 
             type.GetElementType().Scope = _module_definition;
             _module_definition.AssemblyReferences.Remove(reference);
+
             return type;
         }
 
-        private void MapElementType(TypeReference type)
+        private void UpdateTypeReference(Type t, TypeReference tref)
         {
-            MapReference(((TypeSpecification)type).ElementType);
+            Type _t;
+
+            if (_options.RemapReference(t, out _t))
+            {
+                var _tref = _module_definition.Import(_t);
+
+                tref.Name = _tref.Name;
+                tref.Namespace = _tref.Namespace;
+                tref.MetadataToken = _tref.MetadataToken;
+
+                var previous_scope = tref.Scope as AssemblyNameReference;
+                tref.Scope = _tref.Scope;
+                if (previous_scope != null && previous_scope != tref.Scope)
+                    _module_definition.AssemblyReferences.Remove(previous_scope);
+            }
+        }
+
+        private void MapElementType(Type t, TypeReference type)
+        {
+            MapReference(t.GetElementType(), ((TypeSpecification)type).ElementType);
+        }
+
+        private void MapGenericTypeDefinition(Type t, TypeReference type)
+        {
+            MapReference(t.GetGenericTypeDefinition(), ((TypeSpecification)type).ElementType);
+        }
+
+        private Type GetReturnType(MethodBase method)
+        {
+            var methodInfo = method as MethodInfo;
+            if (methodInfo == null)
+            {
+                return method.DeclaringType;
+            }
+
+            return methodInfo.ReturnType;
         }
 
         private void MapCustomAttributes(SR.ICustomAttributeProvider provider, MC.ICustomAttributeProvider targetProvider)

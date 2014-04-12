@@ -16,6 +16,9 @@
         | InPastSlice of slice:DynamicAssemblySlice * containsNestedTypeInCurrentSlice:bool
         | Erased
 
+    /// traverses a dynamic assembly and compiles and index of parse information
+    /// to be used for the assembly parser configuration
+
     let computeSliceData (state : DynamicAssemblyState) =
 
         let rec getParseInfo (parent : TypeParseInfo option) (map : Map<string, TypeParseInfo>) (t : Type) =
@@ -26,14 +29,20 @@
                 getParseInfos (Some info) map nested
 
             match parent with
+            // Erased & AlwaysIncluded propagate upwards in the nested type hierarchy
             | Some Erased -> update map t Erased
             | Some AlwaysIncluded -> update map t AlwaysIncluded
             | _ ->
                 match state.TypeIndex.TryFind t.FullName with
+                // maintain Erased & AlwaysIncluded types if so declared in earlier slices
                 | Some InNoSlice -> update map t Erased
                 | Some InAllSlices -> update map t AlwaysIncluded
+                // keep record of earlier slice ownership; start by declaring that type contains no new nested types
+                // this is to be updated later if new nested types are discovered
                 | Some (InSpecificSlice slice) -> update map t (InPastSlice (slice, false))
                 | None ->
+                    // new type, compute information
+
                     if t.Namespace = null && t.DeclaringType = null && t.Name = "[<Module>]" then
                         update map t AlwaysIncluded
 
@@ -53,8 +62,8 @@
                                 t.GetFields(BindingFlags.Static ||| BindingFlags.Public ||| BindingFlags.NonPublic)
                                 |> Array.filter (fun f -> not f.IsLiteral && state.Profile.PickleStaticField (f, eraseCctor))
 
-                        // in case of declaring type belonging to previous slice, 
-                        // update parse info to reflect that a new nested type is contained
+                        // in case of nested type with parent belonging to previous slice,
+                        // update parent info to reflect this information
                         let rec updateParents (map : Map<string, TypeParseInfo>) (t : Type) =
                             match t.DeclaringType with
                             | null -> map
@@ -75,60 +84,9 @@
         state.DynamicAssembly.GetTypes() 
         |> Array.filter (fun t -> not t.IsNested)
         |> getParseInfos None Map.empty
-
-
-//    let remapMemberReference (state : DynamicAssemblyCompilerState) (remapF : MemberInfo -> MemberInfo) (m : MemberInfo) =
-//        
-//        let inline remap (m : 'M) = (remapF m) :?> 'M
-//
-//        match m with
-//        | :? Type as t ->
-//            if t.IsGenericType && not t.IsGenericTypeDefinition then
-//                let gt = t.GetGenericTypeDefinition() |> remap
-//                let gas = t.GetGenericArguments() |> Array.map remap
-//                gt.MakeGenericType gas :> MemberInfo
-//
-//            elif t.IsGenericParameter then
-//                let parameters =
-//                    match t.DeclaringMethod with
-//                    | null -> remap(t.DeclaringType).GetGenericArguments()
-//                    | dm -> remap(dm).GetGenericArguments()
-//
-//                parameters |> Array.find(fun t' -> t'.Name = t'.Name) :> MemberInfo
-//            else
-//                // is named type
-//                match state.DynamicAssemblies.TryFind t.Assembly.FullName with
-//                | None -> t :> MemberInfo
-//                | Some dynInfo ->
-//                    match dynInfo.TypeIndex.TryFind t.FullName with
-//                    | None | Some InAllSlices -> t :> MemberInfo
-//                    | Some InNoSlice -> 
-//                        failwithf "Vagrant: error compiling slice: referenced excluded type '%O' in assembly '%O'." t dynInfo.Name
-//                    | Some (InSpecificSlice slice) ->
-//                        slice.Assembly.GetType(t.FullName, true) :> MemberInfo
-//
-//        | :? MethodInfo as m -> //as m when m.IsGenericMethod && not m.IsGenericMethodDefinition ->
-//            if m.IsGenericMethod && not m.IsGenericMethodDefinition then
-//                let gm = m.GetGenericMethodDefinition() |> remap
-//                let ga = m.GetGenericArguments() |> Array.map remap
-//                gm.MakeGenericMethod ga :> MemberInfo
-//            else
-//                let dt = remap m.DeclaringType
-//                dt.GetMethods(allBindings)
-//                |> Array.find (fun m' -> m'.IsStatic = m.IsStatic && m'.ToString() = m.ToString())
-//                :> MemberInfo
-//
-//        | :? ConstructorInfo as c ->
-//            let dt = remap m.DeclaringType
-//            dt.GetConstructors(allBindings)
-//            |> Array.find (fun c' -> c.ToString() = c'.ToString())
-//            :> MemberInfo
-//
-//        | m ->
-//            let dt = remap m.DeclaringType
-//            dt.GetMember(m.Name, allBindings).[0]
-
     
+    // used by the assembly parser to remap references to corresponding slices
+
     let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
         match state.DynamicAssemblies.TryFind t.Assembly.FullName with
         | None -> None
@@ -140,6 +98,8 @@
             | Some (InSpecificSlice slice) -> 
                 Some <| slice.Assembly.GetType(t.FullName, true)
         
+
+    /// the main assembly parsing method
 
     let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly : Assembly) =
 
@@ -159,11 +119,14 @@
 
         let remap = memoize (tryRemapReferencedType state)
 
-        let parseConfig =
+        // configuration to be passed to the parser
+
+        let parseConfiguration =
             {
                 new IAssemblyParserConfig with
                     member __.EraseMember (m : MemberInfo) =
                         match m with
+                        // erase static constructor if so specified
                         | :? ConstructorInfo as c when c.IsStatic ->
                             match typeInfo.TryFind c.DeclaringType.FullName with
                             | Some (InCurrentSlice(eraseCctor = true)) -> true
@@ -179,14 +142,17 @@
                         | Some (Erased _) -> TypeParseAction.Ignore
                         | Some (AlwaysIncluded _) -> TypeParseAction.ParseAll
 
+                    // make *all* members in the slice public.
+                    // this is essential to ensure seamless referencing between slices
                     member __.MakePublic _ = true
+
                     member __.RemapReference(t : Type, outType : byref<Type>) =
                         match remap t with
                         | None -> false
                         | Some t' -> outType <- t'; true
             }
 
-        let sliceDefinition = AssemblyParser.Parse(assembly, parseConfig)
+        let sliceDefinition = AssemblyParser.Parse(assembly, parseConfiguration)
 
         let dependencies = 
             sliceDefinition.MainModule.AssemblyReferences

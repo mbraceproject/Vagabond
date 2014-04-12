@@ -43,6 +43,7 @@
             StaticInitializerData : byte [] option
         }
 
+    // Response given by the Vagrant client upon loading a PortableAssembly
 
     and AssemblyLoadResponse =
         | Loaded of string * (FieldInfo * exn) []

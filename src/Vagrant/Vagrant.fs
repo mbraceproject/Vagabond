@@ -46,15 +46,6 @@
         static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = 
             traverseDependencies None assemblies
 
-
-    module private Singleton =
-        let singleton = new Singleton<string>()
-
-        let acquire (id : string) =
-            if singleton.TryAcquire id then ()
-            else
-                invalidOp <| sprintf "Vagrant: an instance of '%s' has already been initialized." singleton.Content.Value
-
     /// <summary>
     ///     Client for loading type initialization blobs of dynamic assembly slices.
     /// </summary>
@@ -69,7 +60,6 @@
         /// </summary>
         /// <param name="pickler">Specify a custom pickler instance.</param>
         new (?pickler : FsPickler) =
-            Singleton.acquire "VagrantClient"
             let pickler = match pickler with None -> new FsPickler() | Some p -> p
             new VagrantClient(pickler, None)
 
@@ -110,8 +100,6 @@
             match dynamicAssemblyProfiles with
             | Some ps -> ps
             | None -> [ new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile ]
-
-        do Singleton.acquire "VagrantServer"
 
         // initialize agents
 

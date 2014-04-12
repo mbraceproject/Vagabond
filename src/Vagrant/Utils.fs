@@ -1,45 +1,10 @@
 ﻿module internal Nessos.Vagrant.Utils
 
-    open Mono.Cecil
-    open Mono.Collections.Generic
-
     open System
-    open System.Threading
     open System.Reflection
     open System.Runtime.Serialization
 
     open Microsoft.FSharp.Control
-
-    type Atom<'T when 'T : not struct>(value : 'T) =
-        let refCell = ref value
-    
-        let rec swap f = 
-            let currentValue = !refCell
-            let result = Interlocked.CompareExchange<'T>(refCell, f currentValue, currentValue)
-            if obj.ReferenceEquals(result, currentValue) then ()
-            else Thread.SpinWait 20; swap f
-
-        let transact f =
-            let output = ref Unchecked.defaultof<'S>
-            let f' x = let t,s = f x in output := s ; t
-            swap f' ; !output
-        
-        member __.Value with get() : 'T = !refCell
-        member __.Swap (f : 'T -> 'T) : unit = swap f
-        member __.Set (v : 'T) : unit = swap (fun _ -> v)
-        member __.Transact (f : 'T -> 'T * 'S) : 'S = transact f
-
-
-    type Singleton<'T> () =
-        let state = new Atom<'T option> (None)
-
-        member __.Content = state.Value
-        member __.TryAcquire (value : 'T) =
-            state.Transact(fun s ->
-                match s with
-                | None -> Some value, true
-                | Some _ -> s, false)
-
 
     /// Value or exception
     type Exn<'T> =
@@ -66,25 +31,7 @@
             | Success x -> try Success <| f x with e -> Error e
             | Error e -> Error e
 
-    module Map =
-        let addMany (m : Map<'K,'V>) (kvs : ('K * 'V) seq) =
-            Seq.fold (fun (m : Map<_,_>) (k,v) -> m.Add(k,v)) m kvs
 
-    module Choice =
-        let partition2 (inputs : Choice<'T,'S> list) =
-            let rec aux p1 p2 rest =
-                match rest with
-                | Choice1Of2 t :: tl -> aux (t :: p1) p2 tl
-                | Choice2Of2 s :: tl -> aux p1 (s :: p2) tl
-                | [] -> List.rev p1, List.rev p2
-
-            aux [] [] inputs
-
-    type MemberInfo with
-        member m.Assembly =
-            match m with
-            | :? Type as t -> t.Assembly
-            | m -> m.DeclaringType.Assembly
 
     module Option =
         let filter (f : 'T -> bool) (x : 'T option) : 'T option = 
@@ -102,29 +49,8 @@
                 dict.Add(x,y)
                 y
 
-    let Ymemoize F =
-        let dict = new System.Collections.Generic.Dictionary<_,_>()
-        let rec f x =
-            let found, y = dict.TryGetValue x
-            if found then y
-            else
-                let y = F f x
-                dict.Add(x, y)
-                y
-        f
-
-
     [<Literal>]
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
-
-    type ObjectTracker() =
-        let objectCounter = new System.Runtime.Serialization.ObjectIDGenerator()
-
-        member __.IsFirstOccurence<'T when 'T : not struct>(x : 'T) =
-            if obj.ReferenceEquals(x,null) then false
-            else
-                let _,firstTime = objectCounter.GetId x in firstTime
-
 
     // toplogical sorting for DAGs
 
@@ -141,38 +67,6 @@
                 aux (t :: sorted) g0
 
         aux [] g
-
-
-    // Mono.Cecil utilities
-
-    module Collection =
-        let update (f : 'T -> 'T) (collection : Collection<'T>) : unit =
-            let updated = collection |> Seq.map f |> Seq.toArray
-            collection.Clear()
-            for t in updated do collection.Add(t)
-
-        let map (f : 'T -> 'U) (tcollection : Collection<'T>) : Collection<'U> =
-            let ucollection = new Collection<'U>()
-            for t in tcollection do ucollection.Add(f t)
-            ucollection
-
-
-    type TypeReference with
-        member t.CanonicalName =
-            let rec aux carry (t : TypeReference) =
-                if t = null then String.concat "+" carry
-                else
-                    aux (t.Name :: carry) t.DeclaringType
-
-            if String.IsNullOrEmpty t.Namespace then aux [] t
-            else
-                sprintf "%s.%s" t.Namespace <| aux [] t
-
-
-        member t.ContainingAssembly =
-            match t.Scope with
-            | :? AssemblyNameReference as a -> Some a.FullName
-            | _ -> None
 
     /// A stateful agent implementation with readable inner state
 

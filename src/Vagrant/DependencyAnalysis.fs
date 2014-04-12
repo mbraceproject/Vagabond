@@ -15,7 +15,7 @@
 
     let gatherObjectDependencies (obj:obj) : Type [] =
         let gathered = new HashSet<Type>()
-        let tracker = new ObjectTracker()
+        let tracker = new ObjectIDGenerator()
         let inline add t = gathered.Add t |> ignore
         
         let rec traverseObj (obj : obj) =
@@ -30,7 +30,8 @@
                 for d' in d.GetInvocationList() do
                     if d <> d' then traverseObj d'
             | _ ->
-                if tracker.IsFirstOccurence obj then
+                let _, firstTime = tracker.GetId obj
+                if firstTime then
                     let t = obj.GetType()
                     traverseType t
 

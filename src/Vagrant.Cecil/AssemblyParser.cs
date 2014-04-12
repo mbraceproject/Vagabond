@@ -1,4 +1,10 @@
-﻿using System;
+﻿//
+//  Parse a loaded System.Reflection.Assembly into Cecil's data structures.
+//
+//  Code adapted from JB Evain's AssemblySaver: https://github.com/jbevain/mono.reflection/tree/assembly-saver
+//
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -703,14 +709,14 @@ namespace Nessos.Vagrant.Cecil
 
             if (type.IsPointer || type.IsByReference || type.IsPinned || type.IsArray)
             {
-                MapElementType(t, type);
+                MapReference(t.GetElementType(), ((TypeSpecification)type).ElementType);
                 return type;
             }
 
             if (type.IsGenericInstance)
             {
                 MapGenericArguments(t, type);
-                MapGenericTypeDefinition(t, type);
+                MapReference(t.GetGenericTypeDefinition(), ((TypeSpecification)type).ElementType);
                 return type;
             }
 
@@ -739,16 +745,6 @@ namespace Nessos.Vagrant.Cecil
             _module_definition.AssemblyReferences.Remove(reference);
 
             return type;
-        }
-
-        private void MapElementType(Type t, TypeReference type)
-        {
-            MapReference(t.GetElementType(), ((TypeSpecification)type).ElementType);
-        }
-
-        private void MapGenericTypeDefinition(Type t, TypeReference type)
-        {
-            MapReference(t.GetGenericTypeDefinition(), ((TypeSpecification)type).ElementType);
         }
 
         private Type GetReturnType(MethodBase method)

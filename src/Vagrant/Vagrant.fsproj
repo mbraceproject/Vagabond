@@ -61,7 +61,6 @@
     <Compile Include="SliceCompiler.fs" />
     <Compile Include="AssemblyExporter.fs" />
     <Compile Include="Vagrant.fs" />
-    <None Include="Script.fsx" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>

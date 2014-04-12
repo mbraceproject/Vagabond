@@ -428,13 +428,10 @@
             let implementationCode = """
             type Foo () =
                 interface IFoo with
-                    member __.GetEncoding<'T> (x : 'T) = (box x).GetHashCode()
+                    member __.GetEncoding<'T> (x : 'T) = 42
             """
 
             fsi.EvalInteraction interfaceCode
             fsi.EvalInteraction "client.EvaluateThunk <| fun () -> typeof<IFoo>.GetHashCode()"
             fsi.EvalInteraction implementationCode
-            fsi.EvalExpression "client.EvaluateThunk <| fun () -> try eval (new Foo()) (42, Some (12, false)) |> ignore ; true with _ -> false" |> shouldEqual true
-
-
-            
+            fsi.EvalExpression "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> shouldEqual 42

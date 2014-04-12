@@ -568,7 +568,7 @@ namespace Nessos.Vagrant.Cecil
         private TypeDefinition TypeDefinitionFor(Type type, TypeDefinition declaringType)
         {
             var type_definition = new TypeDefinition(
-                type.Namespace,
+                (declaringType == null) ? type.Namespace : "",
                 type.Name,
                 (MC.TypeAttributes)type.Attributes,
                 _assembly_definition.MainModule.TypeSystem.Object);
@@ -714,7 +714,19 @@ namespace Nessos.Vagrant.Cecil
                 return type;
             }
 
-            UpdateTypeReference(t, type);
+            if (_options.RemapReference(t, out t))
+            {
+                var oldscope = type.Scope as AssemblyNameReference;
+                if (oldscope != null && oldscope.FullName == _assembly_definition.FullName)
+                    _module_definition.AssemblyReferences.Remove(oldscope);
+
+                var _type = _module_definition.Import(t);
+
+                type.Name = _type.Name;
+                type.Namespace = _type.Namespace;
+                type.MetadataToken = _type.MetadataToken;
+                type.GetElementType().Scope = _type.Scope;
+            }
 
             if (type.Scope.MetadataScopeType != MetadataScopeType.AssemblyNameReference)
                 return type;
@@ -727,25 +739,6 @@ namespace Nessos.Vagrant.Cecil
             _module_definition.AssemblyReferences.Remove(reference);
 
             return type;
-        }
-
-        private void UpdateTypeReference(Type t, TypeReference tref)
-        {
-            Type _t;
-
-            if (_options.RemapReference(t, out _t))
-            {
-                var _tref = _module_definition.Import(_t);
-
-                tref.Name = _tref.Name;
-                tref.Namespace = _tref.Namespace;
-                tref.MetadataToken = _tref.MetadataToken;
-
-                var previous_scope = tref.Scope as AssemblyNameReference;
-                tref.Scope = _tref.Scope;
-                if (previous_scope != null && previous_scope != tref.Scope)
-                    _module_definition.AssemblyReferences.Remove(previous_scope);
-            }
         }
 
         private void MapElementType(Type t, TypeReference type)

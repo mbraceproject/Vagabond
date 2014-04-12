@@ -14,7 +14,7 @@
     [<TestFixture>]
     module FsiTests =
 
-        // leave this to force static dependency on LinqOptimizer
+        // leave this to force static dependency on LinqOptimizer tp ensure it is copied to the build directory
         let private linqOptBinder () = Nessos.LinqOptimizer.FSharp.Query.ofSeq [] |> ignore
 
         // by default, NUnit copies test assemblies to a temp directory
@@ -367,3 +367,74 @@
             fsi.EvalInteraction "open Script"
             fsi.EvalInteraction "let r = client.EvaluateThunk <| fun () -> map factorial value"
             fsi.EvalExpression "r = map factorial value" |> shouldEqual true
+
+        [<Test>]
+        let ``15. Single Interaction - Multiple executions`` () =
+
+            let fsi = FsiSession.Value
+            
+            let code = """
+            let x = client.EvaluateThunk <| fun () -> 1 + 1
+            let y = client.EvaluateThunk <| fun () -> x + x
+            let w = client.EvaluateThunk <| fun () -> y + y
+            in client.EvaluateThunk <| fun () -> w + w
+            """
+
+            fsi.EvalExpression code |> shouldEqual 16
+
+        [<Test>]
+        let ``16. Cross slice inheritance`` () =
+
+            let fsi = FsiSession.Value
+            
+            let type1 = """
+            type Foo<'T>(x : 'T) =
+                member __.Value = x
+            """
+
+            let type2 = """
+            type Bar<'T, 'S>(x : 'T, y : 'S) =
+                inherit Foo<'T>(x)
+                
+                member __.Value2 = y
+            """
+
+            let type3 = """
+            type Baz(x : int, y : string) =
+                inherit Bar<int, string>(x,y)
+
+                member __.Pair = x,y
+            """
+
+            fsi.EvalInteraction type1
+            fsi.EvalInteraction "client.EvaluateThunk <| fun () -> new Foo<int>(42)"
+            fsi.EvalInteraction type2
+            fsi.EvalInteraction "client.EvaluateThunk <| fun () -> new Bar<int, bool>(42, false)"
+            fsi.EvalInteraction type3
+            fsi.EvalInteraction """let foo = client.EvaluateThunk <| fun () -> let b = new Baz(42, "42") in b :> Foo<int>"""
+            fsi.EvalExpression "foo.Value" |> shouldEqual 42
+
+        [<Test>]
+        let ``17. Cross slice interfaces`` () =
+
+            let fsi = FsiSession.Value
+
+            let interfaceCode = """
+            type IFoo =
+                abstract GetEncoding<'T> : 'T -> int
+
+            let eval (foo : IFoo) (x : 'T) = foo.GetEncoding x
+            """
+            let implementationCode = """
+            type Foo () =
+                interface IFoo with
+                    member __.GetEncoding<'T> (x : 'T) = (box x).GetHashCode()
+            """
+
+            fsi.EvalInteraction interfaceCode
+            fsi.EvalInteraction "client.EvaluateThunk <| fun () -> typeof<IFoo>.GetHashCode()"
+            fsi.EvalInteraction implementationCode
+            fsi.EvalExpression "client.EvaluateThunk <| fun () -> try eval (new Foo()) (42, Some (12, false)) |> ignore ; true with _ -> false" |> shouldEqual true
+
+
+            

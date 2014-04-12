@@ -19,7 +19,7 @@
         
         let endpoint = defaultArg endpoint defaultConnectionString
 
-        let vagrant = new VagrantClient()
+        static let vagrant = new VagrantClient()
         
         let rec serverLoop (inbox : MailboxProcessor<ServerMsg>) = async {
             let! msg = inbox.Receive()

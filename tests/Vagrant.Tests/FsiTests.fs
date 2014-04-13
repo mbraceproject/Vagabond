@@ -98,7 +98,6 @@
                 [
                     "FsPickler.dll"
                     "Mono.Cecil.dll"
-                    "Mono.Reflection.dll"
                     "Vagrant.dll"
                     "LinqOptimizer.Base.dll"
                     "LinqOptimizer.Core.dll"
@@ -435,3 +434,24 @@
             fsi.EvalInteraction "client.EvaluateThunk <| fun () -> typeof<IFoo>.GetHashCode()"
             fsi.EvalInteraction implementationCode
             fsi.EvalExpression "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> shouldEqual 42
+
+        [<Test>]
+        let ``18. Binary Trees`` () =
+            let code = """
+            type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
+
+            let rec init = function 0 -> Leaf | n -> Node(n, init (n-1), init (n-1))
+            let rec map f = function Leaf -> Leaf | Node(a,l,r) -> Node(f a, map f l, map f r)
+            let rec reduce id f = function Leaf -> id | Node(a,l,r) -> f (f (reduce id f l) a) (reduce id f r)
+
+            let tree = client.EvaluateThunk <| fun () -> init 5
+
+            let tree' = client.EvaluateThunk <| fun () -> map (fun x -> 2. ** float x) tree
+
+            let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
+            """
+
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction code
+            fsi.EvalExpression "sum" |> shouldEqual 192.

@@ -44,10 +44,6 @@
     <Reference Include="Mono.Cecil.Rocks">
       <HintPath>..\..\packages\Mono.Cecil.0.9.5.4\lib\net40\Mono.Cecil.Rocks.dll</HintPath>
     </Reference>
-    <Reference Include="Mono.Reflection, Version=1.0.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\lib\Mono.Reflection.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -59,6 +55,10 @@
   <ItemGroup>
     <Compile Include="AssemblyParser.cs" />
     <Compile Include="AssemblyParserConfig.cs" />
+    <Compile Include="ByteBuffer.cs" />
+    <Compile Include="Disassembler.cs" />
+    <Compile Include="Instruction.cs" />
+    <Compile Include="MethodBodyReader.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

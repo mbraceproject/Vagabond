@@ -81,7 +81,7 @@ let test = async {
         return None
 
     with :? System.InvalidOperationException as e ->
-        return Some e
+        return Some "error"
 }
 
 runRemoteAsync test

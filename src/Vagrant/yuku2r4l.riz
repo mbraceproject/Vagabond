@@ -4,7 +4,6 @@
     open System.Collections
     open System.Collections.Generic
     open System.Runtime.Serialization
-    open System.Runtime.CompilerServices
     open System.Reflection
 
     open Nessos.FsPickler
@@ -15,44 +14,37 @@
     open Microsoft.FSharp.Reflection
 
     type TypeInfo =
-        | PartiallyComputed of isSealed:bool
+        | Undefined of isSealed:bool
         | Primitive
         | Array of isSealed:bool
         | Reference of isSealed:bool
-        | GenericTypeDef
-        | Named of isGenericInstance:bool * isSealed:bool * nonSealedFields:FieldInfo []
+        | GenericTypeDef of isSealed:bool
+        | Type of isGenericInstance:bool * isSealed:bool * nonSealedFields:FieldInfo []
     with
         member t.IsSealed =
             match t with
             | Primitive -> true
-            | GenericTypeDef -> true // irrelevant to this algorithm
-            | PartiallyComputed s
+            | Undefined s
             | Array s
             | Reference s
-            | Named (isSealed = s) -> s
+            | GenericTypeDef s
+            | Type (isSealed = s) -> s
 
         member t.IsNamedType =
             match t with
             | GenericTypeDef _
-            | Named(isGenericInstance = false) -> true
+            | Type(isGenericInstance = false) -> true
             | _ -> false
 
     /// gathers all types that occur in an object graph
 
     let gatherObjectDependencies (obj : obj) = //: Type [] =
-
         let typeIndex = new Dictionary<Type, TypeInfo>()
         let objIndex = new ObjectIDGenerator()
         let inline add t info = typeIndex.[t] <- info ; info
 
         let isOptionType (t : Type) = 
             t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<int option>
-
-        let isFsharpList (t : Type) =
-            t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<int list>
-
-        let isSealedType (t : Type) =
-            t.IsSealed || FSharpType.IsTuple t || isOptionType t || isFsharpList t
 
         // walks up the type hierarchy, gathering all instance fields
 
@@ -88,47 +80,46 @@
             let found, info = typeIndex.TryGetValue t
             if found then info else
 
-            do RuntimeHelpers.EnsureSufficientExecutionStack()
-
             if t.IsPrimitive || t = typeof<string> then 
                 add t Primitive
 
             elif t.IsArray then
-                let _ = add t <| PartiallyComputed false
+                let _ = add t <| Undefined false
                 let info = traverseType <| t.GetElementType()
                 add t <| Array info.IsSealed
 
             elif t.IsByRef || t.IsPointer then
-                let _ = add t <| PartiallyComputed false
+                let _ = add t <| Undefined false
                 let info = traverseType <| t.GetElementType()
                 add t <| Reference info.IsSealed
 
             elif t.IsGenericTypeDefinition then
-                add t GenericTypeDef
+                add t <| GenericTypeDef t.IsSealed
 
             else
-                let isGenericInstance =
+                let isSealed = t.IsSealed || FSharpType.IsTuple t || isOptionType t
+
+                let isGenericInstance, isSealed =
                     if t.IsGenericType then
                         let _ = traverseType <| t.GetGenericTypeDefinition()
 
-                        for ga in t.GetGenericArguments() do
-                            let _ = traverseType ga in ()
+                        let isSealed =
+                            t.GetGenericArguments()
+                            |> Array.forall traverseType
+//                        for gt in t.GetGenericArguments() do
+//                            traverseType gt |> ignore
 
                         true
                     else
-                        false
+                        false, isSealed
 
-                let info = add t <| PartiallyComputed (isSealedType t)
+                let fields =
+                    gatherFields t
+                    |> Array.filter(fun f -> let info = traverseType f.FieldType in not info.IsSealed)
 
-                let fields = gatherFields t
-                let areAllFieldsSealed = fields |> Array.forall(fun f -> let info = traverseType f.FieldType in info.IsSealed)
-                let isSealed = info.IsSealed && areAllFieldsSealed
+                let isSealed = fields.Length = 0 && ()
 
-                // re-update so that fields are correctly filtered in case of recursive pattern
-                let _ = add t <| PartiallyComputed isSealed
-                let fields' = fields |> Array.filter (fun f -> let info = traverseType f.FieldType in not info.IsSealed)
-
-                add t <| Named(isGenericInstance, isSealed, fields')
+                add t <| Type(isGenericInstance, isSealed, fields)
 
         // traverses the object graph: 
         // if non-sealed fields appear, evaluate and proceed accordingly.
@@ -155,7 +146,7 @@
                     for e in obj :?> Array do
                         traverseObj e
 
-                | Named(isSealed = false; nonSealedFields = fields) ->
+                | Type(nonSealedFields = fields) ->
                     for f in fields do
                         let value = f.GetValue(obj)
                         traverseObj value
@@ -165,8 +156,13 @@
         do traverseObj obj
 
         typeIndex 
-        |> Seq.choose (function (KeyValue(t,info)) -> if info.IsNamedType then Some t else None)
-        |> Seq.toArray
+//        |> Seq.choose (function (KeyValue(t,info)) -> if info.IsNamedType then Some t else None)
+//        |> Seq.toArray
+
+
+    let xs = [ box 12; box (Some(12, "")) ; box(12,true) ] :> obj
+
+    let ts = gatherObjectDependencies xs
 
 
     /// gets an index of all assemblies loaded in the current AppDomain

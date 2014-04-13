@@ -11,14 +11,16 @@ The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagrant
 **)
 
-#r "bin/Debug/Vagrant.Tests.exe"
+#r "bin/Release/FsPickler.dll"
+#r "bin/Release/Vagrant.Tests.exe"
 open Nessos.Vagrant.Tests.ThunkServer
 
 // initialize & test a local instance
 let client = ThunkClient.InitLocal()
 
-
-// Example 1: simple, incremental interactions
+(**
+Example 1: simple, incremental interactions
+**)
 
 let askDeepThought () = 42
 
@@ -26,7 +28,9 @@ let answer = client.EvaluateThunk askDeepThought
 
 client.EvaluateThunk (fun () -> if answer = 42 then failwith "yet another mindless hitchhiker reference")
 
-// Example 2: custom type definitions
+(**
+Example 2: custom type definitions
+**)
 
 type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
 
@@ -40,107 +44,103 @@ let tree' = client.EvaluateThunk <| fun () -> map (fun x -> 2. ** float x) tree
 
 let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 
+(**
+Example 3: Type providers
+**)
 
-//
-//Example 1 : incremental interactions
-//
-//
-//type Foo<'T> = Bar of 'T
-//
-//let x = client.EvaluateThunk (fun () -> Bar 42)
-//
-//let incr (Bar x) = Bar (x + 1)
-//
-//let y = client.EvaluateThunk <| fun () -> incr x
-//
-//let z = client.EvaluateThunk <| fun () -> let (Bar x) = x in let (Bar y) = y in Bar(x+y)
-//
-//let w = 1
-//let w1 = client.EvaluateThunk <| fun () -> Bar(w)
-//let w2 = client.EvaluateThunk <| fun () -> Bar(w1)
-//
-//// Example 2 : Async
-//
-//let runAsync (wf : Async<'T>) =
-//    client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
-//
-//let test = async {
-//
-//    let worker i = async {
-//        do printfn "processing job #%d" i
-//        return Bar (i+1)
-//    }
-//
-//    let (Bar value) = x
-//    let! results = [|1..value|] |> Array.map worker |> Async.Parallel
-//
-//    return results
-//}
-//
-//let result = runAsync test
-//
-//client.EvaluateThunk <| fun () -> result.Length
-//
-//// sample: deploy an actor
-//
-//
-//open Microsoft.FSharp.Control
-//open Nessos.Vagrant.Tests.TcpActor
-//
-//// takes an input, replies with an aggregate sum
-//let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
-//    async {
-//        let! msg, rc = inbox.Receive ()
-//
-//        printfn "Received %d. Thanks!" msg
-//
-//        rc.Reply state
-//
-//        return! loop (state + msg) inbox
-//    }
-//
-//let deployActor () = 
-//    printfn "deploying actor..."
-//    let a = TcpActor.Create(loop 0, "localhost:18979")
-//    printfn "done"
-//    a.GetClient()
-//
-//// deploy
-//let actorRef = client.EvaluateThunk deployActor
-//
-//// define post function
-//let postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch
-//
-//// upload dependencies for post function
-//client.UploadDependencies postAndReply
-//
-//// send messages to actor
-//postAndReply 1
-//postAndReply 2
-//postAndReply 3
-//
-//
-////
-////  LinqOptimizer tests
-////
-//
-//#r "bin/Release/LinqOptimizer.Base.dll"
-//#r "bin/Release/LinqOptimizer.Core.dll"
-//#r "bin/Release/LinqOptimizer.FSharp.dll"
-//
-//open Nessos.LinqOptimizer.FSharp
-//
-//
-//let nums = [|1..100000|]
-//
-//let query = 
-//    nums
-//    |> Query.ofSeq
-//    |> Query.filter (fun num -> num % 2 = 0)
-//    |> Query.map (fun num -> num * num)
-//    |> Query.sum
-//    |> Query.compile
-//
-//query ()
-//
-//client.EvaluateThunk query
+#r "../../packages/FSharp.Data.2.0.5/lib/net40/FSharp.Data.dll"
+
+open FSharp.Data
+
+let wb = WorldBankData.GetDataContext()
+
+let top5 () = 
+    query {
+        for country in wb.Regions.``Euro area``.Countries do
+        sortByDescending country.Indicators.``GDP per capita (current US$)``.[2012]
+        take 5
+        select country.Name
+    } |> Seq.toList
+
+client.EvaluateThunk top5
+
+(**
+Example 4 : Asynchronous workflows
+**)
+
+let runRemoteAsync (workflow : Async<'T>) =
+    client.EvaluateThunk(fun () -> Async.RunSynchronously workflow)
+
+let test = async {
+    
+    let printfn fmt = Printf.ksprintf System.Console.WriteLine fmt
+    let workflow i = async { if i = 7 then invalidOp "error" else printfn "Running task %d.." i }
+
+    try
+        let! results = [1..10] |> List.map workflow |> Async.Parallel
+        return None
+
+    with :? System.InvalidOperationException as e ->
+        return Some e
+}
+
+runRemoteAsync test
+
+(**
+Example 5: Deploy a locally defined actor
+**)
+
+open Microsoft.FSharp.Control
+open Nessos.Vagrant.Tests.TcpActor
+
+let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
+    async {
+        let! msg, rc = inbox.Receive ()
+
+        printfn "Received %d. Thanks!" msg
+
+        rc.Reply state
+
+        return! loop (state + msg) inbox
+    }
+
+let deployActor () = 
+    printfn "deploying actor..."
+    let a = TcpActor.Create(loop 0, "localhost:18979")
+    printfn "done"
+    a.GetClient()
+
+// deploy
+let rec actorRef = client.EvaluateThunk deployActor
+and postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch
+
+// send messages
+postAndReply 1
+postAndReply 2
+postAndReply 3
+
+(*
+Example 6: Deploy library-generated dynamic assemblies
+*)
+
+#I "../../packages/LinqOptimizer.FSharp.0.5.2.1/lib/"
+
+#r "LinqOptimizer.Base.dll"
+#r "LinqOptimizer.Core.dll"
+#r "LinqOptimizer.FSharp.dll"
+
+open Nessos.LinqOptimizer.FSharp
+
+let nums = [|1..100000|]
+
+let query = 
+    nums
+    |> Query.ofSeq
+    |> Query.filter (fun num -> num % 2 = 0)
+    |> Query.map (fun num -> num * num)
+    |> Query.sum
+    |> Query.compile
+
+query ()
+
+client.EvaluateThunk query

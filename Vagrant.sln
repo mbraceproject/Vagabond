@@ -37,12 +37,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A
 		tests\Vagrant.Tests\thunkServer.fsx = tests\Vagrant.Tests\thunkServer.fsx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "lib", "lib", "{66BF9FB4-399C-4103-BE99-D683FE32B79B}"
-	ProjectSection(SolutionItems) = preProject
-		lib\Mono.Reflection.dll = lib\Mono.Reflection.dll
-		lib\Mono.Reflection.pdb = lib\Mono.Reflection.pdb
-	EndProjectSection
-EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant", "src\Vagrant\Vagrant.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant.Tests", "tests\Vagrant.Tests\Vagrant.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"

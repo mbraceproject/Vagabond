@@ -768,7 +768,7 @@ namespace Nessos.Vagrant.Cecil
             var type = provider.GetType();
 
             // System.Reflection.Module.GetCustomAttributesData() not implemented in mono <= 3.4.0
-            if (_is_running_mono && type == typeof(System.Reflection.Module)) return;
+            if (_is_running_mono && typeof(System.Reflection.Module).IsAssignableFrom(type)) return;
 
             var method = type.GetMethod("GetCustomAttributesData");
             if (method == null)

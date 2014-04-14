@@ -39,7 +39,7 @@
 
     /// gathers all types that occur in an object graph
 
-    let gatherObjectDependencies (obj : obj) = //: Type [] =
+    let gatherObjectDependencies (obj : obj) : Type [] =
 
         let typeIndex = new Dictionary<Type, TypeInfo>()
         let objIndex = new ObjectIDGenerator()
@@ -144,9 +144,9 @@
             | :? Delegate as d -> 
                 traverseType (d.GetType()) |> ignore
                 traverseType d.Method.DeclaringType |> ignore
-                traverseObj d.Target |> ignore
-                for d in d.GetInvocationList() do
-                    traverseObj d |> ignore
+                traverseObj d.Target
+                for d' in d.GetInvocationList() do
+                    if d <> d' then traverseObj d'
             | _ ->
                 let t = obj.GetType()
                 

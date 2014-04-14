@@ -6,6 +6,8 @@
 
     open Microsoft.FSharp.Control
 
+    let runsMono = Type.GetType("Mono.Runtime") <> null
+
     /// Value or exception
     type Exn<'T> =
         | Success of 'T
@@ -32,7 +34,6 @@
             | Error e -> Error e
 
 
-
     module Option =
         let filter (f : 'T -> bool) (x : 'T option) : 'T option = 
             match x with 
@@ -51,6 +52,26 @@
 
     [<Literal>]
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
+
+    type DynamicAssemblyState with
+        member s.HasFreshTypes =
+            let currentTypeCount =
+                if not runsMono then
+                    s.DynamicAssembly.GetTypes().Length
+                else
+                    // mono needs different approach since Assembly.GetTypes() only returns non-nested types
+                    let count = ref 0
+                    let rec countTypes (types : Type []) =
+                        count := !count + types.Length
+                        for t in types do
+                            countTypes <| t.GetNestedTypes(BindingFlags.NonPublic ||| BindingFlags.Public)
+
+                    countTypes <| s.DynamicAssembly.GetTypes()
+                    !count
+
+            let compiledTypeCount = s.TypeIndex.Count
+            currentTypeCount > compiledTypeCount
+
 
     // toplogical sorting for DAGs
 

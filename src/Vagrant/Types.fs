@@ -107,11 +107,6 @@
             TypeIndex : Map<string, DynamicTypeInfo>
         }
     with
-        member s.HasFreshTypes =
-            let assemblyTypeCount = s.DynamicAssembly.GetTypes().Length
-            let compiledTypeCount = s.TypeIndex.Count
-            assemblyTypeCount > compiledTypeCount
-
         member s.Name = s.DynamicAssembly.GetName()
 
         member s.LatestSlice = s.GeneratedSlices.TryFind s.GeneratedSlices.Count

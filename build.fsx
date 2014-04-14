@@ -39,19 +39,24 @@ let testAssemblies = ["tests/Vagrant.Tests/bin/Release/Vagrant.Tests.exe"]
 //// Read release notes & version info from RELEASE_NOTES.md
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
-let isAppVeyorBuild = environVar "APPVEYOR" <> null
-let nugetVersion = 
-    if isAppVeyorBuild then sprintf "%s-a%s" release.NugetVersion (DateTime.UtcNow.ToString "yyMMddHHmm")
-    else release.NugetVersion
-
-Target "BuildVersion" (fun _ ->
-    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" nugetVersion) |> ignore
-)
+//let isAppVeyorBuild = environVar "APPVEYOR" <> null
+//let nugetVersion = 
+//    if isAppVeyorBuild then sprintf "%s-a%s" release.NugetVersion (DateTime.UtcNow.ToString "yyMMddHHmm")
+//    else release.NugetVersion
+//
+//Target "BuildVersion" (fun _ ->
+//    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" nugetVersion) |> ignore
+//)
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let fileName = "src/Vagrant/assemblyInfo.fs"
-  CreateFSharpAssemblyInfo fileName
+  let vagrantCS = "src/Vagrant.Cecil/Properties/AssemblyInfo.cs"
+  CreateCSharpAssemblyInfo vagrantCS
+      [ Attribute.Version release.AssemblyVersion
+        Attribute.FileVersion release.AssemblyVersion] 
+
+  let vagrantFS = "src/Vagrant/assemblyInfo.fs"
+  CreateFSharpAssemblyInfo vagrantFS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
 )
@@ -120,8 +125,8 @@ Target "NuGet" (fun _ ->
             Project = project
             Summary = summary
             Description = description
-            Version = nugetVersion
-            ReleaseNotes = String.concat " " release.Notes
+            Version = release.NugetVersion
+            ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
                     ("FsPickler", "")

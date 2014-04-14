@@ -53,6 +53,8 @@
     [<AutoSerializable(false)>]
     type VagrantClient internal (pickler : FsPickler, localServerId : Guid option) =
 
+        static do registerAssemblyResolutionHandler()
+
         let loader = mkAssemblyLoader pickler localServerId
 
         /// <summary>

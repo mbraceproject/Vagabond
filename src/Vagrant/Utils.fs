@@ -6,7 +6,8 @@
 
     open Microsoft.FSharp.Control
 
-    let runsMono = Type.GetType("Mono.Runtime") <> null
+    // write like this to avoid strange F# type initialization bug
+    let runsMono = not <| obj.ReferenceEquals(Type.GetType("Mono.Runtime"), null)
 
     /// Value or exception
     type Exn<'T> =
@@ -32,7 +33,6 @@
             match x with
             | Success x -> try Success <| f x with e -> Error e
             | Error e -> Error e
-
 
     module Option =
         let filter (f : 'T -> bool) (x : 'T option) : 'T option = 
@@ -61,6 +61,15 @@
                 | Some _ as y ->
                     let _ = dict.TryAdd(x, y)
                     y
+
+    /// try get assembly that is loaded in current appdomain
+
+    let tryGetLoadedAssembly =
+        let load fullName =
+            System.AppDomain.CurrentDomain.GetAssemblies()
+            |> Array.tryFind (fun a -> a.FullName = fullName)
+
+        tryConcurrentMemoize load
 
     [<Literal>]
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static

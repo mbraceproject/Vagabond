@@ -168,20 +168,9 @@
         |> Seq.choose (function (KeyValue(t,info)) -> if info.IsNamedType then Some t else None)
         |> Seq.toArray
 
-
-    /// gets an index of all assemblies loaded in the current AppDomain
-
-    let getLoadedAssemblies () =
-        System.AppDomain.CurrentDomain.GetAssemblies()
-        |> Seq.map (fun a -> a.FullName, a)
-        |> Map.ofSeq
-
-
     /// recursively traverse assembly dependency graph
 
     let traverseDependencies (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
-
-        let loadedAssemblies = getLoadedAssemblies()
 
         let isSystemAssembly =
             let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
@@ -189,7 +178,7 @@
             fun (a:Assembly) -> getPublicKey a = systemPkt
 
         let tryResolveLoadedAssembly (an : AssemblyName) =
-            match loadedAssemblies.TryFind an.FullName, state with
+            match tryGetLoadedAssembly an.FullName, state with
             | Some a, _ when isSystemAssembly a -> None
             | Some _ as s, _ -> s
             // query the slice compiler when present: this is needed since slices are not loaded in the appdomain
@@ -216,8 +205,6 @@
 
     let parseDynamicAssemblies (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
-        let loadedAssemblies = getLoadedAssemblies()
-
         let isDynamicAssemblyRequiringCompilation (a : Assembly) =
             if a.IsDynamic then
                 state.DynamicAssemblies.TryFind a.FullName 
@@ -233,7 +220,7 @@
                 // parse dynamic assembly
                 let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
 
-                let dependencies = dependencies |> List.choose loadedAssemblies.TryFind
+                let dependencies = dependencies |> List.choose tryGetLoadedAssembly
 
                 let graph' = graph.Add(a.FullName, (a, dependencies, sliceData))
                 

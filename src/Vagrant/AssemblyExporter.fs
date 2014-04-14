@@ -10,19 +10,6 @@
     open Nessos.Vagrant.Utils
 
 
-    let tryGetloadedAssembly =
-        let load fullName =
-            System.AppDomain.CurrentDomain.GetAssemblies()
-            |> Array.tryFind (fun a -> a.FullName = fullName)
-
-        tryConcurrentMemoize load
-
-    do 
-        // need an assembly resolution handler when loading assemblies at runtime
-        System.AppDomain.CurrentDomain.add_AssemblyResolve <| 
-            new ResolveEventHandler (fun _ args -> defaultArg (tryGetloadedAssembly args.Name) null)
-
-
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
     /// export a portable assembly based on given compiler state and arguments
@@ -85,10 +72,21 @@
         | _ -> generationIdx, mkPortableAssembly None
 
 
+    //
+    // assembly loader protocol implementation
+    //
+
     type LoadedAssemblyInfo =
         | UnLoaded
         | LoadedStatic
         | LoadedDynamic of requiresStaticInitialization:bool * generation:int option * isPartiallyEvaluated:bool
+
+
+    /// need an assembly resolution handler when loading assemblies at runtime
+
+    let registerAssemblyResolutionHandler () = 
+        System.AppDomain.CurrentDomain.add_AssemblyResolve <| 
+            new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
 
     /// portable assembly load protocol implementation
 
@@ -96,7 +94,7 @@
 
         // load assembly image
         let tryLoadAssembly (pa : PortableAssembly) =
-            match tryGetloadedAssembly pa.FullName with
+            match tryGetLoadedAssembly pa.FullName with
             | Some _ as a -> a
             | None -> 
                 // try load binary image

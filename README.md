@@ -6,7 +6,7 @@ A library that facilitates the distribution of code in the .NET framework.
 
 On-demand distribution of code (e.g. lambdas) for remote execution is a problem
 often exacerbated by the presence of dynamic assemblies. Dynamic assemblies 
-appear in situations where code is emitted at runtime, such interpreters,
+appear in situations where code is emitted at runtime, such as interpreters,
 optimization libraries or F# type providers. By default, dynamic assemblies
 are not persistable. What's more, the inherently incremental nature of dynamic
 assemblies makes their exportation even more challenging.
@@ -20,9 +20,10 @@ It is based on the `Mono.Cecil` and `FsPickler` libraries and uses code from JB 
 
 ### Demo
 
-To see a demo of Vagrant, build the project and execute the `thunkServer.fsx` script found
-inside the samples folder. As the name suggests, it allows for execution of arbitrary thunks
-in a remote server.
+To see a demo of Vagrant, build the project and execute the
+[`thunkServer.fsx`](https://github.com/nessos/Vagrant/blob/master/tests/Vagrant.Tests/thunkServer.fsx) 
+script found inside the samples folder. As the name suggests, it allows for execution of 
+arbitrary thunks in a remote server.
 
 ### Overview
 

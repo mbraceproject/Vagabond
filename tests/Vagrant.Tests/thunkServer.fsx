@@ -52,6 +52,8 @@ Example 3: Type providers
 
 open FSharp.Data
 
+// World Bank
+
 let wb = WorldBankData.GetDataContext()
 
 let top5 () = 
@@ -63,6 +65,17 @@ let top5 () =
     } |> Seq.toList
 
 client.EvaluateThunk top5
+
+// FreeBase
+
+let fb = FSharp.Data.FreebaseData.GetDataContext()
+
+let displaySussman () =
+    let sussman = fb.``Science and Technology``.Computers.``Computer Scientists``.Individuals.``Gerald Jay Sussman``
+    for line in sussman.Blurb do printfn "%s" line
+
+client.EvaluateThunk displaySussman
+        
 
 (**
 Example 4 : Asynchronous workflows

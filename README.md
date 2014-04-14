@@ -60,3 +60,11 @@ do server.SubmitObjectDependencies(submitF, obj, permitCompilation = true)
 ```
 where ``submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>`` is
 a user-provided dependency transport implementation.
+
+### Mono Support
+
+Vagrant makes heavy use of the reflection API. Mono support is patchy for the moment, 
+mostly due to a number of bugs in the mono runtime 
+[[1](https://bugzilla.xamarin.com/show_bug.cgi?id=19045),[2](https://bugzilla.xamarin.com/show_bug.cgi?id=19039)].
+If you would like to see stable mono support for Vagrant soon, 
+make sure to contribute code/nag until these bugs are resolved.

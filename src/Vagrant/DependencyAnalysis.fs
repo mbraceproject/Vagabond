@@ -282,7 +282,7 @@
                 | Some info ->
                     let remapType (t : Type) =
                         match info.TypeIndex.TryFind t.FullName with
-                        | None | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant: no slice corresponds dynamic type '%O'." t
+                        | None | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant: no slice corresponds to dynamic type '%O'." t
                         | Some (InSpecificSlice slice) -> slice.Assembly
 
                     Seq.map remapType ts

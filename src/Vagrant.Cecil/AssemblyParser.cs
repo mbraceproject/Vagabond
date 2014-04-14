@@ -42,12 +42,14 @@ namespace Nessos.Vagrant.Cecil
 
         private AssemblyDefinition _assembly_definition;
         private ModuleDefinition _module_definition;
+        private bool _is_running_mono;
         
 
         private AssemblyParser(Assembly assembly, IAssemblyParserConfig options)
         {
             _assembly = assembly;
             _options = options;
+            _is_running_mono = System.Type.GetType("Mono.Runtime") != null;
         }
 
         private AssemblyDefinition Map()
@@ -763,7 +765,12 @@ namespace Nessos.Vagrant.Cecil
 
         private void MapCustomAttributes(SR.ICustomAttributeProvider provider, MC.ICustomAttributeProvider targetProvider)
         {
-            var method = provider.GetType().GetMethod("GetCustomAttributesData");
+            var type = provider.GetType();
+
+            // System.Reflection.Module.GetCustomAttributesData() not implemented in mono <= 3.4.0
+            if (_is_running_mono && type == typeof(System.Reflection.Module)) return;
+
+            var method = type.GetMethod("GetCustomAttributesData");
             if (method == null)
                 throw new NotSupportedException("No method GetCustomAttributesData for type " + provider.GetType().FullName);
 

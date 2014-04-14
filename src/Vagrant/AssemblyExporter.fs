@@ -9,6 +9,20 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
 
+
+    let tryGetloadedAssembly =
+        let load fullName =
+            System.AppDomain.CurrentDomain.GetAssemblies()
+            |> Array.tryFind (fun a -> a.FullName = fullName)
+
+        tryConcurrentMemoize load
+
+    do 
+        // need an assembly resolution handler when loading assemblies at runtime
+        System.AppDomain.CurrentDomain.add_AssemblyResolve <| 
+            new ResolveEventHandler (fun _ args -> defaultArg (tryGetloadedAssembly args.Name) null)
+
+
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
     /// export a portable assembly based on given compiler state and arguments
@@ -82,22 +96,14 @@
 
         // load assembly image
         let tryLoadAssembly (pa : PortableAssembly) =
-            let loadedAssembly =
-                System.AppDomain.CurrentDomain.GetAssemblies()
-                |> Array.tryFind (fun a -> a.FullName = pa.FullName)
-
-            match loadedAssembly with
+            match tryGetloadedAssembly pa.FullName with
             | Some _ as a -> a
             | None -> 
                 // try load binary image
                 match pa.Image with
                 | None -> None
                 | Some bytes ->
-                    // note : using Assembly.Load directly on the raw image
-                    // results in curious bugs
-                    let tmp = Path.GetTempFileName()
-                    File.WriteAllBytes(tmp, bytes)
-                    let assembly = System.Reflection.Assembly.LoadFrom(tmp)
+                    let assembly = System.Reflection.Assembly.Load(bytes)
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'" pa.FullName assembly.FullName
                         raise <| new InvalidDataException(msg)
@@ -183,7 +189,6 @@
 
     let mkAssemblyLoader (pickler : FsPickler) (serverId : Guid option) : AssemblyLoader =
         mkStatefulAgent Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
-
 
 
     // server-side protocol implementation

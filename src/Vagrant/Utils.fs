@@ -50,6 +50,18 @@
                 dict.Add(x,y)
                 y
 
+    let tryConcurrentMemoize f =
+        let dict = new System.Collections.Concurrent.ConcurrentDictionary<_,_>()
+        fun x ->
+            let found,y = dict.TryGetValue x
+            if found then y
+            else
+                match f x with
+                | None -> None
+                | Some _ as y ->
+                    let _ = dict.TryAdd(x, y)
+                    y
+
     [<Literal>]
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 

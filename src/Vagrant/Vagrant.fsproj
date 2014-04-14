@@ -63,7 +63,6 @@
     <Compile Include="AssemblyExporter.fs" />
     <Compile Include="Vagrant.fs" />
     <None Include="packages.config" />
-    <None Include="app.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="FsPickler">

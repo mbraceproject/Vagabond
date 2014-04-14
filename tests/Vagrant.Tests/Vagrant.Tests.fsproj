@@ -36,7 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Compiler.Service">
-      <HintPath>..\..\packages\FSharp.Compiler.Service.0.0.43\lib\net40\FSharp.Compiler.Service.dll</HintPath>
+      <HintPath>..\..\packages\FSharp.Compiler.Service.0.0.44\lib\net40\FSharp.Compiler.Service.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="FSharp.Data">
@@ -48,11 +48,15 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="LinqOptimizer.Base">
-      <HintPath>..\..\packages\LinqOptimizer.FSharp.0.5.2.1\lib\LinqOptimizer.Base.dll</HintPath>
+      <HintPath>..\..\packages\LinqOptimizer.FSharp.0.6.2\lib\LinqOptimizer.Base.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="LinqOptimizer.Core">
+      <HintPath>..\..\packages\LinqOptimizer.FSharp.0.6.2\lib\LinqOptimizer.Core.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="LinqOptimizer.FSharp">
-      <HintPath>..\..\packages\LinqOptimizer.FSharp.0.5.2.1\lib\LinqOptimizer.FSharp.dll</HintPath>
+      <HintPath>..\..\packages\LinqOptimizer.FSharp.0.6.2\lib\LinqOptimizer.FSharp.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />

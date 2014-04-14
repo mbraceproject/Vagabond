@@ -2,172 +2,161 @@
 // FAKE build script 
 // --------------------------------------------------------------------------------------
 
-#r @"packages/FAKE/tools/FakeLib.dll"
+#I "packages/FAKE/tools"
+#r "packages/FAKE/tools/FakeLib.dll"
+//#load "packages/SourceLink.Fake/tools/SourceLink.fsx"
+open System
 open Fake 
 open Fake.Git
-open Fake.AssemblyInfoFile
 open Fake.ReleaseNotesHelper
-open System
+open Fake.AssemblyInfoFile
+//open SourceLink
 
 // --------------------------------------------------------------------------------------
-// START TODO: Provide project-specific details below
+// Information about the project to be used at NuGet and in AssemblyInfo files
 // --------------------------------------------------------------------------------------
 
-// Information about the project are used
-//  - for version and project name in generated AssemblyInfo file
-//  - by the generated NuGet package 
-//  - to run tests and to publish documentation on GitHub gh-pages
-//  - for documentation, you also need to edit info in "docs/tools/generate.fsx"
+let project = "Vagrant"
+let authors = ["Nessos Information Technologies, Eirik Tsarpalis"]
+let summary = "A library that facilitates the distribution of code in the .NET framework."
 
-// The name of the project 
-// (used by attributes in AssemblyInfo, name of a NuGet package and directory in 'src')
-let project = "DistribFsi"
+let description = summary
 
-let projects = ["DistribFsi.Settings" ; "DistribFsi.Shell"]
+let tags = "F# fsharp dynamic code distribution cecil"
 
-// Short summary of the project
-// (used as description in AssemblyInfo and as a short summary for NuGet package)
-let summary = "Distributable F# Interactive."
-
-// Longer description of the project
-// (used as a description for NuGet package; line breaks are automatically cleaned up)
-let description = """
-  A modified version of F# Interactive.
-  Enables the distribution of code defined in interactions. """
-
-// List of author names (for NuGet package)
-let authors = [ "Eirik Tsarpalis" ]
-// Tags for your project (for NuGet package)
-let tags = "F# fsharp fsi distribution"
-
-// File system information 
-// (<solutionFile>.sln is built during the building process)
-let solutionFile  = "DistribFsi"
-// Pattern specifying assemblies to be tested using NUnit
-let testAssemblies = "tests/**/bin/Release/*Tests*.dll"
-
-// Git configuration (used for publishing documentation in gh-pages branch)
-// The profile where the project is posted 
 let gitHome = "https://github.com/nessos"
-// The name of the project on GitHub
-let gitName = "DistribFsi"
-let cloneUrl = "git@github.com:nessos/DistribFsi.git"
+let gitName = "Vagrant"
+let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
 
-// --------------------------------------------------------------------------------------
-// END TODO: The rest of the file includes standard build steps 
-// --------------------------------------------------------------------------------------
 
-// Read additional information from the release notes document
+let testAssemblies = ["tests/Vagrant.Tests/bin/Release/Vagrant.Tests.exe"]
+
+//
+//// --------------------------------------------------------------------------------------
+//// The rest of the code is standard F# build script 
+//// --------------------------------------------------------------------------------------
+
+//// Read release notes & version info from RELEASE_NOTES.md
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
+let isAppVeyorBuild = environVar "APPVEYOR" <> null
+let nugetVersion = 
+    if isAppVeyorBuild then sprintf "%s-a%s" release.NugetVersion (DateTime.UtcNow.ToString "yyMMddHHmm")
+    else release.NugetVersion
+
+Target "BuildVersion" (fun _ ->
+    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" nugetVersion) |> ignore
+)
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-    for project in projects do
-        let fileName = "src/" + project + "/AssemblyInfo.fs"
-        CreateFSharpAssemblyInfo fileName
-            [ Attribute.Title project
-              Attribute.Product project
-              Attribute.Description summary
-              Attribute.Version release.AssemblyVersion
-              Attribute.FileVersion release.AssemblyVersion ] 
+  let fileName = "src/Vagrant/assemblyInfo.fs"
+  CreateFSharpAssemblyInfo fileName
+      [ Attribute.Version release.AssemblyVersion
+        Attribute.FileVersion release.AssemblyVersion] 
 )
+
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
 
-Target "RestorePackages" RestorePackages
+Target "RestorePackages" (fun _ ->
+    !! "./**/packages.config"
+    |> Seq.iter (RestorePackage (fun p -> { p with ToolPath = "./.nuget/NuGet.exe" }))
+)
 
 Target "Clean" (fun _ ->
-    CleanDirs ["bin"; "temp"]
+    CleanDirs ["src/Vagrant.Cecil/bin" ;  "src/Vagrant.Cecil/bin" ; "tests/Vagrant.Tests/bin" ]
 )
 
-Target "CleanDocs" (fun _ ->
-    CleanDirs ["docs/output"]
-)
+//
+//// --------------------------------------------------------------------------------------
+//// Build library & test project
 
-// --------------------------------------------------------------------------------------
-// Build library & test project
+let configuration = environVarOrDefault "Configuration" "Release"
 
 Target "Build" (fun _ ->
-    !! (solutionFile + "*.sln")
-    |> MSBuildRelease "" "Rebuild"
-    |> ignore
+    // Build the rest of the project
+    { BaseDirectory = __SOURCE_DIRECTORY__
+      Includes = [ project + ".sln" ]
+      Excludes = [] } 
+    |> MSBuild "" "Build" ["Configuration", configuration]
+    |> Log "AppBuild-Output: "
 )
 
+
 // --------------------------------------------------------------------------------------
-// Run the unit tests using test runner
+// Run the unit tests using test runner & kill test runner when complete
 
 Target "RunTests" (fun _ ->
-    !! testAssemblies 
+    let nunitVersion = GetPackageVersion "packages" "NUnit.Runners"
+    let nunitPath = sprintf "packages/NUnit.Runners.%s/tools" nunitVersion
+    ActivateFinalTarget "CloseTestRunner"
+
+    testAssemblies
     |> NUnit (fun p ->
         { p with
+            Framework = "v4.0.30319"
+            ToolPath = nunitPath
             DisableShadowCopy = true
             TimeOut = TimeSpan.FromMinutes 20.
             OutputFile = "TestResults.xml" })
 )
 
-// --------------------------------------------------------------------------------------
-// Build a NuGet package
+FinalTarget "CloseTestRunner" (fun _ ->  
+    ProcessHelper.killProcess "nunit-agent.exe"
+)
+//
+//// --------------------------------------------------------------------------------------
+//// Build a NuGet package
 
 Target "NuGet" (fun _ ->
+    // Format the description to fit on a single line (remove \r\n and double-spaces)
+    let description = description.Replace("\r", "").Replace("\n", "").Replace("  ", " ")
+    let nugetPath = ".nuget/NuGet.exe"
     NuGet (fun p -> 
         { p with   
             Authors = authors
             Project = project
             Summary = summary
             Description = description
-            Version = release.NugetVersion
-            ReleaseNotes = String.Join(Environment.NewLine, release.Notes)
+            Version = nugetVersion
+            ReleaseNotes = String.concat " " release.Notes
+            Dependencies =
+                [
+                    ("FsPickler", "")
+                    ("Mono.Cecil", RequireExactly "0.9.5.4")
+                ]
             Tags = tags
-            OutputPath = "bin"
+            OutputPath = "nuget"
+            ToolPath = nugetPath
             AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetkey"
-            Dependencies = [ "FsPickler" , "0.8.5.1" ] })
+            Publish = hasBuildParam "nugetkey" })
         ("nuget/" + project + ".nuspec")
 )
 
-// --------------------------------------------------------------------------------------
-// Generate the documentation
-
-Target "GenerateDocs" (fun _ ->
-    executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"] [] |> ignore
-)
-
-// --------------------------------------------------------------------------------------
-// Release Scripts
-
-Target "ReleaseDocs" (fun _ ->
-    let tempDocsDir = "temp/gh-pages"
-    CleanDir tempDocsDir
-    Repository.cloneSingleBranch "" cloneUrl "gh-pages" tempDocsDir
-
-    fullclean tempDocsDir
-    CopyRecursive "docs/output" tempDocsDir true |> tracefn "%A"
-    StageAll tempDocsDir
-    Commit tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
-    Branches.push tempDocsDir
-)
 
 Target "Release" DoNothing
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
+Target "Prepare" DoNothing
+Target "PrepareRelease" DoNothing
 Target "All" DoNothing
 
 "Clean"
   ==> "RestorePackages"
   ==> "AssemblyInfo"
+  ==> "Prepare"
   ==> "Build"
-//  ==> "RunTests"
+  ==> "RunTests"
   ==> "All"
 
-"All" 
-//  ==> "CleanDocs"
-//  ==> "GenerateDocs"
-//  ==> "ReleaseDocs"
+"All"
+  ==> "PrepareRelease" 
   ==> "NuGet"
   ==> "Release"
 
-RunTargetOrDefault "Release"
+//RunTargetOrDefault "Release"
+RunTargetOrDefault "All"

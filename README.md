@@ -20,7 +20,7 @@ It is based on the [Cecil](https://github.com/jbevain/cecil) and [FsPickler](htt
 
 ### Demo
 
-To see a demo of Vagrant, build the project and execute the
+To see a demo of Vagrant, build the solution and execute the
 [`thunkServer.fsx`](https://github.com/nessos/Vagrant/blob/master/tests/Vagrant.Tests/thunkServer.fsx) 
 script found inside the samples folder. As the name suggests, it allows for execution of 
 arbitrary thunks in a remote server.

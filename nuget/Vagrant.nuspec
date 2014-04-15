@@ -5,8 +5,8 @@
     <version>@build.number@</version>
     <authors>@authors@</authors>
     <owners>@authors@</owners>
-    <licenseUrl>http://github.com/nessos/Vagrant/blob/master/LICENSE.txt</licenseUrl>
-    <projectUrl>http://github.com/nessos/Vagrant</projectUrl>
+    <licenseUrl>https://github.com/nessos/Vagrant/blob/master/License.md</licenseUrl>
+    <projectUrl>https://github.com/nessos/Vagrant</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <summary>@summary@</summary>
     <description>@description@</description>
@@ -16,11 +16,10 @@
     @dependencies@
   </metadata>
   <files>
-      <file src="..\Vagrant\bin\Release\Vagrant.Cecil.dll" target="lib/net45" />
-      <file src="..\Vagrant\bin\Release\Vagrant.Cecil.pdb" target="lib/net45" />
-      <file src="..\Vagrant\bin\Release\Vagrant.Cecil.xml" target="lib/net45" />
-      <file src="..\Vagrant\bin\Release\Vagrant.dll" target="lib/net45" />
-      <file src="..\Vagrant\bin\Release\Vagrant.pdb" target="lib/net45" />
-      <file src="..\Vagrant\bin\Release\Vagrant.xml" target="lib/net45" />
+      <file src="..\src\Vagrant\bin\Release\Vagrant.Cecil.dll" target="lib/net45" />
+      <file src="..\src\Vagrant\bin\Release\Vagrant.Cecil.pdb" target="lib/net45" />
+      <file src="..\src\Vagrant\bin\Release\Vagrant.dll" target="lib/net45" />
+      <file src="..\src\Vagrant\bin\Release\Vagrant.pdb" target="lib/net45" />
+      <file src="..\src\Vagrant\bin\Release\Vagrant.xml" target="lib/net45" />
   </files>
 </package>

@@ -31,7 +31,9 @@ arbitrary thunks in a remote server.
 
 ### API Overview
 
-The included implementation of ThunkServer is a straightforward example of the Vagrant API.
+The included implementation of
+[ThunkServer](https://github.com/nessos/Vagrant/blob/master/tests/Vagrant.Tests/ThunkServer.fs) 
+is a straightforward example that uses Vagrant.
 What follows is a brief overview of the basic API.
 
 #### Vagrant Server

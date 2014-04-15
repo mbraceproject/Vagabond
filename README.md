@@ -1,6 +1,6 @@
 ## Vagrant
 
-A library that facilitates the distribution of code in the .NET framework. 
+A library that facilitates the distribution of code in the .NET framework. [[Nuget](http://www.nuget.org/packages/Vagrant/)]
 
 ### Introduction
 

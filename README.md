@@ -2,7 +2,9 @@
 
 A library that facilitates the distribution of code in the .NET framework. [[Nuget](http://www.nuget.org/packages/Vagrant/)]
 
-[![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew)](https://ci.appveyor.com/project/nessos/vagrant)
+#### Build Status
+
+Windows/.NET build + unit tests [![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew)](https://ci.appveyor.com/project/nessos/vagrant)
 
 ### Introduction
 

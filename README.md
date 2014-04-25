@@ -1,6 +1,10 @@
 ## Nessos.Vagrant
 
-A library that facilitates the distribution of code in the .NET framework. [[Nuget](http://www.nuget.org/packages/Vagrant/)]
+A library that facilitates the distribution of code for the .NET framework. [[Nuget](http://www.nuget.org/packages/Vagrant/)]
+
+#### Build Status
+
+Windows/.NET build + unit tests [![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew)](https://ci.appveyor.com/project/nessos/vagrant)
 
 ### Introduction
 
@@ -27,7 +31,9 @@ arbitrary thunks in a remote server.
 
 ### API Overview
 
-The included implementation of ThunkServer is a straightforward example of the Vagrant API.
+The included implementation of
+[ThunkServer](https://github.com/nessos/Vagrant/blob/master/tests/Vagrant.Tests/ThunkServer.fs) 
+is a straightforward example that uses Vagrant.
 What follows is a brief overview of the basic API.
 
 #### Vagrant Server
@@ -71,5 +77,5 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 Vagrant makes heavy use of the reflection API. Mono support is patchy for the moment, 
 mostly due to a number of bugs in the mono runtime 
 [[1](https://bugzilla.xamarin.com/show_bug.cgi?id=19045),[2](https://bugzilla.xamarin.com/show_bug.cgi?id=19039)].
-If you would like to see stable mono support for Vagrant soon, 
+If you would like to see stable Vagrant support in mono soon, 
 make sure to contribute code/nag until these bugs are resolved.

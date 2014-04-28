@@ -143,7 +143,7 @@
             match localId, currentStatus, pa.DynamicAssemblyInfo with
             // static assembly already loaded in state
             | _, LoadedStatic id', None when pa.Id = id' -> state, Loaded (pa.Id, [||])
-            | _, LoadedStatic _, None -> failwith "Vagrant: an incompatible version of '%s' has been loaded in the client." pa.FullName
+            | _, LoadedStatic _, None -> raise <| new VagrantException(sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName)
             // static assembly not registered in state
             | _, UnLoaded, None ->
                 match tryLoadAssembly pa with
@@ -164,7 +164,7 @@
 
             // handle impossible cases.
             | _, LoadedDynamic _, None
-            | _, LoadedStatic _, Some _ -> invalidOp "impossible state."
+            | _, LoadedStatic _, Some _ -> raise <| new VagrantException(sprintf "found corrupt state in client when loading assembly '%s'." pa.FullName)
 
             // dynamic assemblies without static initializers
             | _, LoadedDynamic(requiresStaticInitialization = false), _ -> state, Loaded(pa.Id, [||])
@@ -212,11 +212,12 @@
         let throwOnError tolerateMissingResponses (replies : AssemblyLoadResponse list) =
             // check for faults first
             match replies |> List.tryPick (function LoadFault(n,e) -> Some(n,e) | _ -> None) with
-            | Some(id, e) -> raise <| new Exception(sprintf "Vagrant: error on remote loading of assembly '%s'." id.FullName, e)
+            | Some(id, (:? VagrantException as e)) -> raise e
+            | Some(id, e) -> raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
             | None when tolerateMissingResponses -> ()
             | None ->
                 match replies |> List.tryFind(function Loaded _ -> false | _ -> true) with
-                | Some r -> failwithf "Vagrant: protocol error, could not publish '%s'." r.Id.FullName
+                | Some r -> raise <| new VagrantException(sprintf "protocol error, could not publish '%s'." r.Id.FullName)
                 | None -> ()
 
         async {

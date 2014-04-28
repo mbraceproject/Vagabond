@@ -100,6 +100,10 @@
         abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
 
 
+    type VagrantException (message : string, ?inner : exn) =
+        inherit Exception(sprintf "Vagrant error: %s"  message, defaultArg inner null)
+
+
     // internal compiler data structures
 
     type internal DynamicTypeInfo =
@@ -133,7 +137,7 @@
         member i.TryGetSlice(t : Type) =
             match i.TypeIndex.TryFind t.FullName with
             | None -> None
-            | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant error: type '%O' does not correspond to a slice." t
+            | Some (InNoSlice | InAllSlices) -> raise <| new VagrantException(sprintf "type '%O' does not correspond to a slice." t)
             | Some (InSpecificSlice s) -> Some s
 
         static member Init(a : Assembly, profile : IDynamicAssemblyProfile) =

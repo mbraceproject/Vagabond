@@ -17,8 +17,8 @@
                 | None -> typeInfo
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
-                    | None | Some (InNoSlice | InAllSlices) -> 
-                        failwithf "Vagrant: type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname
+                    | None | Some (InNoSlice | InAllSlices) ->
+                        raise <| new VagrantException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
 
                     | Some (InSpecificSlice slice) -> 
                         { typeInfo with AssemblyName = slice.Assembly.GetName().Name }

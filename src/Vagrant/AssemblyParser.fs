@@ -93,8 +93,8 @@
         | Some dynInfo ->
             match dynInfo.TypeIndex.TryFind t.FullName with
             | None | Some InAllSlices -> None
-            | Some InNoSlice -> 
-                failwithf "Vagrant: error compiling slice: referenced excluded type '%O' in assembly '%O'." t dynInfo.Name
+            | Some InNoSlice ->
+                raise <| new VagrantException(sprintf "could not compile slice; referenced excluded type '%O' in assembly '%O'." t dynInfo.Name)
             | Some (InSpecificSlice slice) -> 
                 Some <| slice.Assembly.GetType(t.FullName, true)
         
@@ -114,7 +114,7 @@
                 DynamicAssemblyState.Init(assembly, profile)
 
             | Some info when info.DynamicAssembly <> assembly ->
-                failwithf "Vagrant fatal error: ran into duplicate dynamic assemblies of qualified name '%s'. This is not supported." assembly.FullName
+                raise <| new VagrantException(sprintf "ran into duplicate dynamic assemblies of qualified name '%s'. This is not supported." assembly.FullName)
 
             | Some info -> info
         

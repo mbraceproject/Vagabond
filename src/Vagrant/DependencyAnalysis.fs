@@ -203,7 +203,7 @@
         match dependencies |> Seq.groupBy(fun a -> a.FullName) |> Seq.tryFind (fun (_,assemblies) -> Seq.length assemblies > 1) with
         | None -> ()
         | Some(name,_) -> 
-            failwithf "Vagrant fatal error: ran into duplicate assemblies of qualified name '%s'. This is not supported." name
+            raise <| new VagrantException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." name)
 
         dependencies
 
@@ -273,11 +273,13 @@
         let remap (a : Assembly, ts : seq<Type>) =
             if a.IsDynamic then
                 match state.DynamicAssemblies.TryFind a.FullName with
-                | None -> failwithf "Vagrant: no slices have been created for assembly '%s'." a.FullName
+                | None -> raise <| new VagrantException(sprintf "no slices have been created for assembly '%s'." a.FullName)
                 | Some info ->
                     let remapType (t : Type) =
                         match info.TypeIndex.TryFind t.FullName with
-                        | None | Some (InNoSlice | InAllSlices) -> failwithf "Vagrant: no slice corresponds to dynamic type '%O'." t
+                        | None | Some (InNoSlice | InAllSlices) -> 
+                            raise <| new VagrantException(sprintf "no slice corresponds to dynamic type '%O'." t)
+
                         | Some (InSpecificSlice slice) -> slice.Assembly
 
                     Seq.map remapType ts

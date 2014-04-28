@@ -81,8 +81,8 @@
             match results with
             | [||] -> None
             | [|a|] -> Some a
-            | _ -> 
-                failwithf "Vagrant fatal error: ran into duplicate assemblies of qualified name '%s'. This is not supported." fullName
+            | _ ->
+                raise <| new VagrantException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." fullName)
 
         tryConcurrentMemoize load
 
@@ -137,7 +137,7 @@
             if g.IsEmpty then sorted else
 
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> failwith "not a DAG."
+            | None -> raise <| new VagrantException("internal error: dependency graph is not a DAG.")
             | Some (t,_) ->
                 let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
                 aux (t :: sorted) g0

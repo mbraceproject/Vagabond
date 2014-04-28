@@ -88,7 +88,7 @@
 
     type LoadedAssemblyInfo =
         | UnLoaded
-        | LoadedStatic
+        | LoadedStatic of AssemblyId
         | LoadedDynamic of requiresStaticInitialization:bool * generation:int option * isPartiallyEvaluated:bool
 
 
@@ -100,12 +100,13 @@
 
     /// portable assembly load protocol implementation
 
-    let rec loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<AssemblyId, LoadedAssemblyInfo>) (pa : PortableAssembly) =
+    let rec loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<string, LoadedAssemblyInfo>) (pa : PortableAssembly) =
 
         // load assembly image
         let tryLoadAssembly (pa : PortableAssembly) =
             match tryGetLoadedAssembly pa.FullName with
-            | Some _ as a -> a
+            | Some a when a.AssemblyId = pa.Id -> Some a
+            | Some _ -> failwith "Vagrant: an incompatible version of '%s' has been loaded in the client." pa.FullName
             | None -> 
                 // try load binary image
                 match pa.Image with
@@ -117,7 +118,7 @@
                         | Some symbols -> System.Reflection.Assembly.Load(bytes, symbols)
 
                     if assembly.FullName <> pa.FullName then
-                        let msg = sprintf "Expected assembly '%s', received '%s'" pa.FullName assembly.FullName
+                        let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
                         raise <| new InvalidDataException(msg)
 
                     Some assembly
@@ -135,26 +136,27 @@
             let initializers = pickler.UnPickle<StaticInitializers>(data)
             Array.choose tryLoad initializers
            
-        let updateState pa status = state.Add(pa.Id, status)
-        let currentStatus = defaultArg (state.TryFind pa.Id) UnLoaded
+        let updateState (pa : PortableAssembly) status = state.Add(pa.FullName, status)
+        let currentStatus = defaultArg (state.TryFind pa.FullName) UnLoaded
 
         try
             match localId, currentStatus, pa.DynamicAssemblyInfo with
             // static assembly already loaded in state
-            | _, LoadedStatic, None -> state, Loaded (pa.FullName, [||])
+            | _, LoadedStatic id', None when pa.Id = id' -> state, Loaded (pa.Id, [||])
+            | _, LoadedStatic _, None -> failwith "Vagrant: an incompatible version of '%s' has been loaded in the client." pa.FullName
             // static assembly not registered in state
             | _, UnLoaded, None ->
                 match tryLoadAssembly pa with
-                | None -> state, MissingAssemblyImage pa.FullName
+                | None -> state, MissingAssemblyImage pa.Id
                 | Some a ->
-                    updateState pa LoadedStatic, Loaded (pa.FullName, [||])
+                    updateState pa (LoadedStatic pa.Id), Loaded (pa.Id, [||])
 
             // trying to load local dynamic assembly
-            | Some localId, _, Some dynInfo when dynInfo.SourceId = localId -> state, Loaded(pa.FullName, [||])
+            | Some localId, _, Some dynInfo when dynInfo.SourceId = localId -> state, Loaded(pa.Id, [||])
             // dynamic assembly slice, not already loaded in state
             | _, UnLoaded, Some info ->
                 match tryLoadAssembly pa with
-                | None -> state, MissingAssemblyImage pa.FullName
+                | None -> state, MissingAssemblyImage pa.Id
                 | Some a ->
                     // assembly loaded in AppDomain, update state and recurse
                     let state = updateState pa <| LoadedDynamic(info.RequiresStaticInitialization, None, info.IsPartiallyEvaluated)
@@ -162,39 +164,39 @@
 
             // handle impossible cases.
             | _, LoadedDynamic _, None
-            | _, LoadedStatic, Some _ -> invalidOp "impossible state."
+            | _, LoadedStatic _, Some _ -> invalidOp "impossible state."
 
             // dynamic assemblies without static initializers
-            | _, LoadedDynamic(requiresStaticInitialization = false), _ -> state, Loaded(pa.FullName, [||])
+            | _, LoadedDynamic(requiresStaticInitialization = false), _ -> state, Loaded(pa.Id, [||])
             // loaded dynamic assembly slices without any previous initialization data
             | _, LoadedDynamic(requiresStaticInitialization = true ; generation = None), Some info ->
                 match info.StaticInitializerData with
-                | None -> state, MissingStaticInitializer (pa.FullName, None)
+                | None -> state, MissingStaticInitializer (pa.Id, None)
                 | Some data ->
                     let errors = loadStaticInitializer data
                     let state = updateState pa <| LoadedDynamic(true, info.StaticInitializerGeneration, info.IsPartiallyEvaluated)
-                    state, Loaded(pa.FullName, errors)
+                    state, Loaded(pa.Id, errors)
 
             // load type initializers when previous initialization is present
             | _, LoadedDynamic(requiresStaticInitialization = true ; generation = Some previousGen ; isPartiallyEvaluated = isPartial), Some current ->
                 match current.StaticInitializerGeneration with
                 // silently discard updates if generation is older than currently loaded
-                | Some gen when previousGen > gen -> state, Loaded (pa.FullName, [||])
+                | Some gen when previousGen > gen -> state, Loaded (pa.Id, [||])
                 | _ ->
                     match current.StaticInitializerData with
                     // demand static initializer update if previous push was declared as partial
-                    | None when isPartial -> state, MissingStaticInitializer (pa.FullName, Some previousGen)
-                    | None -> state, Loaded (pa.FullName, [||])
+                    | None when isPartial -> state, MissingStaticInitializer (pa.Id, Some previousGen)
+                    | None -> state, Loaded (pa.Id, [||])
                     | Some data ->
                         let errors = loadStaticInitializer data
                         let state = updateState pa <| LoadedDynamic(true, current.StaticInitializerGeneration, current.IsPartiallyEvaluated)
-                        state, Loaded (pa.FullName, errors)
+                        state, Loaded (pa.Id, errors)
         with e ->
-            state, LoadFault(pa.FullName, e)
+            state, LoadFault(pa.Id, e)
 
 
     type AssemblyExporter = StatefulAgent<Map<AssemblyId, int>, Assembly * bool * bool, PortableAssembly>
-    type AssemblyLoader = StatefulAgent<Map<AssemblyId, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
+    type AssemblyLoader = StatefulAgent<Map<string, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
 
     let mkAssemblyExporter pickler (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
         mkStatefulAgent Map.empty (fun state (a,img,data) -> exportAssembly pickler (stateF()) state img data a)
@@ -210,15 +212,15 @@
         let throwOnError tolerateMissingResponses (replies : AssemblyLoadResponse list) =
             // check for faults first
             match replies |> List.tryPick (function LoadFault(n,e) -> Some(n,e) | _ -> None) with
-            | Some(name, e) -> raise <| new Exception(sprintf "Vagrant: error on remote loading of assembly '%s'." name, e)
+            | Some(id, e) -> raise <| new Exception(sprintf "Vagrant: error on remote loading of assembly '%s'." id.FullName, e)
             | None when tolerateMissingResponses -> ()
             | None ->
                 match replies |> List.tryFind(function Loaded _ -> false | _ -> true) with
-                | Some r -> failwithf "Vagrant: protocol error, could not publish '%s'." r.FullName
+                | Some r -> failwithf "Vagrant: protocol error, could not publish '%s'." r.Id.FullName
                 | None -> ()
 
         async {
-            let index = assemblies |> Seq.map (fun a -> a.FullName, a) |> Map.ofSeq
+            let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
 
             // Step 1. submit empty assembly headers; no image data or type initializers.
             let headers = assemblies |> List.map (fun a -> exporter.PostAndReply(a, false, false))
@@ -229,8 +231,8 @@
             let updatePortableAssembly = 
                 function
                 | Loaded _ | LoadFault _ -> None
-                | MissingAssemblyImage name -> Some <| exporter.PostAndReply(index.[name], true, true)
-                | MissingStaticInitializer(name,_) -> Some <| exporter.PostAndReply(index.[name], false, true)
+                | MissingAssemblyImage id -> Some <| exporter.PostAndReply(index.[id], true, true)
+                | MissingStaticInitializer(id,_) -> Some <| exporter.PostAndReply(index.[id], false, true)
 
             do throwOnError true replies
             let portableAssemblies = replies |> List.choose updatePortableAssembly

@@ -65,12 +65,12 @@
     // Response given by the Vagrant client upon loading a PortableAssembly
 
     and AssemblyLoadResponse =
-        | Loaded of string * (FieldInfo * exn) []
-        | LoadFault of string * exn
-        | MissingAssemblyImage of string
-        | MissingStaticInitializer of string * int option
+        | Loaded of AssemblyId * (FieldInfo * exn) []
+        | LoadFault of AssemblyId * exn
+        | MissingAssemblyImage of AssemblyId
+        | MissingStaticInitializer of AssemblyId * int option
     with
-        member r.FullName = match r with | Loaded(name,_) | LoadFault(name,_) | MissingAssemblyImage(name) | MissingStaticInitializer(name,_) -> name
+        member r.Id = match r with | Loaded(id,_) | LoadFault(id,_) | MissingAssemblyImage id | MissingStaticInitializer(id,_) -> id
         member r.StaticInitializationErrors = match r with | Loaded(_,errors) -> errors | _ -> [||]
 
 

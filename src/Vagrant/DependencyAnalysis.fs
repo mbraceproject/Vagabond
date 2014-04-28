@@ -193,11 +193,19 @@
                 let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
                 traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 
-        assemblies
-        |> Seq.toList
-        |> traverseDependencyGraph Map.empty
-        |> getTopologicalOrdering
+        let dependencies =
+            assemblies
+            |> Seq.toList
+            |> traverseDependencyGraph Map.empty
+            |> getTopologicalOrdering
 
+        // check for assemblies of identical qualified name
+        match dependencies |> Seq.groupBy(fun a -> a.FullName) |> Seq.tryFind (fun (_,assemblies) -> Seq.length assemblies > 1) with
+        | None -> ()
+        | Some(name,_) -> 
+            failwithf "Vagrant fatal error: ran into duplicate assemblies of qualified name '%s'. This is not supported." name
+
+        dependencies
 
 
     /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation

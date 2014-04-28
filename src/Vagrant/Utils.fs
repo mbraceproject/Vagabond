@@ -1,6 +1,8 @@
 ﻿module internal Nessos.Vagrant.Utils
 
     open System
+    open System.Collections.Generic
+    open System.Collections.Concurrent
     open System.IO
     open System.Reflection
     open System.Runtime.Serialization
@@ -43,24 +45,24 @@
             | _ -> None
 
     let memoize f =
-        let dict = new System.Collections.Generic.Dictionary<_,_>()
+        let dict = new Dictionary<_,_>()
         fun x ->
-            let found,y = dict.TryGetValue x
-            if found then y
+            let ok,y = dict.TryGetValue x
+            if ok then y
             else
                 let y = f x
                 dict.Add(x,y)
                 y
 
     let concurrentMemoize (f : 'a -> 'b) =
-        let dict = new System.Collections.Concurrent.ConcurrentDictionary<'a,'b>()
+        let dict = new ConcurrentDictionary<'a,'b>()
         fun x -> dict.GetOrAdd(x, f)
 
     let tryConcurrentMemoize (f : 'a -> 'b option) : 'a -> 'b option =
-        let dict = new System.Collections.Concurrent.ConcurrentDictionary<_,_>()
+        let dict = new ConcurrentDictionary<_,_>()
         fun x ->
-            let found,y = dict.TryGetValue x
-            if found then y
+            let ok,y = dict.TryGetValue x
+            if ok then y
             else
                 match f x with
                 | None -> None
@@ -72,8 +74,15 @@
 
     let tryGetLoadedAssembly =
         let load fullName =
-            System.AppDomain.CurrentDomain.GetAssemblies()
-            |> Array.tryFind (fun a -> a.FullName = fullName)
+            let results =
+                System.AppDomain.CurrentDomain.GetAssemblies()
+                |> Array.filter (fun a -> a.FullName = fullName)
+
+            match results with
+            | [||] -> None
+            | [|a|] -> Some a
+            | _ -> 
+                failwithf "Vagrant fatal error: ran into duplicate assemblies of qualified name '%s'. This is not supported." fullName
 
         tryConcurrentMemoize load
 
@@ -185,7 +194,7 @@
 
         // taken from : http://www.atrevido.net/blog/PermaLink.aspx?guid=debdd47c-9d15-4a2f-a796-99b0449aa8af
         let private encodingIndex = "qaz2wsx3edc4rfv5tgb6yhn7ujm8k9lp"
-        let private inverseIndex = encodingIndex |> Seq.mapi (fun i c -> c,i) |> Map.ofSeq
+        let private inverseIndex = encodingIndex |> Seq.mapi (fun i c -> c,i) |> dict
 
         /// convert bytes to base-32 string: useful for file names in case-insensitive file systems
         let toBase32String(bytes : byte []) =

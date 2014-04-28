@@ -114,7 +114,7 @@
                 DynamicAssemblyState.Init(assembly, profile)
 
             | Some info when info.DynamicAssembly <> assembly ->
-                failwithf "Vagrant fatal error: ran into duplicate dynamic assemblies of identical qualified name. This is not supported."
+                failwithf "Vagrant fatal error: ran into duplicate dynamic assemblies of qualified name '%s'. This is not supported." assembly.FullName
 
             | Some info -> info
         

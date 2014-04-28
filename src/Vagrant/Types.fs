@@ -5,20 +5,39 @@
 
     open Nessos.FsPickler
 
-    /// Contains information necessary for the exportation of an assembly
-    type PortableAssembly =
+    /// unique identifier for assembly
+    type AssemblyId =
         {
-            /// The Qualified name of the assembly
+            /// Assembly Qualified name
             FullName : string
+            /// digest of the raw assembly image
+            ImageHash : byte []
+        }
+    with
+        member id.GetName() = new AssemblyName(id.FullName)
+
+    /// Contains information necessary for the exportation of an assembly
+    and [<NoEquality;NoComparison>] PortableAssembly =
+        {
+            // Unique identifier for assembly
+            Id : AssemblyId
 
             /// Raw image of the assembly
             Image : byte [] option
 
+            /// Symbols file
+            Symbols : byte [] option
+
             /// Information on originating dynamic assembly
             DynamicAssemblyInfo : DynamicAssemblyInfo option
         }
+    with
+        member pa.FullName = pa.Id.FullName
+        member pa.GetName() = pa.Id.GetName()
+        member pa.HashCode = pa.Id.ImageHash
+        
 
-    and DynamicAssemblyInfo =
+    and [<NoEquality;NoComparison>] DynamicAssemblyInfo =
         {
             /// Unique identifier of dynamic assembly source
             SourceId : Guid
@@ -139,10 +158,10 @@
     with
         member s.TryFindSliceInfo(sliceName : string) =
             match s.TryGetDynamicAssemblyId sliceName with
-            | Some(dynamicAssemblyName, id) ->
-                let an = new AssemblyName(sliceName)
-                do an.Name <- dynamicAssemblyName
-                match s.DynamicAssemblies.TryFind an.FullName with
+            | Some(dynamicAssemblyName, sliceId) ->
+                let assemblyName = new AssemblyName(sliceName)
+                do assemblyName.Name <- dynamicAssemblyName
+                match s.DynamicAssemblies.TryFind assemblyName.FullName with
                 | None -> None
-                | Some info -> info.GeneratedSlices.TryFind id |> Option.map (fun slice -> info, slice)
+                | Some info -> info.GeneratedSlices.TryFind sliceId |> Option.map (fun slice -> info, slice)
             | None -> None

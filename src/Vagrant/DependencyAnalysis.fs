@@ -185,13 +185,13 @@
             | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun (_,s) -> s.Assembly)
             | None, None -> None
 
-        let rec traverseDependencyGraph (graph : Map<string, Assembly * Assembly list>) (remaining : Assembly list) =
+        let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph |> Map.toList |> List.map snd
-            | a :: tail when graph.ContainsKey a.FullName || isSystemAssembly a -> traverseDependencyGraph graph tail
+            | a :: tail when graph.ContainsKey a.AssemblyId || isSystemAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
                 let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
-                traverseDependencyGraph (graph.Add(a.FullName, (a, dependencies))) (dependencies @ tail)
+                traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 
         assemblies
         |> Seq.toList
@@ -212,17 +212,17 @@
             else
                 false
 
-        let rec traverse (graph : Map<string, _>) (remaining : Assembly list) =
+        let rec traverse (graph : Map<AssemblyId, _>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph
-            | a :: rest when graph.ContainsKey a.FullName || not <| isDynamicAssemblyRequiringCompilation a -> traverse graph rest
+            | a :: rest when graph.ContainsKey a.AssemblyId || not <| isDynamicAssemblyRequiringCompilation a -> traverse graph rest
             | a :: rest ->
                 // parse dynamic assembly
                 let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
 
                 let dependencies = dependencies |> List.choose tryGetLoadedAssembly
 
-                let graph' = graph.Add(a.FullName, (a, dependencies, sliceData))
+                let graph' = graph.Add(a.AssemblyId, (a, dependencies, sliceData))
                 
                 traverse graph' (rest @ dependencies)
 
@@ -234,7 +234,7 @@
         |> Seq.map (function KeyValue(_, (a, deps,_)) -> a, deps |> List.filter (fun a -> a.IsDynamic))
         |> Seq.toList
         |> getTopologicalOrdering
-        |> List.map (fun a -> let _,_,data = dynamicAssemblies.[a.FullName] in data)
+        |> List.map (fun a -> let _,_,data = dynamicAssemblies.[a.AssemblyId] in data)
 
 
 

@@ -9,33 +9,43 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
 
-
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
     /// export a portable assembly based on given compiler state and arguments
 
-    let exportAssembly (pickler : FsPickler) (state : DynamicAssemblyCompilerState) (generationIdx : Map<string, int>)
-                        includeImage includeStaticInitializationData (assembly : Assembly) =
+    let exportAssembly (pickler : FsPickler) (compilerState : DynamicAssemblyCompilerState) 
+                        (state : Map<AssemblyId, int>) includeImage includeStaticInitializationData (assembly : Assembly) =
 
         let mkPortableAssembly dynamicAssemblyInfo =
             {
-                FullName = assembly.FullName
-                Image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
+                Id = assembly.AssemblyId
                 DynamicAssemblyInfo = dynamicAssemblyInfo
+
+                Image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
+                Symbols =
+                    if includeImage then
+                        // TODO : mdb?
+                        let symbolFile = Path.ChangeExtension(assembly.Location, "pdb")
+                        if File.Exists symbolFile then
+                            Some <| File.ReadAllBytes symbolFile
+                        else
+                            None
+                    else
+                        None
             }
                  
-        match state.TryFindSliceInfo assembly.FullName with
+        match compilerState.TryFindSliceInfo assembly.FullName with
         | Some (dynAssembly, sliceInfo) ->
 
             let requiresStaticInitialization = sliceInfo.StaticFields.Length > 0
-            let latestGeneration = generationIdx.TryFind assembly.FullName
+            let latestGeneration = state.TryFind assembly.AssemblyId
 
             let isPartiallyEvaluated = 
                 dynAssembly.Profile.IsPartiallyEvaluatedSlice 
                     (dynAssembly.TryGetSlice >> Option.map (fun s -> s.Assembly)) 
                         sliceInfo.Assembly
 
-            let generationIdx, generation, staticInitializer =
+            let state, generation, staticInitializer =
                 if requiresStaticInitialization && includeStaticInitializationData then
 
                     let tryPickle (fI : FieldInfo) =
@@ -50,14 +60,14 @@
                     let data = pickler.Pickle<StaticInitializers>(staticInitializers)
 
                     let generation = 1 + (defaultArg latestGeneration -1)
-                    let generationIdx = generationIdx.Add(assembly.FullName, generation)
-                    generationIdx, Some generation, Some data
+                    let state = state.Add(assembly.AssemblyId, generation)
+                    state, Some generation, Some data
                 else
-                    generationIdx, latestGeneration, None
+                    state, latestGeneration, None
 
             let dynamicAssemblyInfo =
                 {
-                    SourceId = state.ServerId
+                    SourceId = compilerState.ServerId
                     DynamicAssemblyName = sliceInfo.DynamicAssemblyQualifiedName
                     SliceId = sliceInfo.SliceId
 
@@ -67,9 +77,9 @@
                     StaticInitializerData = staticInitializer
                 }
 
-            generationIdx, mkPortableAssembly (Some dynamicAssemblyInfo)
+            state, mkPortableAssembly (Some dynamicAssemblyInfo)
 
-        | _ -> generationIdx, mkPortableAssembly None
+        | _ -> state, mkPortableAssembly None
 
 
     //
@@ -90,7 +100,7 @@
 
     /// portable assembly load protocol implementation
 
-    let rec loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<string, LoadedAssemblyInfo>) (pa : PortableAssembly) =
+    let rec loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<AssemblyId, LoadedAssemblyInfo>) (pa : PortableAssembly) =
 
         // load assembly image
         let tryLoadAssembly (pa : PortableAssembly) =
@@ -101,7 +111,11 @@
                 match pa.Image with
                 | None -> None
                 | Some bytes ->
-                    let assembly = System.Reflection.Assembly.Load(bytes)
+                    let assembly =
+                        match pa.Symbols with
+                        | None -> System.Reflection.Assembly.Load(bytes)
+                        | Some symbols -> System.Reflection.Assembly.Load(bytes, symbols)
+
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'" pa.FullName assembly.FullName
                         raise <| new InvalidDataException(msg)
@@ -120,9 +134,9 @@
 
             let initializers = pickler.UnPickle<StaticInitializers>(data)
             Array.choose tryLoad initializers
-               
-        let updateState pa status = state.Add(pa.FullName, status)
-        let currentStatus = defaultArg (state.TryFind pa.FullName) UnLoaded
+           
+        let updateState pa status = state.Add(pa.Id, status)
+        let currentStatus = defaultArg (state.TryFind pa.Id) UnLoaded
 
         try
             match localId, currentStatus, pa.DynamicAssemblyInfo with
@@ -179,13 +193,13 @@
             state, LoadFault(pa.FullName, e)
 
 
-    type AssemblyExporter = StatefulAgent<Map<string,int>, Assembly * bool * bool, PortableAssembly>
-    type AssemblyLoader = StatefulAgent<Map<string, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
+    type AssemblyExporter = StatefulAgent<Map<AssemblyId, int>, Assembly * bool * bool, PortableAssembly>
+    type AssemblyLoader = StatefulAgent<Map<AssemblyId, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
 
-    let mkAssemblyExporter (pickler : FsPickler) (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
+    let mkAssemblyExporter pickler (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
         mkStatefulAgent Map.empty (fun state (a,img,data) -> exportAssembly pickler (stateF()) state img data a)
 
-    let mkAssemblyLoader (pickler : FsPickler) (serverId : Guid option) : AssemblyLoader =
+    let mkAssemblyLoader pickler (serverId : Guid option) : AssemblyLoader =
         mkStatefulAgent Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
 
 

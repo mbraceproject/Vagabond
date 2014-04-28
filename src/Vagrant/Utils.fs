@@ -1,8 +1,10 @@
 ﻿module internal Nessos.Vagrant.Utils
 
     open System
+    open System.IO
     open System.Reflection
     open System.Runtime.Serialization
+    open System.Security.Cryptography
 
     open Microsoft.FSharp.Control
 
@@ -50,7 +52,11 @@
                 dict.Add(x,y)
                 y
 
-    let tryConcurrentMemoize f =
+    let concurrentMemoize (f : 'a -> 'b) =
+        let dict = new System.Collections.Concurrent.ConcurrentDictionary<'a,'b>()
+        fun x -> dict.GetOrAdd(x, f)
+
+    let tryConcurrentMemoize (f : 'a -> 'b option) : 'a -> 'b option =
         let dict = new System.Collections.Concurrent.ConcurrentDictionary<_,_>()
         fun x ->
             let found,y = dict.TryGetValue x
@@ -70,6 +76,25 @@
             |> Array.tryFind (fun a -> a.FullName = fullName)
 
         tryConcurrentMemoize load
+
+    /// computes a unique assembly identifier
+
+    let computeAssemblyId : Assembly -> AssemblyId =
+        let hashAlgorithm = SHA256Managed.Create()
+        let compute (assembly : Assembly) =
+            let hash =
+                if assembly.IsDynamic then
+                    BitConverter.GetBytes(assembly.GetHashCode())
+                else
+                    use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
+                    hashAlgorithm.ComputeHash(fs)
+
+            { FullName = assembly.FullName ; ImageHash = hash }
+
+        concurrentMemoize compute
+
+    type Assembly with member a.AssemblyId = computeAssemblyId a
+
 
     [<Literal>]
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
@@ -148,3 +173,49 @@
 
 
     let mkStatefulAgent (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulAgent<'S,'I,'O>(init, f)
+
+
+
+    [<RequireQualifiedAccess>]
+    module Convert =
+        
+        open System.Text
+        open System.IO
+        open System.Collections.Generic
+
+        // taken from : http://www.atrevido.net/blog/PermaLink.aspx?guid=debdd47c-9d15-4a2f-a796-99b0449aa8af
+        let private encodingIndex = "qaz2wsx3edc4rfv5tgb6yhn7ujm8k9lp"
+        let private inverseIndex = encodingIndex |> Seq.mapi (fun i c -> c,i) |> Map.ofSeq
+
+        /// convert bytes to base-32 string: useful for file names in case-insensitive file systems
+        let toBase32String(bytes : byte []) =
+            let b = new StringBuilder()
+            let mutable hi = 5
+            let mutable idx = 0uy
+            let mutable i = 0
+                
+            while i < bytes.Length do
+                // do we need to use the next byte?
+                if hi > 8 then
+                    // get the last piece from the current byte, shift it to the right
+                    // and increment the byte counter
+                    idx <- bytes.[i] >>> (hi - 5)
+                    i <- i + 1
+                    if i <> bytes.Length then
+                        // if we are not at the end, get the first piece from
+                        // the next byte, clear it and shift it to the left
+                        idx <- ((bytes.[i] <<< (16 - hi)) >>> 3) ||| idx
+
+                    hi <- hi - 3
+                elif hi = 8 then
+                    idx <- bytes.[i] >>> 3
+                    i <- i + 1
+                    hi <- hi - 3
+                else
+                    // simply get the stuff from the current byte
+                    idx <- (bytes.[i] <<< (8 - hi)) >>> 3
+                    hi <- hi + 5
+
+                b.Append (encodingIndex.[int idx]) |> ignore
+
+            b.ToString ()

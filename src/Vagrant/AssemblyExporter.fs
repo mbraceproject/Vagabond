@@ -195,14 +195,14 @@
             state, LoadFault(pa.Id, e)
 
 
-    type AssemblyExporter = StatefulAgent<Map<AssemblyId, int>, Assembly * bool * bool, PortableAssembly>
-    type AssemblyLoader = StatefulAgent<Map<string, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
+    type AssemblyExporter = StatefulActor<Map<AssemblyId, int>, Assembly * bool * bool, PortableAssembly>
+    type AssemblyLoader = StatefulActor<Map<string, LoadedAssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
 
     let mkAssemblyExporter pickler (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
-        mkStatefulAgent Map.empty (fun state (a,img,data) -> exportAssembly pickler (stateF()) state img data a)
+        mkStatefulActor Map.empty (fun state (a,img,data) -> exportAssembly pickler (stateF()) state img data a)
 
     let mkAssemblyLoader pickler (serverId : Guid option) : AssemblyLoader =
-        mkStatefulAgent Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
+        mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
 
 
     // server-side protocol implementation

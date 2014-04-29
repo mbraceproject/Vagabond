@@ -141,6 +141,11 @@
             match obj with
             | :? Type as t -> traverseType t |> ignore
             | :? MemberInfo as m -> traverseType m.DeclaringType |> ignore
+            | :? Assembly as a -> 
+                match a.GetTypes() with
+                | [||] -> ()
+                | types -> traverseType (types.[0]) |> ignore
+
             | :? Delegate as d -> 
                 traverseType (d.GetType()) |> ignore
                 traverseType d.Method.DeclaringType |> ignore

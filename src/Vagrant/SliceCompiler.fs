@@ -121,4 +121,4 @@
 
     let mkCompilationAgent (profiles : IDynamicAssemblyProfile list) (outpath : string) =
         let init = initCompilerState profiles outpath 
-        mkStatefulAgent init compileDynamicAssemblySlices
+        mkStatefulActor init compileDynamicAssemblySlices

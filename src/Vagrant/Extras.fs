@@ -44,6 +44,15 @@
             traverseDependencies None assemblies
 
 
+        /// <summary>
+        ///     Computes a unique id for given static assembly.
+        /// </summary>
+        /// <param name="assembly">a static assembly.</param>
+        static member ComputeAssemblyId (assembly : Assembly) = 
+            let _ = assembly.Location // force exception in case of dynamic assembly
+            assembly.AssemblyId
+
+
 
     /// <summary>
     ///     Persist assemblies and Vagrant-related metadata to disk.

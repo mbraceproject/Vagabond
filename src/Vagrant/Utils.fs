@@ -10,6 +10,8 @@
 
     open Microsoft.FSharp.Control
 
+    let inline raise (e : System.Exception) = (# "throw" e : 'T #)
+
     // write like this to avoid strange F# type initialization bug
     let runsMono = not <| obj.ReferenceEquals(Type.GetType("Mono.Runtime"), null)
 
@@ -146,7 +148,7 @@
 
     /// A stateful agent implementation with readable inner state
 
-    type StatefulAgent<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
+    type StatefulActor<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
         
         let stateRef = ref init
 
@@ -181,7 +183,7 @@
             member __.Dispose () = cts.Cancel()
 
 
-    let mkStatefulAgent (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulAgent<'S,'I,'O>(init, f)
+    let mkStatefulActor (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulActor<_,_,_>(init, f)
 
 
 

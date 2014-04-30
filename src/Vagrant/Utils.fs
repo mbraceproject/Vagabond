@@ -88,6 +88,15 @@
 
         tryConcurrentMemoize load
 
+    /// try get assembly loaded in appdomain or load it now
+
+    let tryLoadAssembly (fullName : string) =
+        match tryGetLoadedAssembly fullName with
+        | Some _ as a -> a
+        | None ->
+            try Some <| Assembly.Load(fullName)
+            with :? FileNotFoundException | :? FileLoadException -> None
+
     /// computes a unique assembly identifier
 
     let computeAssemblyId : Assembly -> AssemblyId =
@@ -100,7 +109,7 @@
                     use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
                     hashAlgorithm.ComputeHash(fs)
 
-            { FullName = assembly.FullName ; ImageHash = hash }
+            { FullName = assembly.FullName ; ImageHash = hash ; Generation = 0 }
 
         concurrentMemoize compute
 

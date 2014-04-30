@@ -6,15 +6,37 @@
     open Nessos.FsPickler
 
     /// unique identifier for assembly
+
+    [<CustomEquality>]
+    [<CustomComparison>]
+
     type AssemblyId =
         {
-            /// Assembly Qualified name
+            /// assembly qualified name
             FullName : string
             /// digest of the raw assembly image
             ImageHash : byte []
+            /// type initialization generation identifier for exported dynamic assemblies
+            Generation : int
         }
     with
         member id.GetName() = new AssemblyName(id.FullName)
+
+        interface IComparable with
+            member id.CompareTo y =
+                match y with
+                | :? AssemblyId as id' ->
+                    match compare id.FullName id'.FullName with
+                    | 0 -> compare id.ImageHash id'.ImageHash
+                    | c -> c
+                | _ -> invalidArg "y" "invalid comparand."
+
+        override id.Equals y =
+            match y with
+            | :? AssemblyId as id' -> id.FullName = id'.FullName && id.ImageHash = id'.ImageHash
+            | _ -> false
+
+        override id.GetHashCode() = hash (id.FullName, id.ImageHash)
 
     /// Contains information necessary for the exportation of an assembly
     and [<NoEquality;NoComparison>] PortableAssembly =
@@ -55,11 +77,8 @@
             /// will require static initialization revision in the future.
             IsPartiallyEvaluated : bool
 
-            /// Generation of latest static initialization data
-            StaticInitializerGeneration : int option
-
             /// Static initialization data
-            StaticInitializerData : byte [] option
+            StaticInitializerData : (int * byte []) option
         }
 
     // Response given by the Vagrant client upon loading a PortableAssembly

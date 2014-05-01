@@ -11,6 +11,7 @@
     open Nessos.Vagrant.DependencyAnalysis
     open Nessos.Vagrant.SliceCompiler
     open Nessos.Vagrant.AssemblyExporter
+    open Nessos.Vagrant.AssemblyLoader
 
     /// <summary>
     ///     Client for loading type initialization blobs of dynamic assembly slices.

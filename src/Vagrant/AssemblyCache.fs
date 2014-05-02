@@ -21,121 +21,113 @@
 //            let gen = info.StaticInitializerData |> Option.map fst
 //            CachedDynamic(info.RequiresStaticInitialization, gen)
 //
-//    type CachePath =
-//        {
-//            Assembly : string
-//            Pdb : string
-//            Metadata : string
-//        }
-//    with
-//        /// resolve unique paths for provided assembly in given cache directory
-//        static member Resolve (cacheDir : string) (id : AssemblyId) =
-//            let hash = Convert.toBase32String id.ImageHash
-//            let name = sprintf "%s-%s" (id.GetName().Name) hash
-//            let basePath = Path.Combine(cacheDir, name)
-//            {
-//                Assembly = basePath + ".dll"
-//                Pdb = basePath + ".pdb"
-//                Metadata = basePath + ".vagrant"
-//            }
-//
-//    /// write dynamic assembly metadata to cache
-//    let writeDynamicAssemblyInfo (pickler : FsPickler) (path : CachePath) info =
-//        use fs = new FileStream(path.Metadata, FileMode.Create)
-//        pickler.Serialize<DynamicAssemblyInfo>(fs, info)
-//
-//    /// read dynamic assembly metadata from cache
-//    let readDynamicAssemblyInfo (pickler : FsPickler) (path : CachePath) =
-//        use fs = new FileStream(path.Metadata, FileMode.Open)
-//        pickler.Deserialize<DynamicAssemblyInfo>(fs)
-//
-//    let resolveCachedAssemblyInfo (pickler : FsPickler) (cacheDir : string) (id : AssemblyId) =
-//        match tryLoadAssembly id.FullName with
-//        | Some a when a.AssemblyId = id -> StaticInAppDomainOrGac
-//        | _ ->
-//            let path = CachePath.Resolve cacheDir id
-//
-//            if not <| File.Exists path.Assembly then UnCached
-//            elif File.Exists path.Metadata then
-//                let info = readDynamicAssemblyInfo pickler path
-//                CachedAssemblyInfo.OfDynamicAssemblyInfo info
-//            else
-//                CachedStatic
-//
-//    /// cache portable assembly image
-//    let cachePortableAssembly (pickler : FsPickler) cacheDir (pa : PortableAssembly) =
-//        let path = CachePath.Resolve cacheDir pa.Id
-//            
-//        // cache the file
-//        if File.Exists path.Assembly then ()
-//        else
-//            match pa.Image with
-//            | None -> invalidOp <| sprintf "AssemblyCache: Portable assembly '%s' lacking image." pa.FullName
-//            | Some img -> File.WriteAllBytes(path.Assembly, img)
-//
-//        // cache the symbols
-//        if File.Exists path.Pdb then ()
-//        else
-//            match pa.Symbols with
-//            | None -> ()
-//            | Some symbols -> File.WriteAllBytes(path.Pdb, symbols)
-//
-//        // cache metadata
-//        match pa.DynamicAssemblyInfo with
-//        | None -> ()
-//        | Some info -> writeDynamicAssemblyInfo pickler path info
-//
-//
-//
-//
-//    let rec cacheAssembly (pickler : FsPickler) (cacheDir : string) (state : Map<AssemblyId, CachedAssemblyInfo>) (pa : PortableAssembly) =
-//
-//        let updateWith info = state.Add(pa.Id, info)
-//
-//        let path = CachePath.Resolve cacheDir pa.Id
-//        
-//        // consult directory state if not found in-memory
-//        let state, assemblyInfo = 
-//            match state.TryFind pa.Id with
-//            | None -> let info = resolveCachedAssemblyInfo pickler cacheDir pa.Id in updateWith info, info
-//            | Some info -> state, info
-//
-//        match assemblyInfo, pa.Image, pa.DynamicAssemblyInfo with
-//        // assembly not cached and portable assembly does not contain an image
-//        | UnCached, None, _ -> state, MissingAssemblyImage pa.Id
-//        // static assembly not cached 
-//        | UnCached, Some _, None -> 
-//            do cachePortableAssembly pickler cacheDir pa
-//            updateWith CachedStatic, Loaded(pa.Id, [||])
-//        // dynamic assembly not cached
-//        | UnCached, Some _, Some dyn ->
-//            do cachePortableAssembly pickler cacheDir pa
-//            let state = updateWith <| CachedAssemblyInfo.OfDynamicAssemblyInfo dyn
-//            if dyn.RequiresStaticInitialization && dyn.StaticInitializerData.IsNone then
-//                state, MissingStaticInitializer(pa.Id, None)
-//            else
-//                state, Loaded(pa.Id, [||])
-//
-//        // static assembly loaded in cache or GAC
-//        | (CachedStatic | StaticInAppDomainOrGac), _, _ -> state, Loaded(pa.Id, [||])
-//        // cached dynamic assembly not in need of value initialization
-//        | CachedDynamic(false, _), _, _ -> state, Loaded(pa.Id, [||])
-//        // cached dynamic assembly missing any static initialization
-//        | CachedDynamic(true, None), _, None -> state, MissingStaticInitializer(pa.Id, None)
-//        | CachedDynamic(true, None), _, Some info ->
-//            match info.StaticInitializerData with
-//            | None -> state, MissingStaticInitializer(pa.Id, None)
-//            | Some(gen,_) ->
-//                do writeDynamicAssemblyInfo pickler path info 
-//                state, Loaded(pa.Id, [||])
-//            
-//        | CachedDynamic(true, Some gen), _, Some info ->
-//            match info.StaticInitializerData with
-//            | None when info.IsPartiallyEvaluated -> state, MissingStaticInitializer(pa.Id, Some gen)
-//            | None -> state, Loaded(pa.Id, [||])
-//            | Some(newGen, _) when gen >= newGen -> state, Loaded(pa.Id, [||])
-//            | Some(newGen, _) ->
-//                do writeDynamicAssemblyInfo pickler path info
-//                state, Loaded(pa.Id, [||])
-//
-//        | CachedDynamic _, _, None -> state, Loaded(pa.Id, [||])
+    type CachePath =
+        {
+            Assembly : string
+            Pdb : string
+            StaticInitializer : string
+            Metadata : string
+        }
+    with
+        /// resolve unique paths for provided assembly in given cache directory
+        static member Resolve (cacheDir : string) (id : AssemblyId) =
+            let hash = Convert.toBase32String id.ImageHash
+            let name = sprintf "%s-%s" (id.GetName().Name) hash
+            let basePath = Path.Combine(cacheDir, name)
+            {
+                Assembly = basePath + ".dll"
+                Pdb = basePath + ".pdb"
+                StaticInitializer = basePath + ".static"
+                Metadata = basePath + ".vagrant"
+            }
+
+    /// write dynamic assembly metadata to cache
+    let writeDynamicAssemblyInfo (pickler : FsPickler) (path : CachePath) info =
+        use fs = new FileStream(path.Metadata, FileMode.Create)
+        pickler.Serialize<DynamicAssemblySliceInfo>(fs, info)
+
+    /// read dynamic assembly metadata from cache
+    let readDynamicAssemblyInfo (pickler : FsPickler) (path : CachePath) =
+        use fs = new FileStream(path.Metadata, FileMode.Open)
+        pickler.Deserialize<DynamicAssemblySliceInfo>(fs)
+
+    let resolveCachedAssemblyInfo (pickler : FsPickler) (cacheDir : string) (id : AssemblyId) =
+        let path = CachePath.Resolve cacheDir id
+
+        let isImageLoaded, isSymbolsLoaded =
+            match tryLoadAssembly id.FullName with
+            | Some a when a.AssemblyId = id ->
+                let pdb = Path.ChangeExtension(a.Location, "pdb")
+                true, File.Exists pdb
+            | _ ->
+                File.Exists path.Assembly, File.Exists path.Pdb
+
+        let sliceInfo =
+            if File.Exists path.Metadata then
+                Some <| readDynamicAssemblyInfo pickler path
+            else
+                None
+
+        { Id = id ; IsImageLoaded = isImageLoaded ; IsSymbolsLoaded = isSymbolsLoaded ; DynamicAssemblySliceInfo = sliceInfo }
+
+
+    /// cache portable assembly image
+    let cachePortableAssembly (pickler : FsPickler) cacheDir (pa : PortableAssembly) =
+        let path = CachePath.Resolve cacheDir pa.Id
+            
+        // cache the file
+        if File.Exists path.Assembly then ()
+        else
+            match pa.Image with
+            | None -> ()
+            | Some img -> File.WriteAllBytes(path.Assembly, img)
+
+        // cache the symbols
+        if File.Exists path.Pdb then ()
+        else
+            match pa.Symbols with
+            | None -> ()
+            | Some symbols -> File.WriteAllBytes(path.Pdb, symbols)
+
+        // cache the static initializer
+        match pa.StaticInitializer with
+        | None -> ()
+        | Some(_,data) -> do File.WriteAllBytes(path.StaticInitializer, data)
+
+        // cache metadata
+        match pa.Info.DynamicAssemblySliceInfo with
+        | None -> ()
+        | Some info -> writeDynamicAssemblyInfo pickler path info
+
+
+    let cacheAssembly (pickler : FsPickler) (cacheDir : string) (state : Map<AssemblyId, AssemblyInfo>) (pa : PortableAssembly) =
+
+        let updateWith info = state.Add(pa.Id, info)
+        let path = CachePath.Resolve cacheDir pa.Id
+
+        try        
+            // consult directory state if not found in-memory
+            let state, assemblyInfo = 
+                match state.TryFind pa.Id with
+                | None -> let info = resolveCachedAssemblyInfo pickler cacheDir pa.Id in updateWith info, info
+                | Some info -> state, info
+
+            if not assemblyInfo.IsImageLoaded then
+                cachePortableAssembly pickler cacheDir pa
+                state, LoadSuccess(pa.Id, [||])
+            else
+                let currentGen =
+                    match assemblyInfo.DynamicAssemblySliceInfo with
+                    | None -> -1
+                    | Some info -> info.StaticInitializerGeneration
+
+                match pa.StaticInitializer, pa.Info.DynamicAssemblySliceInfo with
+                | Some(gen,data), Some dyn when gen > currentGen -> 
+                    File.WriteAllBytes(path.StaticInitializer, data)
+                    writeDynamicAssemblyInfo pickler path dyn
+                    updateWith pa.Info, LoadSuccess(pa.Id, [||])
+
+                | _ ->
+                    state, LoadSuccess(pa.Id, [||])
+
+        with e -> state, LoadFault(pa.Id, e)

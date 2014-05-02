@@ -53,9 +53,10 @@
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
     <Compile Include="assemblyInfo.fs" />
-    <Compile Include="Types.fs" />
-    <Compile Include="Utils.fs" />
+    <Compile Include="PublicTypes.fs" />
     <Compile Include="AssemblyProfiles.fs" />
+    <Compile Include="SliceCompilerTypes.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="AssemblyParser.fs" />
     <Compile Include="DependencyAnalysis.fs" />

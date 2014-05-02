@@ -6,7 +6,9 @@
     open System.Reflection
 
     open Nessos.FsPickler
+
     open Nessos.Vagrant
+    open Nessos.Vagrant.SliceCompilerTypes
 
     type VagrantTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 

@@ -11,6 +11,7 @@
     open Nessos.FsPickler
 
     open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.SliceCompilerTypes
     open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.AssemblyParser
     open Nessos.Vagrant.DependencyAnalysis
@@ -31,9 +32,10 @@
                 None
         {
             ServerId = Guid.NewGuid()
-            OutputDirectory = outDirectory
-            DynamicAssemblies = Map.empty
             Profiles = profiles
+            OutputDirectory = outDirectory
+
+            DynamicAssemblies = Map.empty
 
             TryGetDynamicAssemblyId = tryExtractDynamicAssemblyId
             CreateAssemblySliceName = mkSliceName
@@ -99,25 +101,29 @@
     /// compiles a collection of assemblies
 
     let compileDynamicAssemblySlices (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
-        // resolve dynamic assembly dependency graph
-        let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
+        try
+            // resolve dynamic assembly dependency graph
+            let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
 
-        // exceptions are handled explicitly so that returned state reflects the last successful compilation
-        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>)
-                            (typeData, dynAsmb, _, assemblyDef) =
+            // exceptions are handled explicitly so that returned state reflects the last successful compilation
+            let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>)
+                                (typeData, dynAsmb, _, assemblyDef) =
 
-            match accumulator with
-            | Success slices ->
-                try
-                    let slice, state = compileDynamicAssemblySlice state dynAsmb typeData assemblyDef
-                    state, Success (slice :: slices)
-                with e ->
-                    state, Error e
-            | Error _ -> state, accumulator
+                match accumulator with
+                | Success slices ->
+                    try
+                        let slice, state = compileDynamicAssemblySlice state dynAsmb typeData assemblyDef
+                        state, Success (slice :: slices)
+                    with e ->
+                        state, Error e
+                | Error _ -> state, accumulator
 
-        List.fold compileSlice (state, Success []) parsedDynamicAssemblies
+            List.fold compileSlice (state, Success []) parsedDynamicAssemblies
 
-    /// initializes a stateful compilation agent
+        with e -> state, Error e
+
+
+    /// initializes a stateful compilation actor
 
     let mkCompilationAgent (profiles : IDynamicAssemblyProfile list) (outpath : string) =
         let init = initCompilerState profiles outpath 

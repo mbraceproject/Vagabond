@@ -9,6 +9,7 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.Cecil
+    open Nessos.Vagrant.SliceCompilerTypes
 
     type TypeParseInfo =
         | AlwaysIncluded

@@ -10,6 +10,8 @@
 
     open Microsoft.FSharp.Control
 
+    open Nessos.Vagrant.SliceCompilerTypes
+
     let inline raise (e : System.Exception) = (# "throw" e : 'T #)
 
     // write like this to avoid strange F# type initialization bug
@@ -101,15 +103,17 @@
 
     let computeAssemblyId : Assembly -> AssemblyId =
         let hashAlgorithm = SHA256Managed.Create()
+        let hostId = Guid.NewGuid().ToByteArray()
         let compute (assembly : Assembly) =
             let hash =
                 if assembly.IsDynamic then
-                    BitConverter.GetBytes(assembly.GetHashCode())
+                    let this = BitConverter.GetBytes(assembly.GetHashCode())
+                    Array.append hostId this
                 else
                     use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
                     hashAlgorithm.ComputeHash(fs)
 
-            { FullName = assembly.FullName ; ImageHash = hash ; Generation = 0 }
+            { FullName = assembly.FullName ; ImageHash = hash }
 
         concurrentMemoize compute
 
@@ -154,6 +158,8 @@
                 aux (t :: sorted) g0
 
         aux [] g
+
+
 
     /// A stateful agent implementation with readable inner state
 

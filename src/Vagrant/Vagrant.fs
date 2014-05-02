@@ -35,15 +35,15 @@
         /// Returns pickler used in type initialization.
         member __.Pickler = pickler
 
-        /// <summary>
-        ///     Specifies if given assembly id is loaded in given assembly context
-        /// </summary>
-        /// <param name="id">the provided assembly.</param>
-        member __.IsLoadedAssembly (id : AssemblyId) : bool =
-            let pa = { Id = id ; Image = None ; Symbols = None ; DynamicAssemblyInfo = None }
-            match loader.PostAndReply pa with
-            | Loaded _ -> true
-            | _ -> false
+//        /// <summary>
+//        ///     Specifies if given assembly id is loaded in given assembly context
+//        /// </summary>
+//        /// <param name="id">the provided assembly.</param>
+//        member __.IsLoadedAssembly (id : AssemblyId) : bool =
+//            let pa = { Id = id ; Image = None ; Symbols = None ; DynamicAssemblyInfo = None }
+//            match loader.PostAndReply pa with
+//            | Loaded _ -> true
+//            | _ -> false
 
         /// <summary>
         ///     Loads the type initializers from given dependency package.

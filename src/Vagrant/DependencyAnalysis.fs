@@ -11,6 +11,7 @@
 
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.AssemblyParser
+    open Nessos.Vagrant.SliceCompilerTypes
 
     open Microsoft.FSharp.Reflection
 

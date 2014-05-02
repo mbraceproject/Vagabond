@@ -44,6 +44,7 @@
 //            match loader.PostAndReply pa with
 //            | Loaded _ -> true
 //            | _ -> false
+        member __.GetAssemblyLoadInfo(id : AssemblyId) = getAssemblyLoadState loader id
 
         /// <summary>
         ///     Loads the type initializers from given dependency package.
@@ -159,29 +160,28 @@
         /// </summary>
         /// <param name="assembly">Given assembly.</param>
         /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
-        /// <param name="includeStaticInitializers">Include static initialization data in the bundle, if required.</param>
-        member __.MakePortableAssembly(assembly : Assembly, includeAssemblyImage:bool, includeStaticInitializers:bool) =
-            exporter.PostAndReply(assembly, includeAssemblyImage, includeStaticInitializers)
+        member __.MakePortableAssembly(assembly : Assembly, includeAssemblyImage:bool) =
+            exporter.PostAndReply(assembly, includeAssemblyImage)
 
         /// <summary>
         ///     Apply the built-in assembly distribution protocol using user-defined submit function.
         /// </summary>
-        /// <param name="postAndReplyF">User provided assembly submit operation.</param>
+        /// <param name="receiver">User provided assembly submit operation.</param>
         /// <param name="assemblies">Assemblies to be exported.</param>
-        member __.SubmitAssemblies(postAndReplyF : PortableAssembly list -> Async<AssemblyLoadResponse list>, assemblies : Assembly list) =
+        member __.SubmitAssemblies(receiver : IRemoteAssemblyReceiver, assemblies : Assembly list) =
             for a in assemblies do
                 if a.IsDynamic then
                     invalidArg a.FullName "cannot submit dynamic assemblies."
 
-            assemblySubmitProtocol exporter postAndReplyF assemblies
+            assemblySubmitProtocol exporter receiver assemblies
 
         /// <summary>
         ///     Apply the built-in assembly distribution protocol using user-defined function.
         /// </summary>
-        /// <param name="submitF">User provided assembly submit operation.</param>
+        /// <param name="receiver">User provided assembly submit operation.</param>
         /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
         /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
-        member __.SubmitObjectDependencies(submitF : PortableAssembly list -> Async<AssemblyLoadResponse list>, obj:obj, ?permitCompilation) =
+        member __.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation) =
             let assemblies = __.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
-            __.SubmitAssemblies(submitF, assemblies)
+            __.SubmitAssemblies(receiver, assemblies)
             

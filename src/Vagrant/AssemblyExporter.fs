@@ -120,11 +120,11 @@
         async {
             let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
 
-            // Step 1. submit assembly identifiers to receiver; get assembly state
+            // Step 1. submit assembly identifiers to receiver; get back loaded state
             let headers = assemblies |> List.map (fun a -> a.AssemblyId)
             let! info = receiver.GetLoadedAssemblyInfo headers
         
-            // Step 2. Detect faults, identify missing image or type initializers and repeat post with requested data
+            // Step 2. detect dependencies that require posting
             let tryGetPortableAssembly (info : AssemblyInfo) =
                 match info.DynamicAssemblySliceInfo with
                 | None when info.IsImageLoaded -> None
@@ -133,7 +133,7 @@
                 | Some dyn -> Some <| exporter.PostAndReply(index.[info.Id], info.IsImageLoaded)
 
             let portableAssemblies = info |> List.choose tryGetPortableAssembly
-            let! replies = receiver.PushAssemblies portableAssemblies
+            let! loadResults = receiver.PushAssemblies portableAssemblies
 
             // Step 3. check load results; if client replies with fault, fail.
             let gatherErrors = 
@@ -142,6 +142,6 @@
                 | LoadFault(_, (:? VagrantException as e)) -> raise e
                 | LoadFault(id, e) -> raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
 
-            let staticInitializationErrors = replies |> List.map gatherErrors |> Array.concat
+            let staticInitializationErrors = loadResults |> List.map gatherErrors |> Array.concat
             return staticInitializationErrors
         }

@@ -27,7 +27,9 @@
 
     /// portable assembly load protocol implementation
 
-    let rec loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<string, AssemblyInfo>) (pa : PortableAssembly) =
+    let loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<AssemblyId, AssemblyInfo>) (pa : PortableAssembly) =
+
+        let updateWith info = state.Add(pa.Id, info)
 
         let loadStaticInitializer (data : byte []) =
             let tryLoad (fI : FieldInfo, data : Exn<byte []>) =
@@ -69,34 +71,48 @@
                 | None -> [||]
                 | Some (_,data) -> loadStaticInitializer data
 
-            LoadSuccess(pa.Id, staticInitializerErrors)
+            let info = { pa.Info with IsImageLoaded = true }
 
-
-        let updateWith info = state.Add(pa.FullName, info)
+            updateWith info, LoadSuccess(pa.Id, staticInitializerErrors)
             
-        match localId, state.TryFind pa.FullName, pa.Info.DynamicAssemblySliceInfo with
-        // dynamic assembly slice generated in local process
-        | Some id, _, Some dyn when dyn.SourceId = id -> state, LoadSuccess (pa.Id, [||])
-        // assembly not registered in state
-        | _, None, _ ->
-            let result = loadAssembly pa
-            updateWith pa.Info, result
-        // assembly registered in state
-        | _, Some currentInfo, _ ->
-            match currentInfo.DynamicAssemblySliceInfo, pa.Info.DynamicAssemblySliceInfo with
-            | None, None -> state, LoadSuccess (pa.Id, [||])
-            | Some previous, Some current ->
+        try
+            match localId, state.TryFind pa.Id, pa.Info.DynamicAssemblySliceInfo with
+            // dynamic assembly slice generated in local process
+            | Some id, _, Some dyn when dyn.SourceId = id -> state, LoadSuccess (pa.Id, [||])
+            // assembly not registered in state, attempt to load now
+            | _, None, _ -> loadAssembly pa
+            // assembly registered in state, update static initializers if required
+            | _, Some storedInfo, _ ->
+                let currentGen =
+                    match storedInfo.DynamicAssemblySliceInfo with
+                    | None -> -1
+                    | Some info -> info.StaticInitializerGeneration
+
                 match pa.StaticInitializer with
-                | None when previous.RequiresStaticInitialization -> 
-                    raise <| new VagrantException(sprintf "Portable assembly '%s' missing static initialization data." pa.FullName)
-                | None -> state, LoadSuccess (pa.Id, [||])
-                | Some(gen,data) when gen > previous.StaticInitializerGeneration ->
+                | Some(gen,data) when gen > currentGen ->
                     let staticInitializerErrors = loadStaticInitializer data
                     updateWith pa.Info, LoadSuccess(pa.Id, staticInitializerErrors)
 
-                | Some _ -> state, LoadSuccess(pa.Id, [||])
+                | _ -> state, LoadSuccess(pa.Id, [||])
 
-            | _ -> raise <| new VagrantException(sprintf "Invalid data for portable assembly '%s'." pa.FullName)
+                    
+//                match storedInfo.DynamicAssemblySliceInfo, pa.Info.DynamicAssemblySliceInfo with
+//                // static assembly already loaded 
+//                | None, None -> state, LoadSuccess (pa.Id, [||])
+//                | Some stored, Some current ->
+//                    match pa.StaticInitializer with
+//                    | None when stored.RequiresStaticInitialization -> 
+//                        raise <| new VagrantException(sprintf "Portable assembly '%s' missing static initialization data." pa.FullName)
+//                    | None -> state, LoadSuccess (pa.Id, [||])
+//                    | Some(gen,data) when gen > previous.StaticInitializerGeneration ->
+//                        let staticInitializerErrors = loadStaticInitializer data
+//                        updateWith pa.Info, LoadSuccess(pa.Id, staticInitializerErrors)
+//
+//                    | Some _ -> state, LoadSuccess(pa.Id, [||])
+//
+//                | _ -> raise <| new VagrantException(sprintf "Invalid data for portable assembly '%s'." pa.FullName)
+
+        with e -> state, LoadFault(pa.Id, e)
             
            
 //        let updateState (pa : PortableAssembly) status = state.Add(pa.FullName, status)
@@ -168,7 +184,27 @@
 
 
 
-    type AssemblyLoader = StatefulActor<Map<string, AssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
+    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
     
     let mkAssemblyLoader pickler (serverId : Guid option) : AssemblyLoader =
         mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
+
+
+    let getAssemblyLoadState (loader : AssemblyLoader) (id : AssemblyId) =
+
+        let defaultInfo = 
+            {
+                Id = id
+                IsImageLoaded = false
+                IsSymbolsLoaded = false
+                DynamicAssemblySliceInfo = None
+            }
+
+        let pa = { Info = defaultInfo ; Image = None ; Symbols = None ; StaticInitializer = None }
+
+        // force load assembly in state if present in appdomain/gac
+        let _ = loader.PostAndReply pa
+
+        match loader.CurrentState.TryFind id with
+        | Some info -> info
+        | None -> defaultInfo

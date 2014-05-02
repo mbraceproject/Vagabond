@@ -12,6 +12,7 @@
     let private defaultConnectionString = "127.0.0.1:38979"
 
     type private ServerMsg =
+        | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyInfo list>
         | LoadAssemblies of PortableAssembly list * AsyncReplyChannel<AssemblyLoadResponse list>
         | EvaluteThunk of Type * (unit -> obj) * AsyncReplyChannel<Choice<obj, exn>>
 
@@ -25,6 +26,10 @@
             let! msg = inbox.Receive()
 
             match msg with
+            | GetAssemblyLoadState (ids, rc) ->
+                let replies = ids |> List.map vagrant.GetAssemblyLoadInfo
+                rc.Reply replies
+
             | LoadAssemblies (pas, rc) ->
                 let replies = vagrant.LoadPortableAssemblies pas
                 rc.Reply replies
@@ -60,9 +65,16 @@
         let serverEndPoint = defaultArg serverEndPoint defaultConnectionString
         let client = TcpActor.Connect<ServerMsg>(serverEndPoint)
 
+        let assemblyUploader =
+            {
+                new IRemoteAssemblyReceiver with
+                    member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = client.PostAndReplyAsync(fun ch -> GetAssemblyLoadState(ids, ch))
+                    member __.PushAssemblies(pas : PortableAssembly list) = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas,ch))
+            }
+
         member __.UploadDependenciesAsync (obj : obj) = async {
-            let postDependencies pas = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas, ch))
-            let! errors = vagrant.SubmitObjectDependencies(postDependencies, obj, permitCompilation = true)
+
+            let! errors = vagrant.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
             return ()
         }
 

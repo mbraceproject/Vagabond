@@ -35,17 +35,11 @@
         /// Returns pickler used in type initialization.
         member __.Pickler = pickler
 
-//        /// <summary>
-//        ///     Specifies if given assembly id is loaded in given assembly context
-//        /// </summary>
-//        /// <param name="id">the provided assembly.</param>
-//        member __.IsLoadedAssembly (id : AssemblyId) : bool =
-//            let pa = { Id = id ; Image = None ; Symbols = None ; DynamicAssemblyInfo = None }
-//            match loader.PostAndReply pa with
-//            | Loaded _ -> true
-//            | _ -> false
-        member __.GetAssemblyLoadInfo(id : AssemblyId) = 
-            loader.PostAndReply <| PortableAssembly.Empty id
+        /// <summary>
+        ///     Get the current assembly load state for given id.
+        /// </summary>
+        /// <param name="id"></param>
+        member __.GetAssemblyLoadInfo(id : AssemblyId) = getAssemblyLoadInfo loader id
 
         /// <summary>
         ///     Loads the type initializers from given dependency package.
@@ -59,6 +53,13 @@
         /// <param name="assemblies">Portable assembly packages to be loaded.</param>
         member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>) =
             assemblies |> Seq.map loader.PostAndReply |> Seq.toList
+
+        /// <summary>
+        ///     Receive dependencies as supplied by the remote assembly publisher
+        /// </summary>
+        /// <param name="publisher">The remote publisher</param>
+        member __.ReceiveDependencies(publisher : IRemoteAssemblyPublisher) =
+            assemblyReceiveProtocol loader publisher
             
 
 

@@ -82,12 +82,18 @@
             | Loaded id -> id
             | LoadedWithStaticIntialization(id,_) -> id
 
+    /// Defines an abstract assembly load target; to be used by VagrantServer
     type IRemoteAssemblyReceiver =
+        /// receives the assembly load state of the remote party for the given id's
         abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
+        /// upload a set of portable assemblies to the remote party
         abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadInfo list>
 
+    /// Defines an abstract assembly exporter; to be used by VagrantClient
     type IRemoteAssemblyPublisher =
-        abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyLoadInfo list>
+        /// receives a collection of dependencies required by remote publisher
+        abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
+        /// request portable assemblies from publisher
         abstract PullAssemblies : AssemblyId list -> Async<PortableAssembly list>
 
     /// customizes slicing behaviour on given dynamic assembly

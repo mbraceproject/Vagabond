@@ -99,3 +99,37 @@
     
     let mkAssemblyLoader pickler tryGetLocal : AssemblyLoader =
         mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler tryGetLocal state pa)
+
+
+    let getAssemblyLoadInfo (loader : AssemblyLoader) (id : AssemblyId) = loader.PostAndReply <| PortableAssembly.Empty id
+
+    /// assembly receive protocol on the client side
+    let assemblyReceiveProtocol (loader : AssemblyLoader) (publisher : IRemoteAssemblyPublisher) = async {
+        // step 1. download dependencies required by publisher
+        let! dependencies = publisher.GetRequiredAssemblyInfo()
+
+        // step 2. resolve dependencies that are missing from client
+        let tryCheckLoadStatus (id : AssemblyId) =
+            match getAssemblyLoadInfo loader id with
+            | NotLoaded id
+            | LoadFault (id,_) -> Some id
+            | Loaded _ -> None
+            | LoadedWithStaticIntialization _ -> None
+
+        let missing = dependencies |> List.choose tryCheckLoadStatus
+
+        // step 3. download portable assemblies for missing dependencies
+        let! assemblies = publisher.PullAssemblies missing
+        let loadResults = assemblies |> List.map loader.PostAndReply
+
+        let checkLoadResult (info : AssemblyLoadInfo) =
+            match info with
+            | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
+            | LoadFault(_, (:? VagrantException as e)) -> raise e
+            | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
+            | Loaded _ | LoadedWithStaticIntialization _ -> ()
+
+        List.iter checkLoadResult loadResults
+
+        return ()
+    }

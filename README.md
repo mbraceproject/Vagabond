@@ -4,7 +4,7 @@ A library that facilitates the distribution of code for the .NET framework. [[Nu
 
 #### Build Status
 
-Windows/.NET build + unit tests [![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew)](https://ci.appveyor.com/project/nessos/vagrant)
+Windows/.NET build + unit tests [![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew/branch/master)](https://ci.appveyor.com/project/nessos/vagrant)
 
 ### Introduction
 

@@ -67,14 +67,15 @@
     /// <summary>
     ///     Persist assemblies and Vagrant-related metadata to disk.
     /// </summary>
-    type VagrantCache(cacheDirectory : string, ?pickler : FsPickler) =
+    type VagrantCache(cacheDirectory : string, ?pickler : FsPickler, ?lookupAppDomain) =
         do 
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)
 
 
         let pickler = match pickler with Some p -> p | None -> new FsPickler()
-        let cacheActor = initAssemblyCache pickler cacheDirectory
+        let lookupAppDomain = defaultArg lookupAppDomain false
+        let cacheActor = initAssemblyCache pickler lookupAppDomain cacheDirectory
         
         /// <summary>
         ///     Save given portable assembly to cache

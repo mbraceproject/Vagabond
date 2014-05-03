@@ -10,7 +10,7 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.AssemblyLoader
 
-    type AssemblyCache = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly, AssemblyLoadInfo>
+    type AssemblyCache = StatefulActor<Map<AssemblyId, bool * AssemblyLoadInfo>, PortableAssembly, AssemblyLoadInfo>
 
     type CachePath =
         {
@@ -43,20 +43,26 @@
         pickler.Deserialize<StaticInitializationInfo>(fs)
 
     /// query cache dir for current state
-    let resolveCachedAssemblyInfo (pickler : FsPickler) (path : CachePath) (id : AssemblyId) =
-        try
-            if not <| File.Exists path.Assembly then NotLoaded id
-            elif File.Exists path.Metadata then
-                let info = readMetadata pickler path
-                if File.Exists path.StaticInitializer then
-                    LoadedWithStaticIntialization (id, info)
-                else
-                    let msg = sprintf "cache error: missing static initialization file for assembly '%s'" id.FullName
-                    LoadFault(id, VagrantException(msg))
-            else
-                Loaded id
+    let resolveCachedAssemblyInfo (pickler : FsPickler) lookupAppDomain (path : CachePath) (id : AssemblyId) =
 
-        with e -> LoadFault(id, e)
+        let isLoadedInAppDomain =
+            if lookupAppDomain then
+                match tryLoadAssembly id.FullName with
+                | Some a when a.AssemblyId = id -> true
+                | _ -> false
+            else
+                false
+
+        if not (isLoadedInAppDomain || File.Exists path.Assembly) then false, NotLoaded id
+        elif File.Exists path.Metadata then
+            let info = readMetadata pickler path
+            if File.Exists path.StaticInitializer then
+                isLoadedInAppDomain, LoadedWithStaticIntialization (id, info)
+            else
+                let msg = sprintf "cache error: missing static initialization file for assembly '%s'" id.FullName
+                false, LoadFault(id, VagrantException(msg))
+        else
+            isLoadedInAppDomain, Loaded id
 
     /// write new static initializer to cache
     let writeStaticInitializer (pickler : FsPickler) (path : CachePath) (previous : StaticInitializationInfo option) (init : StaticInitializer) =
@@ -88,18 +94,20 @@
                 LoadedWithStaticIntialization(pa.Id, info)
 
     /// the main portable assembly method
-    let cachePortableAssembly (pickler : FsPickler) (cacheDir : string) (state : Map<AssemblyId, AssemblyLoadInfo>) (pa : PortableAssembly) =
-        
-        let success info = state.Add(pa.Id, info), info
-        let error e = state, LoadFault(pa.Id, e)
+    let cachePortableAssembly (pickler : FsPickler) lookupAppDomain (cacheDir : string) 
+                                (state : Map<AssemblyId, bool * AssemblyLoadInfo>) (pa : PortableAssembly) =
 
         try
             let path = CachePath.Resolve cacheDir pa.Id
 
-            let loadState =
+            let isLoadedInAppDomain, isFirstAccess, loadState =
                 match state.TryFind pa.Id with
-                | None -> resolveCachedAssemblyInfo pickler path pa.Id
-                | Some s -> s
+                | None -> 
+                    let isAppDomain, loadState = resolveCachedAssemblyInfo pickler lookupAppDomain path pa.Id
+                    isAppDomain, true, loadState
+                | Some (isAppDomain, loadState) -> isAppDomain, false, loadState
+
+            let success info = state.Add(pa.Id, (isLoadedInAppDomain, info)), info
 
             match loadState, pa.StaticInitializer with
             | NotLoaded _, _ -> success <| writeAssemblyToCache pickler path pa
@@ -107,14 +115,15 @@
                 let info = writeStaticInitializer pickler path (Some info) init
                 success <| LoadedWithStaticIntialization(pa.Id, info)
 
+            | _ when isFirstAccess -> success loadState
             | _ -> state, loadState
         
         with e -> state, LoadFault(pa.Id, e)
 
 
 
-    let initAssemblyCache (pickler : FsPickler) (cacheDir : string) : AssemblyCache =
-        mkStatefulActor Map.empty (cachePortableAssembly pickler cacheDir)
+    let initAssemblyCache (pickler : FsPickler) lookupAppDomain (cacheDir : string) : AssemblyCache =
+        mkStatefulActor Map.empty (cachePortableAssembly pickler lookupAppDomain cacheDir)
 
 
     /// load a portable assembly from cache
@@ -123,13 +132,25 @@
         | LoadFault(_,e) -> raise e
         | NotLoaded _ -> None
         | loadState ->
+            // check if assembly is recorded as loaded in AppDomain
+            let isLoadedInAppDomain = defaultArg (cache.CurrentState.TryFind id |> Option.map fst) false
+
             let path = CachePath.Resolve cacheDir id
             let image, symbols =
                 if includeImage then
-                    let image = Some <| File.ReadAllBytes path.Assembly
+                    let dll = 
+                        if isLoadedInAppDomain then tryLoadAssembly(id.FullName).Value.Location
+                        else path.Assembly
+
+                    let image = Some <| File.ReadAllBytes dll
+                       
+                    let pdb = 
+                        if isLoadedInAppDomain then Path.ChangeExtension(dll, ".pdb")
+                        else path.Pdb
+
                     let symbols =
-                        if File.Exists path.Pdb then
-                            Some <| File.ReadAllBytes path.Pdb
+                        if File.Exists pdb then
+                            Some <| File.ReadAllBytes pdb
                         else
                             None
 

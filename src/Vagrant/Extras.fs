@@ -8,6 +8,7 @@
 
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.DependencyAnalysis
+    open Nessos.Vagrant.AssemblyExporter
     open Nessos.Vagrant.AssemblyCache
 
     /// <summary>
@@ -54,16 +55,25 @@
             assembly.AssemblyId
 
 
+        /// <summary>
+        ///     Creates a portable assembly package.
+        /// </summary>
+        /// <param name="assembly">input assembly</param>
+        static member CreatePortableAssembly (assembly : Assembly) =
+            mkPortableAssembly true None assembly
+
+
 
     /// <summary>
     ///     Persist assemblies and Vagrant-related metadata to disk.
     /// </summary>
-    type VagrantCache(pickler : FsPickler, cacheDirectory : string) =
+    type VagrantCache(cacheDirectory : string, ?pickler : FsPickler) =
         do 
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)
 
 
+        let pickler = match pickler with Some p -> p | None -> new FsPickler()
         let cacheActor = initAssemblyCache pickler cacheDirectory
         
         /// <summary>
@@ -83,8 +93,24 @@
             tryGetPortableAssemblyFromCache cacheActor cacheDirectory includeImage id
 
         /// <summary>
-        ///     Determines whether provided assembly exists in cache.
+        ///     Retrieves assembly cache information
         /// </summary>
         /// <param name="id">Assembly id.</param>
         member __.GetCachedAssemblyInfo (id : AssemblyId) =
             cacheActor.PostAndReply <| PortableAssembly.Empty id
+
+        /// <summary>
+        ///     Retrieves assembly cache information for given id's.
+        /// </summary>
+        /// <param name="ids">Assembly id's.</param>
+        member __.GetCachedAssemblyInfo (ids : AssemblyId list) =
+            List.map (cacheActor.PostAndReply << PortableAssembly.Empty) ids
+
+        /// <summary>
+        ///     Determines whether assembly is cached.
+        /// </summary>
+        /// <param name="id">Assembly id.</param>
+        member __.IsCachedAssembly (id : AssemblyId) =
+            match __.GetCachedAssemblyInfo id with
+            | Loaded _ | LoadedWithStaticIntialization _ -> true
+            | _ -> false

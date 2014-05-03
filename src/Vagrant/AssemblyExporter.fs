@@ -12,32 +12,32 @@
 
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
+    let mkPortableAssembly includeImage staticInitializer (assembly : Assembly) =
+        let image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
+        let symbols =
+            if includeImage then
+                // TODO : mdb?
+                let symbolFile = Path.ChangeExtension(assembly.Location, "pdb")
+                if File.Exists symbolFile then
+                    Some <| File.ReadAllBytes symbolFile
+                else
+                    None
+            else
+                None
+                
+        {
+            Id = assembly.AssemblyId
+            Image = image
+            Symbols = symbols
+            StaticInitializer = staticInitializer
+        }
+
     /// export a portable assembly based on given compiler state and arguments
 
     let exportAssembly (pickler : FsPickler) (compilerState : DynamicAssemblyCompilerState) 
                         (generationIndex : Map<AssemblyId, int>) (includeImage : bool) (assembly : Assembly) =
 
         let id = assembly.AssemblyId
-
-        let mkPortableAssembly staticInitializer =
-            let image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
-            let symbols =
-                if includeImage then
-                    // TODO : mdb?
-                    let symbolFile = Path.ChangeExtension(assembly.Location, "pdb")
-                    if File.Exists symbolFile then
-                        Some <| File.ReadAllBytes symbolFile
-                    else
-                        None
-                else
-                    None
-                
-            {
-                Id = id
-                Image = image
-                Symbols = symbols
-                StaticInitializer = staticInitializer
-            }
 
         match compilerState.TryFindSliceInfo id.FullName with
         | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
@@ -69,9 +69,9 @@
 
             let generationIndex = generationIndex.Add(id, generation)
             
-            generationIndex, mkPortableAssembly (Some staticInitializer)
+            generationIndex, mkPortableAssembly includeImage (Some staticInitializer) assembly
 
-        | _ -> generationIndex, mkPortableAssembly None
+        | _ -> generationIndex, mkPortableAssembly includeImage None assembly
 
 
     type AssemblyExporter = StatefulActor<Map<AssemblyId, int>, Assembly * bool, PortableAssembly>

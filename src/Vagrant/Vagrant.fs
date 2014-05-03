@@ -36,10 +36,25 @@
         member __.Pickler = pickler
 
         /// <summary>
-        ///     Get the current assembly load state for given id.
+        ///     Get the current assembly load state for given assembly id.
         /// </summary>
         /// <param name="id"></param>
         member __.GetAssemblyLoadInfo(id : AssemblyId) = getAssemblyLoadInfo loader id
+
+        /// <summary>
+        ///     Gets the current assembly load states for given ids.
+        /// </summary>
+        /// <param name="ids"></param>
+        member __.GetAssemblyLoadInfo(ids : AssemblyId list) = List.map (getAssemblyLoadInfo loader) ids
+
+        /// <summary>
+        ///     Determines whether assembly is loaded.
+        /// </summary>
+        /// <param name="id">Assembly id.</param>
+        member __.IsLoadedAssembly (id : AssemblyId) =
+            match __.GetAssemblyLoadInfo id with
+            | Loaded _ | LoadedWithStaticIntialization _ -> true
+            | _ -> false
 
         /// <summary>
         ///     Loads the type initializers from given dependency package.

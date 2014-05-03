@@ -12,8 +12,8 @@
     let private defaultConnectionString = "127.0.0.1:38979"
 
     type private ServerMsg =
-        | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyInfo list>
-        | LoadAssemblies of PortableAssembly list * AsyncReplyChannel<AssemblyLoadResponse list>
+        | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyLoadInfo list>
+        | LoadAssemblies of PortableAssembly list * AsyncReplyChannel<AssemblyLoadInfo list>
         | EvaluteThunk of Type * (unit -> obj) * AsyncReplyChannel<Choice<obj, exn>>
 
     type ThunkServer (?endpoint : string) =

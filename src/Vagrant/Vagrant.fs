@@ -18,11 +18,11 @@
     /// </summary>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantClient internal (pickler : FsPickler, localServerId : Guid option) =
+    type VagrantClient internal (pickler : FsPickler, isLocalSlice : AssemblyId -> bool) =
 
         static do registerAssemblyResolutionHandler()
 
-        let loader = mkAssemblyLoader pickler localServerId
+        let loader = mkAssemblyLoader pickler isLocalSlice
 
         /// <summary>
         ///     Client for loading type initialization blobs of dynamic assembly slices.
@@ -30,7 +30,7 @@
         /// <param name="pickler">Specify a custom pickler instance.</param>
         new (?pickler : FsPickler) =
             let pickler = match pickler with None -> new FsPickler() | Some p -> p
-            new VagrantClient(pickler, None)
+            new VagrantClient(pickler, fun _ -> false)
 
         /// Returns pickler used in type initialization.
         member __.Pickler = pickler
@@ -44,7 +44,8 @@
 //            match loader.PostAndReply pa with
 //            | Loaded _ -> true
 //            | _ -> false
-        member __.GetAssemblyLoadInfo(id : AssemblyId) = getAssemblyLoadState loader id
+        member __.GetAssemblyLoadInfo(id : AssemblyId) = 
+            loader.PostAndReply <| PortableAssembly.Empty id
 
         /// <summary>
         ///     Loads the type initializers from given dependency package.
@@ -86,7 +87,7 @@
         let compiler = mkCompilationAgent dynamicAssemblyProfiles outpath
         let pickler = mkFsPicklerInstance picklerRegistry (fun () -> compiler.CurrentState)
         let exporter = mkAssemblyExporter pickler (fun () -> compiler.CurrentState)
-        let loader = new VagrantClient(pickler, Some compiler.CurrentState.ServerId)
+        let loader = new VagrantClient(pickler, fun id -> compiler.CurrentState.TryGetDynamicAssemblyId(id.FullName).IsSome)
         let compile (assemblies : Assembly list) = compiler.PostAndReply(assemblies).Value
 
         static let checkIsDynamic(a : Assembly) = 

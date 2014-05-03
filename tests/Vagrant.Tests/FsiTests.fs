@@ -373,13 +373,14 @@
             let fsi = FsiSession.Value
             
             let code = """
-            let x = client.EvaluateThunk <| fun () -> 1 + 1
-            let y = client.EvaluateThunk <| fun () -> x + x
-            let w = client.EvaluateThunk <| fun () -> y + y
-            in client.EvaluateThunk <| fun () -> w + w
+            let cell = ref 0
+            for i in 1 .. 100 do
+                cell := client.EvaluateThunk <| fun () -> !cell + 1
+
+            !cell
             """
 
-            fsi.EvalExpression code |> shouldEqual 16
+            fsi.EvalExpression code |> shouldEqual 100
 
         [<Test>]
         let ``16. Cross slice inheritance`` () =

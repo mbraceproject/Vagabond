@@ -19,41 +19,47 @@
         member id.GetName() = new AssemblyName(id.FullName)
 
 
-    and [<NoEquality; NoComparison>] DynamicAssemblySliceInfo = 
-        {
-            SourceId : Guid
-            DynamicAssemblyQualifiedName : string
-            SliceId : int
-
-            RequiresStaticInitialization : bool
-            StaticInitializerGeneration : int
-            IsPartiallyEvaluatedStaticInitializer : bool
-        }
-
-    /// Vagrant metadata on assembly
-    and [<NoEquality; NoComparison>] AssemblyInfo =
-        {
-            /// Assembly Identifier
-            Id : AssemblyId
-
-            IsImageLoaded : bool
-            IsSymbolsLoaded : bool
-
-            DynamicAssemblySliceInfo : DynamicAssemblySliceInfo option
-//            StaticInitializerGeneration : int
-//            
-//            IsPartiallyEvaluatedStaticInitializer : bool
+//    and [<NoEquality; NoComparison>] DynamicAssemblySliceInfo = 
+//        {
+//            SourceId : Guid
+//            DynamicAssemblyQualifiedName : string
+//            SliceId : int
+//
 //            RequiresStaticInitialization : bool
+//            StaticInitializerGeneration : int
+//            IsPartiallyEvaluatedStaticInitializer : bool
+//        }
+//
+//    /// Vagrant metadata on assembly
+//    and [<NoEquality; NoComparison>] AssemblyInfo =
+//        {
+//            /// Assembly Identifier
+//            Id : AssemblyId
+//
+//            IsImageLoaded : bool
+//            IsSymbolsLoaded : bool
+//
+//            DynamicAssemblySliceInfo : DynamicAssemblySliceInfo option
+////            StaticInitializerGeneration : int
+////            
+////            IsPartiallyEvaluatedStaticInitializer : bool
+////            RequiresStaticInitialization : bool
+//        }
+//    with
+//        member __.FullName = __.Id.FullName
+//        member __.IsDynamicAssemblySlice = __.DynamicAssemblySliceInfo.IsSome
+    and [<NoEquality; NoComparison>] StaticInitializer =
+        {
+            Generation : int
+            Data : byte []
+            IsPartial : bool
         }
-    with
-        member __.FullName = __.Id.FullName
-        member __.IsDynamicAssemblySlice = __.DynamicAssemblySliceInfo.IsSome
 
     /// Contains information necessary for the exportation of an assembly
-    and [<NoEquality;NoComparison>] PortableAssembly =
+    and [<NoEquality; NoComparison>] PortableAssembly =
         {
             // Assembly Metadata
-            Info : AssemblyInfo
+            Id : AssemblyId
 
             /// Raw image of the assembly
             Image : byte [] option
@@ -62,12 +68,51 @@
             Symbols : byte [] option
 
             /// Static initialization data
-            StaticInitializer : (int * byte []) option
+            StaticInitializer : StaticInitializer option
         }
     with
-        member pa.FullName = pa.Info.Id.FullName
-        member pa.Id = pa.Info.Id
-        member pa.GetName() = pa.Info.Id.GetName()
+        member pa.FullName = pa.Id.FullName
+        member pa.GetName() = pa.Id.GetName()
+        static member Empty (id : AssemblyId) =
+            { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
+
+
+    and AssemblyLoadInfo =
+        | NotLoaded of AssemblyId
+        | LoadFault of AssemblyId * exn
+        | Loaded of AssemblyId
+        | LoadedWithStaticIntialization of AssemblyId * StaticInitializationInfo
+    with
+        member info.Id = 
+            match info with
+            | NotLoaded id
+            | LoadFault (id,_)
+            | Loaded id -> id
+            | LoadedWithStaticIntialization(id,_) -> id
+
+
+    and StaticInitializationInfo =
+        {
+            Generation : int
+            IsPartial : bool
+            Errors : (FieldInfo * exn) []
+        }
+//        {
+//            Id : AssemblyId
+//
+//            ImageLoadError : exn option
+//
+//            IsSymbolsLoaded : bool
+//            IsDynamicAssemblySlice : bool
+//
+//            IsStaticInitialized : bool
+//            IsPartialStaticInitialization : bool
+//            StaticInitializerGeneration : int
+//            StaticInitializerErrors : (FieldInfo * exn) []
+//        }
+//    with
+//        member info.FullName = info.Id.FullName
+//        member info.IsImageLoaded = info.ImageLoadError.IsNone
         
 
 //    and [<NoEquality;NoComparison>] DynamicAssemblyInfo =
@@ -92,26 +137,22 @@
 //            StaticInitializerData : (int * byte []) option
 //        }
 
-//    // Response given by the Vagrant client upon loading a PortableAssembly
-//
-    and AssemblyLoadResponse =
-        | LoadSuccess of AssemblyId * (FieldInfo * exn) []
-        | LoadFault of AssemblyId * exn
-//        | MissingAssemblyImage of AssemblyId
-//        | MissingStaticInitializer of AssemblyId * int option
-    with
-        member r.Id = match r with | LoadSuccess(id,_) | LoadFault(id,_) -> id // | MissingAssemblyImage id | MissingStaticInitializer(id,_) -> id
-        member r.StaticInitializationErrors = match r with | LoadSuccess(_,errors) -> errors | _ -> [||]
-        static member StaticSuccess id = LoadSuccess(id, [||])
+    // Response given by the Vagrant client upon loading a PortableAssembly
+
+//    and AssemblyLoadResponse =
+//        | LoadSuccess of LoadedAssemblyInfo
+//        | LoadFault of AssemblyId * exn
+//    with
+//        member r.Id = match r with LoadSuccess info -> info.Id | LoadFault(id,_) -> id 
 
 
     type IRemoteAssemblyReceiver =
-        abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyInfo list>
-        abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadResponse list>
+        abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
+        abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadInfo list>
 
     type IRemoteAssemblyPublisher =
-        abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
-        abstract PullAssemblies : AssemblyInfo list -> Async<PortableAssembly list>
+        abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyLoadInfo list>
+        abstract PullAssemblies : AssemblyId list -> Async<PortableAssembly list>
 
     /// customizes slicing behaviour on given dynamic assembly
     type IDynamicAssemblyProfile =

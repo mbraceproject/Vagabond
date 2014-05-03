@@ -13,22 +13,26 @@
     // assembly loader protocol implementation
     //
 
-    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyInfo>, PortableAssembly, AssemblyLoadResponse>
+    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly, AssemblyLoadInfo>
 
     /// need an assembly resolution handler when loading assemblies at runtime
 
     let registerAssemblyResolutionHandler () = 
-        System.AppDomain.CurrentDomain.add_AssemblyResolve <| 
+        System.AppDomain.CurrentDomain.add_AssemblyResolve <|
             new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
 
     /// portable assembly load protocol implementation
 
-    let loadAssembly (pickler : FsPickler) (localId : Guid option) (state : Map<AssemblyId, AssemblyInfo>) (pa : PortableAssembly) =
+    let loadAssembly (pickler : FsPickler) (isLocalDynamicSlice : AssemblyId -> bool)
+                        (state : Map<AssemblyId, AssemblyLoadInfo>) (pa : PortableAssembly) =
 
-        let updateWith info = state.Add(pa.Id, info)
-        let raise e = state, LoadFault(pa.Id, e)
+        // return operators
+        let success info = state.Add(pa.Id, info), info
+        let error e = state, LoadFault(pa.Id, e)
 
-        let loadStaticInitializer (data : byte []) =
+        // loads the static initializer for given portable assembly
+        // requires the assembly to be already loaded in the current AppDomain
+        let tryLoadStaticInitializer (previous : StaticInitializationInfo option) (pa : PortableAssembly) =
             let tryLoad (fI : FieldInfo, data : Exn<byte []>) =
                 match data with
                 | Success bytes ->
@@ -38,22 +42,34 @@
                     with e -> Some(fI, e)
                 | Error e -> Some(fI, e)
 
-            let initializers = pickler.UnPickle<AssemblyExporter.StaticInitializers>(data)
-            Array.choose tryLoad initializers
+            match previous, pa.StaticInitializer with
+            | None, None -> Loaded pa.Id
+            // keep the previous static initializer if PA has none
+            | Some previous, None -> LoadedWithStaticIntialization(pa.Id, previous)
 
-        // load assembly image
+            // silently discard if loaded generation larger than current
+            | Some info, Some init when info.Generation > init.Generation -> 
+                LoadedWithStaticIntialization(pa.Id, info)
+
+            // perform the static initialization
+            | _, Some init ->
+                let initializers = pickler.UnPickle<AssemblyExporter.StaticInitializers>(init.Data)
+                let errors = Array.choose tryLoad initializers
+                let info = { Generation = init.Generation ; Errors = errors ; IsPartial = init.IsPartial }
+                LoadedWithStaticIntialization(pa.Id, info)
+
+
         let loadAssembly (pa : PortableAssembly) =
-
+            // try load from AppDomain or GAC
             match tryLoadAssembly pa.FullName with
-            | Some a when a.AssemblyId = pa.Id ->
-                let info = { pa.Info with IsImageLoaded = true }
-                updateWith info, LoadSuccess(pa.Id, [||])
-
-            | Some _ -> raise <| new VagrantException(sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName)
+            | Some a when a.AssemblyId = pa.Id -> success <| tryLoadStaticInitializer None pa
+            | Some _ -> 
+                let msg = sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName
+                error <| VagrantException(msg)
             | None ->
                 // try load binary image
                 match pa.Image with
-                | None -> raise <| new VagrantException(sprintf "portable assembly '%s' missing binary image." pa.FullName)
+                | None -> state, NotLoaded pa.Id
                 | Some bytes ->
                     let assembly =
                         match pa.Symbols with
@@ -62,57 +78,35 @@
 
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
-                        raise <| new VagrantException(msg)
+                        raise <| VagrantException(msg)
                     else
-                        let staticInitializerErrors =
-                            match pa.StaticInitializer with
-                            | None -> [||]
-                            | Some (_,data) -> loadStaticInitializer data
-
-                        let info = { pa.Info with IsImageLoaded = true }
-
-                        updateWith info, LoadSuccess(pa.Id, staticInitializerErrors)
+                        
+                        success <| tryLoadStaticInitializer None pa
 
         try
-            match localId, state.TryFind pa.Id, pa.Info.DynamicAssemblySliceInfo with
+            match state.TryFind pa.Id with
             // dynamic assembly slice generated in local process
-            | Some id, _, Some dyn when dyn.SourceId = id -> state, LoadSuccess (pa.Id, [||])
+            | None when isLocalDynamicSlice pa.Id -> success <| Loaded pa.Id
             // assembly not registered in state, attempt to load now
-            | _, None, _ -> loadAssembly pa
-            // assembly registered in state, update static initializers if required
-            | _, Some storedInfo, _ ->
-                let currentGen =
-                    match storedInfo.DynamicAssemblySliceInfo with
-                    | None -> -1
-                    | Some info -> info.StaticInitializerGeneration
+            | None -> loadAssembly pa
+            // assembly loaded with static initializers, attempt to update
+            | Some (LoadedWithStaticIntialization (_,info)) ->
+                success <| tryLoadStaticInitializer (Some info) pa
 
-                match pa.StaticInitializer with
-                | Some(gen,data) when gen > currentGen ->
-                    let staticInitializerErrors = loadStaticInitializer data
-                    updateWith pa.Info, LoadSuccess(pa.Id, staticInitializerErrors)
-                // silently discard update if generation older than previously recorded
-                | _ -> state, LoadSuccess(pa.Id, [||])
+            | Some result -> state, result
 
-        with e -> state, LoadFault(pa.Id, e)
+        with e -> error e
     
-    let mkAssemblyLoader pickler (serverId : Guid option) : AssemblyLoader =
-        mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler serverId state pa)
+    let mkAssemblyLoader pickler tryGetLocal : AssemblyLoader =
+        mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler tryGetLocal state pa)
 
-    let getAssemblyLoadState (loader : AssemblyLoader) (id : AssemblyId) =
-
-        let defaultInfo = 
-            {
-                Id = id
-                IsImageLoaded = false
-                IsSymbolsLoaded = false
-                DynamicAssemblySliceInfo = None
-            }
-
-        let pa = { Info = defaultInfo ; Image = None ; Symbols = None ; StaticInitializer = None }
-
-        // force load assembly in state if present in appdomain/gac
-        let _ = loader.PostAndReply pa
-
-        match loader.CurrentState.TryFind id with
-        | Some info -> info
-        | None -> defaultInfo
+//    let getAssemblyLoadState (loader : AssemblyLoader) (id : AssemblyId) =
+//
+//        let pa = { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
+//
+//        // force load assembly in state if present in appdomain/gac
+//        let _ = loader.PostAndReply pa
+//
+//        match loader.CurrentState.TryFind id with
+//        | Some info -> info
+//        | None -> defaultInfo

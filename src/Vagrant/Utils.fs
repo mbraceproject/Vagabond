@@ -120,7 +120,34 @@
     type Assembly with member a.AssemblyId = computeAssemblyId a
 
 
-    [<Literal>]
+//    let getAssemblyInfo errors (pa : PortableAssembly) =
+//        {
+//            Id = pa.Id
+//
+//            ImageLoadError = imageError
+//
+//            IsSymbolsLoaded = pa.Image.IsSome
+//            IsDynamicAssemblySlice = pa.DynamicAssemblyData.IsSome
+//
+//            IsStaticInitialized =
+//                match pa.DynamicAssemblyData with
+//                | None -> false
+//                | Some info -> info.StaticInitializer.IsSome
+//
+//            IsPartialStaticInitialization =
+//                match pa.DynamicAssemblyData with
+//                | None -> false
+//                | Some data -> data.IsPartialInitialization
+//
+//            StaticInitializerGeneration =
+//                match pa.DynamicAssemblyData |> Option.bind (fun d -> d.StaticInitializer) with
+//                | None -> -1
+//                | Some (gen,_) -> gen
+//
+//            StaticInitializerErrors = errors
+//        }
+
+
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
     type DynamicAssemblyState with

@@ -99,14 +99,3 @@
     
     let mkAssemblyLoader pickler tryGetLocal : AssemblyLoader =
         mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler tryGetLocal state pa)
-
-//    let getAssemblyLoadState (loader : AssemblyLoader) (id : AssemblyId) =
-//
-//        let pa = { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
-//
-//        // force load assembly in state if present in appdomain/gac
-//        let _ = loader.PostAndReply pa
-//
-//        match loader.CurrentState.TryFind id with
-//        | Some info -> info
-//        | None -> defaultInfo

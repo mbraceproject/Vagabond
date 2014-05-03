@@ -18,45 +18,23 @@
     with
         member id.GetName() = new AssemblyName(id.FullName)
 
-
-//    and [<NoEquality; NoComparison>] DynamicAssemblySliceInfo = 
-//        {
-//            SourceId : Guid
-//            DynamicAssemblyQualifiedName : string
-//            SliceId : int
-//
-//            RequiresStaticInitialization : bool
-//            StaticInitializerGeneration : int
-//            IsPartiallyEvaluatedStaticInitializer : bool
-//        }
-//
-//    /// Vagrant metadata on assembly
-//    and [<NoEquality; NoComparison>] AssemblyInfo =
-//        {
-//            /// Assembly Identifier
-//            Id : AssemblyId
-//
-//            IsImageLoaded : bool
-//            IsSymbolsLoaded : bool
-//
-//            DynamicAssemblySliceInfo : DynamicAssemblySliceInfo option
-////            StaticInitializerGeneration : int
-////            
-////            IsPartiallyEvaluatedStaticInitializer : bool
-////            RequiresStaticInitialization : bool
-//        }
-//    with
-//        member __.FullName = __.Id.FullName
-//        member __.IsDynamicAssemblySlice = __.DynamicAssemblySliceInfo.IsSome
-    and [<NoEquality; NoComparison>] StaticInitializer =
+    /// static initialization data for portable assembly
+    [<NoEquality; NoComparison>]
+    type StaticInitializer =
         {
+            /// Generation of given static initializer
             Generation : int
+
+            /// Static initialization data
             Data : byte []
+
+            /// Is partial static initialization data
             IsPartial : bool
         }
 
     /// Contains information necessary for the exportation of an assembly
-    and [<NoEquality; NoComparison>] PortableAssembly =
+    [<NoEquality; NoComparison>] 
+    type PortableAssembly =
         {
             // Assembly Metadata
             Id : AssemblyId
@@ -76,8 +54,22 @@
         static member Empty (id : AssemblyId) =
             { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
 
+    /// Static initialization metadata
+    [<NoEquality; NoComparison>] 
+    type StaticInitializationInfo =
+        {
+            /// Generation of given static initializer
+            Generation : int
 
-    and AssemblyLoadInfo =
+            /// Is partial static initialization data
+            IsPartial : bool
+
+            /// Static initialization errors
+            Errors : (FieldInfo * exn) []
+        }
+
+    /// Assembly load information
+    type AssemblyLoadInfo =
         | NotLoaded of AssemblyId
         | LoadFault of AssemblyId * exn
         | Loaded of AssemblyId
@@ -89,62 +81,6 @@
             | LoadFault (id,_)
             | Loaded id -> id
             | LoadedWithStaticIntialization(id,_) -> id
-
-
-    and StaticInitializationInfo =
-        {
-            Generation : int
-            IsPartial : bool
-            Errors : (FieldInfo * exn) []
-        }
-//        {
-//            Id : AssemblyId
-//
-//            ImageLoadError : exn option
-//
-//            IsSymbolsLoaded : bool
-//            IsDynamicAssemblySlice : bool
-//
-//            IsStaticInitialized : bool
-//            IsPartialStaticInitialization : bool
-//            StaticInitializerGeneration : int
-//            StaticInitializerErrors : (FieldInfo * exn) []
-//        }
-//    with
-//        member info.FullName = info.Id.FullName
-//        member info.IsImageLoaded = info.ImageLoadError.IsNone
-        
-
-//    and [<NoEquality;NoComparison>] DynamicAssemblyInfo =
-//        {
-//            /// Unique identifier of dynamic assembly source
-//            SourceId : Guid
-//
-//            /// Original dynamic assembly qualified name
-//            DynamicAssemblyName : string
-//
-//            /// Identifier of current slice
-//            SliceId : int
-//
-//            /// Slice contains static fields that require initialization
-//            RequiresStaticInitialization : bool
-//
-//            /// Dynamic assembly requires further evaluation ; 
-//            /// will require static initialization revision in the future.
-//            IsPartiallyEvaluated : bool
-//
-//            /// Static initialization data
-//            StaticInitializerData : (int * byte []) option
-//        }
-
-    // Response given by the Vagrant client upon loading a PortableAssembly
-
-//    and AssemblyLoadResponse =
-//        | LoadSuccess of LoadedAssemblyInfo
-//        | LoadFault of AssemblyId * exn
-//    with
-//        member r.Id = match r with LoadSuccess info -> info.Id | LoadFault(id,_) -> id 
-
 
     type IRemoteAssemblyReceiver =
         abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>

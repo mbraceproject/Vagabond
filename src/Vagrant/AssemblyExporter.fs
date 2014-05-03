@@ -42,14 +42,6 @@
         match compilerState.TryFindSliceInfo id.FullName with
         | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
 
-//            let mkDynamicAssemblyData isPartial staticInit =
-//                {
-//                    SourceId = compilerState.ServerId
-//                    StaticInitializer = staticInit
-//                    IsPartialStaticInitialization = isPartial
-//                }
-
-//            if sliceInfo.RequiresStaticInitialization then
             let generation = 1 + defaultArg (generationIndex.TryFind id) -1
                 
             let tryPickle (fI : FieldInfo) =
@@ -78,14 +70,6 @@
             let generationIndex = generationIndex.Add(id, generation)
             
             generationIndex, mkPortableAssembly (Some staticInitializer)
-
-//                let info = mkDynamicAssemblyData isPartiallyEvaluated (Some (generation, data))
-//                let generationIndex = generationIndex.Add(id, generation)
-//
-//                generationIndex, mkPortableAssembly (Some info)
-//            else
-//                let info = mkDynamicAssemblyData false None
-//                generationIndex, mkPortableAssembly (Some info)
 
         | _ -> generationIndex, mkPortableAssembly None
 

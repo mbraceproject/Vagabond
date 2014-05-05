@@ -118,18 +118,17 @@
 
         let missing = dependencies |> List.choose tryCheckLoadStatus
 
-        // step 3. download portable assemblies for missing dependencies
-        let! assemblies = publisher.PullAssemblies missing
-        let loadResults = assemblies |> List.map loader.PostAndReply
+        if missing.Length > 0 then
+            // step 3. download portable assemblies for missing dependencies
+            let! assemblies = publisher.PullAssemblies missing
+            let loadResults = assemblies |> List.map loader.PostAndReply
 
-        let checkLoadResult (info : AssemblyLoadInfo) =
-            match info with
-            | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
-            | LoadFault(_, (:? VagrantException as e)) -> raise e
-            | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
-            | Loaded _ | LoadedWithStaticIntialization _ -> ()
+            let checkLoadResult (info : AssemblyLoadInfo) =
+                match info with
+                | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
+                | LoadFault(_, (:? VagrantException as e)) -> raise e
+                | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
+                | Loaded _ | LoadedWithStaticIntialization _ -> ()
 
-        List.iter checkLoadResult loadResults
-
-        return ()
+            List.iter checkLoadResult loadResults
     }

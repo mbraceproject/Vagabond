@@ -75,6 +75,14 @@
         /// <param name="publisher">The remote publisher</param>
         member __.ReceiveDependencies(publisher : IRemoteAssemblyPublisher) =
             assemblyReceiveProtocol loader publisher
+
+        /// <summary>
+        ///     Get loaded assemlies
+        /// </summary>
+        member __.LoadedAssemblies =
+            loader.CurrentState
+            |> Seq.map (function (KeyValue(_,info)) -> info)
+            |> Seq.toList
             
 
 

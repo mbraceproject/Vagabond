@@ -84,6 +84,12 @@
         member __.Cache(assembly : PortableAssembly) = cacheActor.PostAndReply assembly
 
         /// <summary>
+        ///     Save given portable assemblies to cache
+        /// </summary>
+        /// <param name="assemblies"></param>
+        member __.Cache(assemblies : PortableAssembly list) = List.map cacheActor.PostAndReply assemblies
+
+        /// <summary>
         ///     Loads given portable assembly from cache, if it exists.
         /// </summary>
         /// <param name="id">Provided assembly id.</param>
@@ -115,3 +121,11 @@
             match __.GetCachedAssemblyInfo id with
             | Loaded _ | LoadedWithStaticIntialization _ -> true
             | _ -> false
+
+        /// <summary>
+        ///     Get currently loaded assembly state.
+        /// </summary>
+        member __.CachedAssemblies = 
+            cacheActor.CurrentState 
+            |> Seq.map(function (KeyValue(_,(_,info))) -> info) 
+            |> Seq.toList

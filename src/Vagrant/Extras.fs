@@ -94,10 +94,19 @@
         /// </summary>
         /// <param name="id">Provided assembly id.</param>
         /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>
-        /// <param name="includeMetadata">Specifies whether to include vagrant metadata. Defaults to true.</param>
         member __.TryGetCachedAssembly (id : AssemblyId, ?includeImage) =
             let includeImage = defaultArg includeImage true
             tryGetPortableAssemblyFromCache cacheActor cacheDirectory includeImage id
+
+        /// <summary>
+        ///     Loads given portable assembly from cache, if it exists.
+        /// </summary>
+        /// <param name="id">Provided assembly id.</param>
+        /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>        
+        member __.GetCachedAssembly (id : AssemblyId, ?includeImage) =
+            match __.TryGetCachedAssembly(id, ?includeImage = includeImage) with
+            | None -> raise <| new VagrantException(sprintf "could not load '%s' from cache" id.FullName)
+            | Some pa -> pa
 
         /// <summary>
         ///     Retrieves assembly cache information

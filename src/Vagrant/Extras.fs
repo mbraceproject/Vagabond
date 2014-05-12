@@ -89,6 +89,9 @@
         /// <param name="assemblies"></param>
         member __.Cache(assemblies : PortableAssembly list) = List.map cacheActor.PostAndReply assemblies
 
+        /// directory used by the cache
+        member __.CacheDirectory = cacheDirectory
+
         /// <summary>
         ///     Loads given portable assembly from cache, if it exists.
         /// </summary>

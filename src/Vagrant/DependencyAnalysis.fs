@@ -16,6 +16,7 @@
     open Microsoft.FSharp.Reflection
 
     type TypeInfo =
+        | Null
         | PartiallyComputed of isSealed:bool
         | Primitive
         | Array of isSealed:bool
@@ -25,6 +26,7 @@
     with
         member t.IsSealed =
             match t with
+            | Null -> true
             | Primitive -> true
             | GenericTypeDef -> true // irrelevant to this algorithm
             | PartiallyComputed s
@@ -86,6 +88,8 @@
         // decides if type is 'sealed', in the sense that it and all its instance fields are sealed.
 
         let rec traverseType (t : Type) =
+            if t = null then Null else
+
             let found, info = typeIndex.TryGetValue t
             if found then info else
 

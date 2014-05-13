@@ -36,15 +36,15 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="FSharp.Compiler.Service">
-      <HintPath>..\..\packages\FSharp.Compiler.Service.0.0.44\lib\net40\FSharp.Compiler.Service.dll</HintPath>
+      <HintPath>..\..\packages\FSharp.Compiler.Service.0.0.45\lib\net40\FSharp.Compiler.Service.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="FSharp.Data">
-      <HintPath>..\..\packages\FSharp.Data.2.0.5\lib\net40\FSharp.Data.dll</HintPath>
+      <HintPath>..\..\packages\FSharp.Data.2.0.8\lib\net40\FSharp.Data.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="FsPickler">
-      <HintPath>..\..\packages\FsPickler.0.8.6.1\lib\net45\FsPickler.dll</HintPath>
+      <HintPath>..\..\packages\FsPickler.0.8.6.2\lib\net45\FsPickler.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="LinqOptimizer.Base">

@@ -22,7 +22,7 @@
         | Array of isSealed:bool
         | Reference of isSealed:bool
         | GenericTypeDef
-        | Named of isGenericInstance:bool * isSealed:bool * nonSealedFields:FieldInfo []
+        | Named of isGenericInstance:bool * isSealed:bool * isISerializable:bool * nonSealedFields:FieldInfo []
     with
         member t.IsSealed =
             match t with
@@ -30,8 +30,8 @@
             | Primitive -> true
             | GenericTypeDef -> true // irrelevant to this algorithm
             | PartiallyComputed s
-            | Array s
             | Reference s
+            | Array s
             | Named (isSealed = s) -> s
 
         member t.IsNamedType =
@@ -56,6 +56,16 @@
 
         let isSealedType (t : Type) =
             t.IsSealed || FSharpType.IsTuple t || isOptionType t || isFsharpList t
+
+        let isISerializable (t : Type) =
+            let rec aux (t : Type) =
+                if typeof<ISerializable>.IsAssignableFrom t then true
+                else
+                    match t.BaseType with
+                    | null -> false
+                    | bt -> aux bt
+  
+            aux t
 
         // walks up the type hierarchy, gathering all instance fields
 
@@ -110,7 +120,6 @@
 
             elif t.IsGenericTypeDefinition then
                 add t GenericTypeDef
-
             else
                 let isGenericInstance =
                     if t.IsGenericType then
@@ -123,17 +132,19 @@
                     else
                         false
 
-                let info = add t <| PartiallyComputed (isSealedType t)
+                if isISerializable t then
+                    add t <| Named(isGenericInstance, false, true, [||])
+                else
+                    let info = add t <| PartiallyComputed (isSealedType t)
+                    let fields = gatherFields t
+                    let areAllFieldsSealed = fields |> Array.forall(fun f -> let info = traverseType f.FieldType in info.IsSealed)
+                    let isSealed = info.IsSealed && areAllFieldsSealed
 
-                let fields = gatherFields t
-                let areAllFieldsSealed = fields |> Array.forall(fun f -> let info = traverseType f.FieldType in info.IsSealed)
-                let isSealed = info.IsSealed && areAllFieldsSealed
+                    // re-update so that fields are correctly filtered in case of recursive pattern
+                    let _ = add t <| PartiallyComputed isSealed
+                    let fields' = fields |> Array.filter (fun f -> let info = traverseType f.FieldType in not info.IsSealed)
 
-                // re-update so that fields are correctly filtered in case of recursive pattern
-                let _ = add t <| PartiallyComputed isSealed
-                let fields' = fields |> Array.filter (fun f -> let info = traverseType f.FieldType in not info.IsSealed)
-
-                add t <| Named(isGenericInstance, isSealed, fields')
+                    add t <| Named(isGenericInstance, isSealed, false, fields')
 
         // traverses the object graph: 
         // if non-sealed fields appear, evaluate and proceed accordingly.
@@ -165,7 +176,15 @@
                     for e in obj :?> Array do
                         traverseObj e
 
-                | Named(isSealed = false; nonSealedFields = fields) ->
+                | Named(isISerializable = true) ->
+                    let sI = new SerializationInfo(t, new FormatterConverter())
+                    let sC = new StreamingContext()
+                    (obj :?> ISerializable).GetObjectData(sI, sC)
+                    let enum = sI.GetEnumerator()
+                    while enum.MoveNext() do
+                        traverseObj enum.Value
+
+                | Named(nonSealedFields = fields) ->
                     for f in fields do
                         let value = f.GetValue(obj)
                         traverseObj value

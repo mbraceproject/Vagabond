@@ -11,8 +11,10 @@ The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagrant
 **)
 
-#r "bin/Release/FsPickler.dll"
-#r "bin/Release/Vagrant.Tests.exe"
+#I "bin/Release/"
+
+#r "FsPickler.dll"
+#r "Vagrant.Tests.exe"
 open Nessos.Vagrant.Tests.ThunkServer
 
 // initialize & test a local instance
@@ -48,7 +50,7 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 Example 3: Type providers
 **)
 
-#r "../../packages/FSharp.Data.2.0.5/lib/net40/FSharp.Data.dll"
+#r "../../packages/FSharp.Data.2.0.8/lib/net40/FSharp.Data.dll"
 
 open FSharp.Data
 

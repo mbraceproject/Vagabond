@@ -11,10 +11,11 @@ The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagrant
 **)
 
-#I "bin/Release/"
+#I "../../bin/"
 
 #r "FsPickler.dll"
 #r "Vagrant.Tests.exe"
+
 open Nessos.Vagrant.Tests.ThunkServer
 
 // initialize & test a local instance

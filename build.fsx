@@ -29,7 +29,7 @@ let gitName = "Vagrant"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
 
 
-let testAssemblies = ["tests/Vagrant.Tests/bin/Release/Vagrant.Tests.exe"]
+let testAssemblies = [ "bin/Vagrant.Tests.exe" ]
 
 //
 //// --------------------------------------------------------------------------------------
@@ -71,7 +71,7 @@ Target "RestorePackages" (fun _ ->
 )
 
 Target "Clean" (fun _ ->
-    CleanDirs ["src/Vagrant.Cecil/bin" ;  "src/Vagrant.Cecil/bin" ; "tests/Vagrant.Tests/bin" ]
+    CleanDirs [ "bin" ]
 )
 
 //
@@ -133,7 +133,7 @@ Target "NuGet" (fun _ ->
                     ("Mono.Cecil", RequireExactly "0.9.5.4")
                 ]
             Tags = tags
-            OutputPath = "nuget"
+            OutputPath = "bin"
             ToolPath = nugetPath
             AccessKey = getBuildParamOrDefault "nugetkey" ""
             Publish = hasBuildParam "nugetkey" })
@@ -163,5 +163,5 @@ Target "All" DoNothing
   ==> "NuGet"
   ==> "Release"
 
-//RunTargetOrDefault "Release"
-RunTargetOrDefault "All"
+RunTargetOrDefault "Release"
+//RunTargetOrDefault "All"

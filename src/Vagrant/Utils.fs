@@ -12,6 +12,8 @@
 
     open Nessos.Vagrant.SliceCompilerTypes
 
+    #nowarn "42"
+
     let inline raise (e : System.Exception) = (# "throw" e : 'T #)
 
     let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)

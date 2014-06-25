@@ -17,10 +17,10 @@
     @dependencies@
   </metadata>
   <files>
-      <file src="..\src\Vagrant\bin\Release\Vagrant.Cecil.dll" target="lib/net45" />
-      <file src="..\src\Vagrant\bin\Release\Vagrant.Cecil.pdb" target="lib/net45" />
-      <file src="..\src\Vagrant\bin\Release\Vagrant.dll" target="lib/net45" />
-      <file src="..\src\Vagrant\bin\Release\Vagrant.pdb" target="lib/net45" />
-      <file src="..\src\Vagrant\bin\Release\Vagrant.xml" target="lib/net45" />
+      <file src="..\bin\Vagrant.Cecil.dll" target="lib/net45" />
+      <file src="..\bin\Vagrant.Cecil.pdb" target="lib/net45" />
+      <file src="..\bin\Vagrant.dll" target="lib/net45" />
+      <file src="..\bin\Vagrant.pdb" target="lib/net45" />
+      <file src="..\bin\Vagrant.xml" target="lib/net45" />
   </files>
 </package>

@@ -14,8 +14,7 @@
 
     let inline raise (e : System.Exception) = (# "throw" e : 'T #)
 
-    // write like this to avoid strange F# type initialization bug
-    let runsMono = not <| obj.ReferenceEquals(Type.GetType("Mono.Runtime"), null)
+    let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
     /// Value or exception
     type Exn<'T> =
@@ -124,10 +123,10 @@
     type DynamicAssemblyState with
         member s.HasFreshTypes =
             let currentTypeCount =
-                if not runsMono then
+                if not runsOnMono.Value then
                     s.DynamicAssembly.GetTypes().Length
                 else
-                    // mono needs different approach since Assembly.GetTypes() only returns non-nested types
+                    // mono needs different approach since Assembly.GetTypes() only returns top-level types
                     let count = ref 0
                     let rec countTypes (types : Type []) =
                         count := !count + types.Length

@@ -140,7 +140,7 @@ postAndReply 3
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/LinqOptimizer.FSharp.0.6.2/lib/"
+#I "../../packages/LinqOptimizer.FSharp.0.6.3/lib/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"

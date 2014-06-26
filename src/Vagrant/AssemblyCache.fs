@@ -33,17 +33,17 @@
             }
 
     /// write dynamic assembly metadata to cache
-    let writeMetadata (pickler : FsPickler) (path : CachePath) info =
+    let writeMetadata (pickler : BasePickler) (path : CachePath) info =
         use fs = new FileStream(path.Metadata, FileMode.Create)
         pickler.Serialize<StaticInitializationInfo>(fs, info)
 
     /// read dynamic assembly metadata from cache
-    let readMetadata (pickler : FsPickler) (path : CachePath) =
+    let readMetadata (pickler : BasePickler) (path : CachePath) =
         use fs = new FileStream(path.Metadata, FileMode.Open)
         pickler.Deserialize<StaticInitializationInfo>(fs)
 
     /// query cache dir for current state
-    let resolveCachedAssemblyInfo (pickler : FsPickler) lookupAppDomain (path : CachePath) (id : AssemblyId) =
+    let resolveCachedAssemblyInfo (pickler : BasePickler) lookupAppDomain (path : CachePath) (id : AssemblyId) =
 
         let isLoadedInAppDomain =
             if lookupAppDomain then
@@ -71,7 +71,7 @@
             isLoadedInAppDomain, Loaded id
 
     /// write new static initializer to cache
-    let writeStaticInitializer (pickler : FsPickler) (path : CachePath) (previous : StaticInitializationInfo option) (init : StaticInitializer) =
+    let writeStaticInitializer (pickler : BasePickler) (path : CachePath) (previous : StaticInitializationInfo option) (init : StaticInitializer) =
         match previous with
         | Some p when p.Generation > init.Generation -> p
         | _ ->
@@ -81,7 +81,7 @@
             info
 
     /// write portable assembly to cache
-    let writeAssemblyToCache (pickler : FsPickler) (path : CachePath) (pa : PortableAssembly) =
+    let writeAssemblyToCache (pickler : BasePickler) (path : CachePath) (pa : PortableAssembly) =
         match pa.Image with
         | None -> NotLoaded pa.Id
         | Some img -> 
@@ -100,7 +100,7 @@
                 LoadedWithStaticIntialization(pa.Id, info)
 
     /// the main portable assembly method
-    let cachePortableAssembly (pickler : FsPickler) lookupAppDomain (cacheDir : string) 
+    let cachePortableAssembly (pickler : BasePickler) lookupAppDomain (cacheDir : string) 
                                 (state : Map<AssemblyId, bool * AssemblyLoadInfo>) (pa : PortableAssembly) =
 
         try
@@ -128,7 +128,7 @@
 
 
 
-    let initAssemblyCache (pickler : FsPickler) lookupAppDomain (cacheDir : string) : AssemblyCache =
+    let initAssemblyCache (pickler : BasePickler) lookupAppDomain (cacheDir : string) : AssemblyCache =
         mkStatefulActor Map.empty (cachePortableAssembly pickler lookupAppDomain cacheDir)
 
 

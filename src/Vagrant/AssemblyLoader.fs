@@ -23,7 +23,7 @@
 
     /// portable assembly load protocol implementation
 
-    let loadAssembly (pickler : FsPickler) (isLocalDynamicSlice : AssemblyId -> bool)
+    let loadAssembly (pickler : BasePickler) (isLocalDynamicSlice : AssemblyId -> bool)
                         (state : Map<AssemblyId, AssemblyLoadInfo>) (pa : PortableAssembly) =
 
         // return operators
@@ -67,7 +67,7 @@
                     tryLoadAssembly pa.FullName
                 else
                     // weakly named assemblies only looked up from AppDomain
-                    match tryLoadAssembly pa.FullName with
+                    match tryGetLoadedAssembly pa.FullName with
                     // demand that weakly named assemblies have identical hashes
                     | Some a when a.AssemblyId <> pa.Id ->
                         let msg = sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName

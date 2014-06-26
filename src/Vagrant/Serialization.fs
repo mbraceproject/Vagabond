@@ -2,6 +2,7 @@
 
     open System
     open System.IO
+    open System.Text
     open System.Text.RegularExpressions
     open System.Reflection
 
@@ -10,11 +11,29 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.SliceCompilerTypes
 
+    // temp extension method implementation ; should be added by next nuget release
+    type AssemblyInfo with
+        member aI.AssemblyQualifiedName =
+            let sb = new StringBuilder()
+            sb.Append aI.Name |> ignore
+            match aI.Version with
+            | null -> sb.Append(", Version=0.0.0.0")|> ignore
+            | v -> sb.Append(", Version=").Append v |> ignore
+            match aI.Culture with
+            | null -> sb.Append(", Culture=neutral")  |> ignore
+            | c -> sb.Append(", Culture=").Append c |> ignore
+            match aI.PublicKeyToken with
+            | null | "" -> sb.Append(", PublicKeyToken=null") |> ignore
+            | pkt -> sb.Append(", PublicKeyToken=").Append(pkt) |> ignore
+
+            sb.ToString()
+
+
     type VagrantTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
-                let qname = typeInfo.AssemblyQualifiedName
+                let qname = typeInfo.AssemblyInfo.AssemblyQualifiedName
                 match stateF().DynamicAssemblies.TryFind qname with
                 | None -> typeInfo
                 | Some info ->
@@ -23,33 +42,23 @@
                         raise <| new VagrantException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
 
                     | Some (InSpecificSlice slice) -> 
-                        { typeInfo with AssemblyName = slice.Assembly.GetName().Name }
+                        { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = slice.Assembly.GetName().Name } }
                     
             member __.ToDeserializedType(typeInfo : TypeInfo) =
-                match stateF().TryGetDynamicAssemblyId typeInfo.AssemblyQualifiedName with
+                match stateF().TryGetDynamicAssemblyId typeInfo.AssemblyInfo.AssemblyQualifiedName with
                 | None -> typeInfo
-                | Some (assemblyName,_) -> { typeInfo with AssemblyName = assemblyName }
+                | Some (assemblyName,_) -> { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = assemblyName } }
 
 
-    let mkFsPicklerInstance (registry : CustomPicklerRegistry option) (stateF : unit -> DynamicAssemblyCompilerState) =
+    let mkTypeNameConverter (tyConv' : ITypeNameConverter option) (stateF : unit -> DynamicAssemblyCompilerState) =
 
         let tyConv = new VagrantTypeNameConverter(stateF) :> ITypeNameConverter
 
-        let registry =
-            match registry with
-            | None -> let r = new CustomPicklerRegistry("Vagrant Custom Pickler") in r.SetTypeNameConverter tyConv ; r
-            | Some r ->
-                let tyConv =
-                    match r.TypeNameConverter with
-                    | None -> tyConv
-                    | Some c ->
-                        {
-                            new ITypeNameConverter with
-                                member __.OfSerializedType tI = tI |> tyConv.OfSerializedType |> c.OfSerializedType
-                                member __.ToDeserializedType tI = tI |> c.ToDeserializedType |> tyConv.ToDeserializedType
-                        }
-
-                r.SetTypeNameConverter tyConv
-                r
-
-        new FsPickler(registry)
+        match tyConv' with
+        | None -> tyConv
+        | Some c ->
+            {
+                new ITypeNameConverter with
+                    member __.OfSerializedType tI = tI |> tyConv.OfSerializedType |> c.OfSerializedType
+                    member __.ToDeserializedType tI = tI |> c.ToDeserializedType |> tyConv.ToDeserializedType
+            }

@@ -18,7 +18,7 @@
     /// </summary>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantClient internal (pickler : FsPickler, isLocalSlice : AssemblyId -> bool) =
+    type VagrantClient internal (pickler : BasePickler, isLocalSlice : AssemblyId -> bool) =
 
         static do registerAssemblyResolutionHandler()
 
@@ -28,8 +28,8 @@
         ///     Client for loading type initialization blobs of dynamic assembly slices.
         /// </summary>
         /// <param name="pickler">Specify a custom pickler instance.</param>
-        new (?pickler : FsPickler) =
-            let pickler = match pickler with None -> new FsPickler() | Some p -> p
+        new (?pickler : BasePickler) =
+            let pickler = match pickler with Some p -> p | None -> FsPickler.CreateBinary() :> _
             new VagrantClient(pickler, fun _ -> false)
 
         /// Returns pickler used in type initialization.
@@ -90,10 +90,10 @@
     ///     Compilation server for dynamic assemblies.
     /// </summary>
     /// <param name="outpath">specifies a target directory for the compiler.</param>
-    /// <param name="picklerRegistry">specifies a custom pickler registry.</param>
+    /// <param name="typeConverter">specifies a custom type name converter.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?picklerRegistry : CustomPicklerRegistry) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter) =
 
         let outpath = 
             match outpath with
@@ -109,7 +109,8 @@
         // initialize agents
 
         let compiler = mkCompilationAgent dynamicAssemblyProfiles outpath
-        let pickler = mkFsPicklerInstance picklerRegistry (fun () -> compiler.CurrentState)
+        let tyConv = mkTypeNameConverter typeConverter (fun () -> compiler.CurrentState)
+        let pickler = FsPickler.CreateBinary(typeConverter = tyConv)
         let exporter = mkAssemblyExporter pickler (fun () -> compiler.CurrentState)
         let loader = new VagrantClient(pickler, fun id -> compiler.CurrentState.TryGetDynamicAssemblyId(id.FullName).IsSome)
         let compile (assemblies : Assembly list) = compiler.PostAndReply(assemblies).Value
@@ -122,6 +123,8 @@
         member __.UUId = compiler.CurrentState.ServerId
         /// Returns the pickler used by the slice compiler
         member __.Pickler = pickler
+        /// FsPickler type name converter for use with other formats
+        member __.TypeConverter = tyConv
 
         member __.Client = loader
 

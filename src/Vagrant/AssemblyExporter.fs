@@ -34,7 +34,7 @@
 
     /// export a portable assembly based on given compiler state and arguments
 
-    let exportAssembly (pickler : FsPickler) (compilerState : DynamicAssemblyCompilerState) 
+    let exportAssembly (pickler : BasePickler) (compilerState : DynamicAssemblyCompilerState) 
                         (generationIndex : Map<AssemblyId, int>) (includeImage : bool) (assembly : Assembly) =
 
         let id = assembly.AssemblyId

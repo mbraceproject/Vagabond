@@ -16,187 +16,36 @@
 
     open Microsoft.FSharp.Reflection
 
-    type TypeInfo =
-        | Null
-        | PartiallyComputed of isSealed:bool
-        | Primitive
-        | Array of isSealed:bool
-        | Reference of isSealed:bool
-        | GenericTypeDef
-        | Named of isGenericInstance:bool * isSealed:bool * isISerializable:bool * nonSealedFields:FieldInfo []
-    with
-        member t.IsSealed =
-            match t with
-            | Null -> true
-            | Primitive -> true
-            | GenericTypeDef -> true // irrelevant to this algorithm
-            | PartiallyComputed s
-            | Reference s
-            | Array s
-            | Named (isSealed = s) -> s
-
-        member t.IsNamedType =
-            match t with
-            | GenericTypeDef _
-            | Named(isGenericInstance = false) -> true
-            | _ -> false
-
-    /// gathers all types that occur in an object graph
-
-    let gatherObjectDependencies (obj : obj) : Type [] =
-
-        let typeIndex = new Dictionary<Type, TypeInfo>()
-        let objIndex = new ObjectIDGenerator()
-        let inline add t info = typeIndex.[t] <- info ; info
-
-        let isOptionType (t : Type) = 
-            t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<int option>
-
-        let isFsharpList (t : Type) =
-            t.IsGenericType && t.GetGenericTypeDefinition() = typedefof<int list>
-
-        let isSealedType (t : Type) =
-            t.IsSealed || FSharpType.IsTuple t || isOptionType t || isFsharpList t
-
-        let isISerializable (t : Type) =
-            let rec aux (t : Type) =
-                if typeof<ISerializable>.IsAssignableFrom t then true
-                else
-                    match t.BaseType with
-                    | null -> false
-                    | bt -> aux bt
-  
-            aux t
-
-        // walks up the type hierarchy, gathering all instance fields
-
-        let gatherFields (t : Type) =
-            // resolve conflicts, index by declaring type and field name
-            let gathered = new Dictionary<Type * string, FieldInfo> ()
-
-            let instanceFlags = 
-                BindingFlags.NonPublic ||| BindingFlags.Public ||| 
-                BindingFlags.Instance ||| BindingFlags.FlattenHierarchy
-
-            let rec gather (t : Type) =
-                let fields = t.GetFields(instanceFlags)
-                for f in fields do
-                    let k = f.DeclaringType, f.Name
-                    if not <| gathered.ContainsKey k then
-                        gathered.Add(k, f)
-
-                match t.BaseType with
-                | null -> ()
-                | t when t = typeof<obj> -> ()
-                | bt -> gather bt
-
-            do gather t
-
-            gathered |> Seq.map (function (KeyValue(_,f)) -> f) |> Seq.toArray
-
-
-        // traverse field hierarchy of given type
-        // decides if type is 'sealed', in the sense that it and all its instance fields are sealed.
+    let gatherObjectDependencies (graph:obj) =
+        let types = new HashSet<Type> ()
+        let assemblies = new HashSet<Assembly> ()
 
         let rec traverseType (t : Type) =
-            if t = null then Null else
+            if t = null then ()
+            elif t.IsGenericType && not t.IsGenericTypeDefinition then
+                types.Add(t.GetGenericTypeDefinition()) |> ignore
+                for ga in t.GetGenericArguments() do
+                    traverseType ga
 
-            let found, info = typeIndex.TryGetValue t
-            if found then info else
+            elif t.IsArray || t.IsPointer || t.IsByRef then
+                traverseType <| t.GetElementType()
+            else  
+                types.Add t |> ignore
 
-            do RuntimeHelpers.EnsureSufficientExecutionStack()
+        let typeGatherer =
+            {
+                new IObjectVisitor with
+                    member __.Visit<'T> (value : 'T) =
+                        match box value with
+                        | null -> ()
+                        | :? Assembly as a -> assemblies.Add a |> ignore
+                        | :? Type as t -> traverseType t
+                        | o -> traverseType <| o.GetType()
+            }
 
-            if t.IsPrimitive || t = typeof<string> then 
-                add t Primitive
+        do FsPickler.VisitObject(typeGatherer, graph)
 
-            elif t.IsArray then
-                let _ = add t <| PartiallyComputed false
-                let info = traverseType <| t.GetElementType()
-                add t <| Array info.IsSealed
-
-            elif t.IsByRef || t.IsPointer then
-                let _ = add t <| PartiallyComputed false
-                let info = traverseType <| t.GetElementType()
-                add t <| Reference info.IsSealed
-
-            elif t.IsGenericTypeDefinition then
-                add t GenericTypeDef
-            else
-                let isGenericInstance =
-                    if t.IsGenericType then
-                        let _ = traverseType <| t.GetGenericTypeDefinition()
-
-                        for ga in t.GetGenericArguments() do
-                            let _ = traverseType ga in ()
-
-                        true
-                    else
-                        false
-
-                if isISerializable t then
-                    add t <| Named(isGenericInstance, false, true, [||])
-                else
-                    let info = add t <| PartiallyComputed (isSealedType t)
-                    let fields = gatherFields t
-                    let areAllFieldsSealed = fields |> Array.forall(fun f -> let info = traverseType f.FieldType in info.IsSealed)
-                    let isSealed = info.IsSealed && areAllFieldsSealed
-
-                    // re-update so that fields are correctly filtered in case of recursive pattern
-                    let _ = add t <| PartiallyComputed isSealed
-                    let fields' = fields |> Array.filter (fun f -> let info = traverseType f.FieldType in not info.IsSealed)
-
-                    add t <| Named(isGenericInstance, isSealed, false, fields')
-
-        // traverses the object graph: 
-        // if non-sealed fields appear, evaluate and proceed accordingly.
-                
-        and traverseObj (obj : obj) =
-            if Object.ReferenceEquals(obj, null) then () else
-            let _,firstTime = objIndex.GetId obj
-            if not firstTime then () else
-    
-            match obj with
-            | :? Type as t -> traverseType t |> ignore
-            | :? MemberInfo as m -> traverseType m.DeclaringType |> ignore
-            | :? Assembly as a -> 
-                match a.GetTypes() with
-                | [||] -> ()
-                | types -> traverseType (types.[0]) |> ignore
-
-            | :? Delegate as d -> 
-                traverseType (d.GetType()) |> ignore
-                traverseType d.Method.DeclaringType |> ignore
-                traverseObj d.Target
-                for d' in d.GetInvocationList() do
-                    if d <> d' then traverseObj d'
-            | _ ->
-                let t = obj.GetType()
-                
-                match traverseType t with
-                | Array(isSealed = false) ->
-                    for e in obj :?> Array do
-                        traverseObj e
-
-                | Named(isISerializable = true) ->
-                    let sI = new SerializationInfo(t, new FormatterConverter())
-                    let sC = new StreamingContext()
-                    (obj :?> ISerializable).GetObjectData(sI, sC)
-                    let enum = sI.GetEnumerator()
-                    while enum.MoveNext() do
-                        traverseObj enum.Value
-
-                | Named(nonSealedFields = fields) ->
-                    for f in fields do
-                        let value = f.GetValue(obj)
-                        traverseObj value
-
-                | _ -> ()
-
-        do traverseObj obj
-
-        typeIndex 
-        |> Seq.choose (function (KeyValue(t,info)) -> if info.IsNamedType then Some t else None)
-        |> Seq.toArray
+        Seq.toArray types, Seq.toArray assemblies
 
     /// recursively traverse assembly dependency graph
 
@@ -296,8 +145,11 @@
     type Dependencies = (Assembly * seq<Type>) list
 
     let computeDependencies (obj:obj) : Dependencies =
-        gatherObjectDependencies obj 
+        let types, assemblies = gatherObjectDependencies obj
+        
+        types
         |> Seq.groupBy (fun t -> t.Assembly)
+        |> Seq.append (assemblies |> Seq.map (fun a -> a, Seq.empty))
         |> Seq.toList
 
     /// determines the assemblies that require slice compilation based on given dependency input

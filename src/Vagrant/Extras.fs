@@ -20,7 +20,7 @@
         ///     Returns all type instances that appear in given object graph.
         /// </summary>
         /// <param name="obj">object graph to be traversed</param>
-        static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj
+        static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj |> fst
 
         /// <summary>
         ///     Resolves all assembly dependencies of given object graph.

@@ -47,9 +47,15 @@
 
         let isLoadedInAppDomain =
             if lookupAppDomain then
-                match tryLoadAssembly id.FullName with
-                | Some a when a.AssemblyId = id -> true
-                | _ -> false
+                if id.IsStrongAssembly then
+                    // try loading from GAC if strong name
+                    tryLoadAssembly id.FullName |> Option.isSome
+
+                else
+                    // read from AppDomain only if weak name
+                    match tryGetLoadedAssembly id.FullName with
+                    | Some a when a.AssemblyId = id -> true
+                    | _ -> false
             else
                 false
 

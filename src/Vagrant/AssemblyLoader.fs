@@ -60,14 +60,25 @@
 
 
         let loadAssembly (pa : PortableAssembly) =
-            // try load from AppDomain or GAC
-            match tryLoadAssembly pa.FullName with
-            | Some a when a.AssemblyId = pa.Id -> success <| tryLoadStaticInitializer None pa
-            | Some _ -> 
-                let msg = sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName
-                error <| VagrantException(msg)
+            // try load from AppDomain or machine
+            let locallyLoaded =
+                if pa.Id.IsStrongAssembly then
+                    // if strong name, try loading from GAC if available
+                    tryLoadAssembly pa.FullName
+                else
+                    // weakly named assemblies only looked up from AppDomain
+                    match tryLoadAssembly pa.FullName with
+                    // demand that weakly named assemblies have identical hashes
+                    | Some a when a.AssemblyId <> pa.Id ->
+                        let msg = sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName
+                        raise <| VagrantException(msg)
+                    | result -> result
+
+            match locallyLoaded with
+            | Some a -> success <| tryLoadStaticInitializer None pa    
             | None ->
-                // try load binary image
+
+                // try loading binary image from package
                 match pa.Image with
                 | None -> state, NotLoaded pa.Id
                 | Some bytes ->
@@ -79,8 +90,8 @@
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
                         raise <| VagrantException(msg)
+
                     else
-                        
                         success <| tryLoadStaticInitializer None pa
 
         try

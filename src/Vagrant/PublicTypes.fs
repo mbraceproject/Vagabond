@@ -17,6 +17,7 @@
         }
     with
         member id.GetName() = new AssemblyName(id.FullName)
+        member id.IsStrongAssembly = let pkt = id.GetName().GetPublicKeyToken() in pkt <> null && pkt <> [||]
 
     /// static initialization data for portable assembly
     [<NoEquality; NoComparison>]

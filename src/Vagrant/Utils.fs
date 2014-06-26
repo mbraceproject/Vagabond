@@ -10,6 +10,8 @@
 
     open Microsoft.FSharp.Control
 
+    open Mono.Cecil
+
     open Nessos.Vagrant.SliceCompilerTypes
 
     #nowarn "42"
@@ -157,6 +159,18 @@
                 aux (t :: sorted) g0
 
         aux [] g
+
+
+    type AssemblyReferenceResolver private () =
+        static let getDependencies (a : Assembly) =
+            let def = AssemblyDefinition.ReadAssembly a.Location
+            def.Modules 
+            |> Seq.collect(fun m -> m.AssemblyReferences)
+            |> Seq.map(fun ref -> AssemblyName(ref.FullName))
+            |> Seq.toArray
+
+        static let memo = concurrentMemoize getDependencies
+        static member GetReferencedAssemblies(a : Assembly) = memo a
 
 
 

@@ -219,7 +219,7 @@
             | [] -> graph |> Map.toList |> List.map snd
             | a :: tail when graph.ContainsKey a.AssemblyId || isSystemAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
-                let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
+                let dependencies = AssemblyReferenceResolver.GetReferencedAssemblies a |> Array.choose tryResolveLoadedAssembly |> Array.toList
                 traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 
         let dependencies =

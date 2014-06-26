@@ -19,7 +19,8 @@ Dependency resolution and exportation logic is handled transparently by Vagrant
 open Nessos.Vagrant.Tests.ThunkServer
 
 // initialize & test a local instance
-let client = ThunkClient.InitLocal()
+let server = __SOURCE_DIRECTORY__ + "/../../bin/Vagrant.Tests.exe"
+let client = ThunkClient.InitLocal(serverExecutable = server)
 
 (**
 Example 1: simple, incremental interactions

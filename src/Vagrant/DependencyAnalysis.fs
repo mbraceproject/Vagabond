@@ -217,17 +217,20 @@
                     Array.exists ((=) (getPublicKey a)) systemPkt
 
         let tryResolveLoadedAssembly (an : AssemblyName) =
-            match tryGetLoadedAssembly an.FullName, state with
-            | Some a, _ when isIgnoredAssembly a -> None
-            | Some _ as s, _ -> s
-            // query the slice compiler when present: this is needed since slices are not loaded in the appdomain
-            | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun (_,s) -> s.Assembly)
-            | None, None ->
-                try 
-                    let a = Assembly.Load an
-                    if isIgnoredAssembly a then None
-                    else Some a
-                with :? FileNotFoundException -> None
+            match tryGetLoadedAssembly an.FullName with //, state with
+            | Some a when isIgnoredAssembly a -> None
+            | Some _ as s -> s
+            | None ->
+                match state |> Option.bind (fun s -> s.TryFindSliceInfo an.FullName) with
+                // if a slice, return from compiler state directly as not loaded in AppDomain
+                | Some (_,slice) -> Some slice.Assembly
+                | None ->
+                    try
+                        // attempt loading from local machine
+                        let a = Assembly.Load an
+                        if isIgnoredAssembly a then None
+                        else Some a
+                    with :? FileNotFoundException -> None
 
         let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with

@@ -1,6 +1,7 @@
 ﻿module internal Nessos.Vagrant.DependencyAnalysis
 
     open System
+    open System.IO
     open System.Collections
     open System.Collections.Generic
     open System.Runtime.Serialization
@@ -201,25 +202,39 @@
 
     let traverseDependencies (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
 
-        let isSystemAssembly =
+        let isIgnoredAssembly =
             let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-            let systemPkt = getPublicKey typeof<int>.Assembly
-            fun (a:Assembly) -> getPublicKey a = systemPkt
+            let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
+            let vagrantAssemblies = 
+                [| 
+                    typeof<Mono.Cecil.AssemblyDefinition> ; 
+                    typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig> ;
+                    typeof<Nessos.Vagrant.AssemblyId>
+                |] |> Array.map (fun t -> t.Assembly)
+
+            fun (a:Assembly) ->
+                Array.exists ((=) a) vagrantAssemblies ||
+                    Array.exists ((=) (getPublicKey a)) systemPkt
 
         let tryResolveLoadedAssembly (an : AssemblyName) =
             match tryGetLoadedAssembly an.FullName, state with
-            | Some a, _ when isSystemAssembly a -> None
+            | Some a, _ when isIgnoredAssembly a -> None
             | Some _ as s, _ -> s
             // query the slice compiler when present: this is needed since slices are not loaded in the appdomain
             | None, Some state -> state.TryFindSliceInfo an.FullName |> Option.map(fun (_,s) -> s.Assembly)
-            | None, None -> None
+            | None, None ->
+                try 
+                    let a = Assembly.Load an
+                    if isIgnoredAssembly a then None
+                    else Some a
+                with :? FileNotFoundException -> None
 
         let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph |> Map.toList |> List.map snd
-            | a :: tail when graph.ContainsKey a.AssemblyId || isSystemAssembly a -> traverseDependencyGraph graph tail
+            | a :: tail when graph.ContainsKey a.AssemblyId || isIgnoredAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
-                let dependencies = AssemblyReferenceResolver.GetReferencedAssemblies a |> Array.choose tryResolveLoadedAssembly |> Array.toList
+                let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
                 traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 
         let dependencies =

@@ -217,7 +217,7 @@
                     Array.exists ((=) (getPublicKey a)) systemPkt
 
         let tryResolveLoadedAssembly (an : AssemblyName) =
-            match tryGetLoadedAssembly an.FullName with //, state with
+            match tryGetLoadedAssembly an.FullName with
             | Some a when isIgnoredAssembly a -> None
             | Some _ as s -> s
             | None ->

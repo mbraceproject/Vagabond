@@ -1,3 +1,6 @@
+#### 0.1.4, 26 Jun 2014
+* Bug fix in transitive dependency resolution.
+
 #### 0.1.3, 14 May 2014
 * Bug fix in dependency traversal
 

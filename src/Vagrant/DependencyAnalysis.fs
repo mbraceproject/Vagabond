@@ -38,6 +38,7 @@
                     member __.Visit<'T> (value : 'T) =
                         match box value with
                         | null -> ()
+                        | :? AssemblyInfo -> () // temporary : should be resolved by next FsPickler update
                         | :? Assembly as a -> assemblies.Add a |> ignore
                         | :? Type as t -> traverseType t
                         | o -> traverseType <| o.GetType()

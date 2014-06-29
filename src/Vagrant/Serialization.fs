@@ -11,23 +11,6 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.SliceCompilerTypes
 
-    // temp extension method implementation ; should be added by next nuget release
-    type AssemblyInfo with
-        member aI.AssemblyQualifiedName =
-            let sb = new StringBuilder()
-            sb.Append aI.Name |> ignore
-            match aI.Version with
-            | null -> sb.Append(", Version=0.0.0.0")|> ignore
-            | v -> sb.Append(", Version=").Append v |> ignore
-            match aI.Culture with
-            | null -> sb.Append(", Culture=neutral")  |> ignore
-            | c -> sb.Append(", Culture=").Append c |> ignore
-            match aI.PublicKeyToken with
-            | null | "" -> sb.Append(", PublicKeyToken=null") |> ignore
-            | pkt -> sb.Append(", PublicKeyToken=").Append(pkt) |> ignore
-
-            sb.ToString()
-
 
     type VagrantTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 

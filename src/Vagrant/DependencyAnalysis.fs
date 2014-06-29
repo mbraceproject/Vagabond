@@ -38,7 +38,6 @@
                     member __.Visit<'T> (value : 'T) =
                         match box value with
                         | null -> ()
-                        | :? AssemblyInfo -> () // temporary : should be resolved by next FsPickler update
                         | :? Assembly as a -> assemblies.Add a |> ignore
                         | :? Type as t -> traverseType t
                         | o -> traverseType <| o.GetType()
@@ -57,8 +56,8 @@
             let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
             let vagrantAssemblies = 
                 [| 
-                    typeof<Mono.Cecil.AssemblyDefinition> ; 
-                    typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig> ;
+                    typeof<Mono.Cecil.AssemblyDefinition>
+                    typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig>
                     typeof<Nessos.Vagrant.AssemblyId>
                 |] |> Array.map (fun t -> t.Assembly)
 

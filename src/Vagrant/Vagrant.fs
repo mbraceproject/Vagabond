@@ -68,15 +68,15 @@
         ///     Loads the type initializers from given dependency package.
         /// </summary>
         /// <param name="assembly">Portable assembly package to be loaded.</param>
-        member __.LoadPortableAssembly(assembly : PortableAssembly, ?loadPolicy, ?requireIdentical) =
+        member __.LoadPortableAssembly(assembly : PortableAssembly, ?loadPolicy, ?requireIdentical : bool) =
             loadAssembly requireIdentical loadPolicy assembly
 
         /// <summary>
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
         /// <param name="assemblies">Portable assembly packages to be loaded.</param>
-        member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>, ?loadPolicy, ?requireIdentical) =
-            assemblies |> Seq.map (loadAssembly loadPolicy requireIdentical) |> Seq.toList
+        member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>, ?loadPolicy, ?requireIdentical : bool) =
+            assemblies |> Seq.map (loadAssembly requireIdentical loadPolicy) |> Seq.toList
 
         /// <summary>
         ///     Receive dependencies as supplied by the remote assembly publisher

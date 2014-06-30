@@ -18,19 +18,27 @@
     /// </summary>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantClient internal (pickler : BasePickler, isLocalSlice : AssemblyId -> bool) =
+    type VagrantClient internal (pickler : BasePickler, isLocalSlice : AssemblyId -> bool, ?requireIdentical, ?loadPolicy) =
 
         static do registerAssemblyResolutionHandler()
 
+        let _loadPolicy = defaultArg loadPolicy AssemblyLocalResolutionPolicy.StrongNamesOnly
+        let _requireIdentical = defaultArg requireIdentical false
+
         let loader = mkAssemblyLoader pickler isLocalSlice
+
+        let loadAssembly req policy pa =
+            let req = defaultArg req _requireIdentical
+            let policy = defaultArg policy _loadPolicy
+            loader.PostAndReply(pa, req, policy)
 
         /// <summary>
         ///     Client for loading type initialization blobs of dynamic assembly slices.
         /// </summary>
         /// <param name="pickler">Specify a custom pickler instance.</param>
-        new (?pickler : BasePickler) =
+        new (?pickler : BasePickler, ?requireIdentical, ?loadPolicy) =
             let pickler = match pickler with Some p -> p | None -> FsPickler.CreateBinary() :> _
-            new VagrantClient(pickler, fun _ -> false)
+            new VagrantClient(pickler, (fun _ -> false), ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy)
 
         /// Returns pickler used in type initialization.
         member __.Pickler = pickler
@@ -60,21 +68,24 @@
         ///     Loads the type initializers from given dependency package.
         /// </summary>
         /// <param name="assembly">Portable assembly package to be loaded.</param>
-        member __.LoadPortableAssembly(assembly : PortableAssembly) = loader.PostAndReply assembly
+        member __.LoadPortableAssembly(assembly : PortableAssembly, ?loadPolicy, ?requireIdentical) =
+            loadAssembly requireIdentical loadPolicy assembly
 
         /// <summary>
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
         /// <param name="assemblies">Portable assembly packages to be loaded.</param>
-        member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>) =
-            assemblies |> Seq.map loader.PostAndReply |> Seq.toList
+        member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>, ?loadPolicy, ?requireIdentical) =
+            assemblies |> Seq.map (loadAssembly loadPolicy requireIdentical) |> Seq.toList
 
         /// <summary>
         ///     Receive dependencies as supplied by the remote assembly publisher
         /// </summary>
         /// <param name="publisher">The remote publisher</param>
-        member __.ReceiveDependencies(publisher : IRemoteAssemblyPublisher) =
-            assemblyReceiveProtocol loader publisher
+        member __.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy, ?requireIdentical) =
+            let loadPolicy = defaultArg loadPolicy _loadPolicy
+            let requireIdentical = defaultArg requireIdentical _requireIdentical
+            assemblyReceiveProtocol loader requireIdentical loadPolicy publisher
 
         /// <summary>
         ///     Get loaded assemlies
@@ -93,7 +104,7 @@
     /// <param name="typeConverter">specifies a custom type name converter.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?requireIdentical, ?loadPolicy) =
 
         let outpath = 
             match outpath with
@@ -112,7 +123,7 @@
         let tyConv = mkTypeNameConverter typeConverter (fun () -> compiler.CurrentState)
         let pickler = FsPickler.CreateBinary(typeConverter = tyConv)
         let exporter = mkAssemblyExporter pickler (fun () -> compiler.CurrentState)
-        let loader = new VagrantClient(pickler, fun id -> compiler.CurrentState.TryGetDynamicAssemblyId(id.FullName).IsSome)
+        let loader = new VagrantClient(pickler, (fun id -> compiler.CurrentState.TryGetDynamicAssemblyId(id.FullName).IsSome), ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy)
         let compile (assemblies : Assembly list) = compiler.PostAndReply(assemblies).Value
 
         static let checkIsDynamic(a : Assembly) = 

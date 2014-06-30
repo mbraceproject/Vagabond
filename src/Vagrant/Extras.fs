@@ -67,27 +67,36 @@
     /// <summary>
     ///     Persist assemblies and Vagrant-related metadata to disk.
     /// </summary>
-    type VagrantCache(cacheDirectory : string, ?pickler : BasePickler, ?lookupAppDomain) =
+    type VagrantCache(cacheDirectory : string, ?pickler : BasePickler, ?loadPolicy, ?requireIdentical) =
         do 
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)
 
+        let _loadPolicy = defaultArg loadPolicy AssemblyLocalResolutionPolicy.StrongNamesOnly
+        let _requireIndetical = defaultArg requireIdentical true
+
 
         let pickler = match pickler with Some p -> p | None -> FsPickler.CreateBinary() :> _
-        let lookupAppDomain = defaultArg lookupAppDomain false
-        let cacheActor = initAssemblyCache pickler lookupAppDomain cacheDirectory
+        let cacheActor = initAssemblyCache pickler cacheDirectory
+
+        let cacheAssembly requireIdentical loadPolicy pa =
+            cacheActor.PostAndReply(pa, 
+                defaultArg requireIdentical _requireIndetical, 
+                defaultArg loadPolicy _loadPolicy)
         
         /// <summary>
         ///     Save given portable assembly to cache
         /// </summary>
         /// <param name="assembly">The assembly to persist.</param>
-        member __.Cache(assembly : PortableAssembly) = cacheActor.PostAndReply assembly
+        member __.Cache(assembly : PortableAssembly, ?requireIdentical, ?loadPolicy) =
+            cacheAssembly requireIdentical loadPolicy assembly
 
         /// <summary>
         ///     Save given portable assemblies to cache
         /// </summary>
         /// <param name="assemblies"></param>
-        member __.Cache(assemblies : PortableAssembly list) = List.map cacheActor.PostAndReply assemblies
+        member __.Cache(assemblies : PortableAssembly list, ?requireIdentical, ?loadPolicy) =
+            List.map (cacheAssembly requireIdentical loadPolicy) assemblies
 
         /// directory used by the cache
         member __.CacheDirectory = cacheDirectory
@@ -97,9 +106,12 @@
         /// </summary>
         /// <param name="id">Provided assembly id.</param>
         /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>
-        member __.TryGetCachedAssembly (id : AssemblyId, ?includeImage) =
+        member __.TryGetCachedAssembly (id : AssemblyId, ?includeImage, ?requireIdentical, ?loadPolicy) =
             let includeImage = defaultArg includeImage true
-            tryGetPortableAssemblyFromCache cacheActor cacheDirectory includeImage id
+            let loadPolicy = defaultArg loadPolicy _loadPolicy
+            let requireIdentical = defaultArg requireIdentical _requireIndetical
+            tryGetPortableAssemblyFromCache cacheActor cacheDirectory 
+                includeImage requireIdentical loadPolicy id
 
         /// <summary>
         ///     Loads given portable assembly from cache, if it exists.
@@ -115,15 +127,15 @@
         ///     Retrieves assembly cache information
         /// </summary>
         /// <param name="id">Assembly id.</param>
-        member __.GetCachedAssemblyInfo (id : AssemblyId) =
-            cacheActor.PostAndReply <| PortableAssembly.Empty id
+        member __.GetCachedAssemblyInfo (id : AssemblyId, ?requireIdentical, ?loadPolicy) =
+            cacheAssembly requireIdentical loadPolicy (PortableAssembly.Empty id)
 
         /// <summary>
         ///     Retrieves assembly cache information for given id's.
         /// </summary>
         /// <param name="ids">Assembly id's.</param>
-        member __.GetCachedAssemblyInfo (ids : AssemblyId list) =
-            List.map (cacheActor.PostAndReply << PortableAssembly.Empty) ids
+        member __.GetCachedAssemblyInfo (ids : AssemblyId list, ?requireIdentical, ?loadPolicy) =
+            List.map (cacheAssembly requireIdentical loadPolicy << PortableAssembly.Empty) ids
 
         /// <summary>
         ///     Determines whether assembly is cached.

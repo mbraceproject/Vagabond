@@ -13,7 +13,7 @@
     // assembly loader protocol implementation
     //
 
-    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly, AssemblyLoadInfo>
+    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly * bool * AssemblyLocalResolutionPolicy, AssemblyLoadInfo>
 
     /// need an assembly resolution handler when loading assemblies at runtime
 
@@ -24,7 +24,9 @@
     /// portable assembly load protocol implementation
 
     let loadAssembly (pickler : BasePickler) (isLocalDynamicSlice : AssemblyId -> bool)
-                        (state : Map<AssemblyId, AssemblyLoadInfo>) (pa : PortableAssembly) =
+                        (state : Map<AssemblyId, AssemblyLoadInfo>) 
+                        (loadPolicy : AssemblyLocalResolutionPolicy) (requireIdenticalAssembly : bool)
+                        (pa : PortableAssembly) =
 
         // return operators
         let success info = state.Add(pa.Id, info), info
@@ -60,18 +62,22 @@
 
 
         let loadAssembly (pa : PortableAssembly) =
+            let tryLoadLocal =
+                match loadPolicy with
+                | AssemblyLocalResolutionPolicy.All -> true
+                | AssemblyLocalResolutionPolicy.StrongNamesOnly when pa.Id.IsStrongAssembly -> true
+                | _ -> false
+
             // try load from AppDomain or machine
             let locallyLoaded =
-                if pa.Id.IsStrongAssembly then
-                    // if strong name, try loading from GAC if available
+                if tryLoadLocal then
                     tryLoadAssembly pa.FullName
                 else
-                    // weakly named assemblies only looked up from AppDomain
                     match tryGetLoadedAssembly pa.FullName with
-                    // demand that weakly named assemblies have identical hashes
-                    | Some a when a.AssemblyId <> pa.Id ->
+                    | Some a when requireIdenticalAssembly && a.AssemblyId <> pa.Id ->
                         let msg = sprintf "an incompatible version of '%s' has been loaded in the client." pa.FullName
                         raise <| VagrantException(msg)
+
                     | result -> result
 
             match locallyLoaded with
@@ -109,13 +115,13 @@
         with e -> error e
     
     let mkAssemblyLoader pickler tryGetLocal : AssemblyLoader =
-        mkStatefulActor Map.empty (fun state pa -> loadAssembly pickler tryGetLocal state pa)
+        mkStatefulActor Map.empty (fun state (pa, policy, req) -> loadAssembly pickler tryGetLocal state req policy pa)
 
 
-    let getAssemblyLoadInfo (loader : AssemblyLoader) (id : AssemblyId) = loader.PostAndReply <| PortableAssembly.Empty id
+    let getAssemblyLoadInfo (loader : AssemblyLoader) (id : AssemblyId) = loader.PostAndReply (PortableAssembly.Empty id, false, AssemblyLocalResolutionPolicy.None)
 
     /// assembly receive protocol on the client side
-    let assemblyReceiveProtocol (loader : AssemblyLoader) (publisher : IRemoteAssemblyPublisher) = async {
+    let assemblyReceiveProtocol (loader : AssemblyLoader) requireIdentical loadPolicy (publisher : IRemoteAssemblyPublisher) = async {
         // step 1. download dependencies required by publisher
         let! dependencies = publisher.GetRequiredAssemblyInfo()
 
@@ -132,7 +138,7 @@
         if missing.Length > 0 then
             // step 3. download portable assemblies for missing dependencies
             let! assemblies = publisher.PullAssemblies missing
-            let loadResults = assemblies |> List.map loader.PostAndReply
+            let loadResults = assemblies |> List.map (fun a -> loader.PostAndReply(a, requireIdentical, loadPolicy))
 
             let checkLoadResult (info : AssemblyLoadInfo) =
                 match info with

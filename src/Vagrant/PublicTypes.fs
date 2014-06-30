@@ -5,6 +5,13 @@
 
     open Nessos.FsPickler
 
+    /// Specifies what assemblies are to be loaded 
+    /// locally by the runtime if possible.
+    type AssemblyLocalResolutionPolicy =
+        | None = 0
+        | StrongNamesOnly = 1
+        | All = 2
+
     /// unique identifier for assembly
     [<StructuralComparison>]
     [<StructuralEquality>]

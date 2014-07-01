@@ -67,6 +67,10 @@
     /// <summary>
     ///     Persist assemblies and Vagrant-related metadata to disk.
     /// </summary>
+    /// <param name="cacheDirectory">Local directory for caching assemblies.</param>
+    /// <param name="pickler">Custom FsPickler instance.</param>
+    /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+    /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
     type VagrantCache(cacheDirectory : string, ?pickler : BasePickler, ?loadPolicy, ?requireIdentical) =
         do 
             if not <| Directory.Exists cacheDirectory then
@@ -88,6 +92,8 @@
         ///     Save given portable assembly to cache
         /// </summary>
         /// <param name="assembly">The assembly to persist.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.Cache(assembly : PortableAssembly, ?requireIdentical, ?loadPolicy) =
             cacheAssembly requireIdentical loadPolicy assembly
 
@@ -95,6 +101,8 @@
         ///     Save given portable assemblies to cache
         /// </summary>
         /// <param name="assemblies"></param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.Cache(assemblies : PortableAssembly list, ?requireIdentical, ?loadPolicy) =
             List.map (cacheAssembly requireIdentical loadPolicy) assemblies
 
@@ -106,6 +114,8 @@
         /// </summary>
         /// <param name="id">Provided assembly id.</param>
         /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.TryGetCachedAssembly (id : AssemblyId, ?includeImage, ?requireIdentical, ?loadPolicy) =
             let includeImage = defaultArg includeImage true
             let loadPolicy = defaultArg loadPolicy _loadPolicy
@@ -117,9 +127,11 @@
         ///     Loads given portable assembly from cache, if it exists.
         /// </summary>
         /// <param name="id">Provided assembly id.</param>
-        /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>        
-        member __.GetCachedAssembly (id : AssemblyId, ?includeImage) =
-            match __.TryGetCachedAssembly(id, ?includeImage = includeImage) with
+        /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>      
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
+        member __.GetCachedAssembly (id : AssemblyId, ?includeImage, ?requireIdentical, ?loadPolicy) =
+            match __.TryGetCachedAssembly(id, ?includeImage = includeImage, ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy) with
             | None -> raise <| new VagrantException(sprintf "could not load '%s' from cache" id.FullName)
             | Some pa -> pa
 
@@ -127,6 +139,8 @@
         ///     Retrieves assembly cache information
         /// </summary>
         /// <param name="id">Assembly id.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
         member __.GetCachedAssemblyInfo (id : AssemblyId, ?requireIdentical, ?loadPolicy) =
             cacheAssembly requireIdentical loadPolicy (PortableAssembly.Empty id)
 
@@ -134,6 +148,8 @@
         ///     Retrieves assembly cache information for given id's.
         /// </summary>
         /// <param name="ids">Assembly id's.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
         member __.GetCachedAssemblyInfo (ids : AssemblyId list, ?requireIdentical, ?loadPolicy) =
             List.map (cacheAssembly requireIdentical loadPolicy << PortableAssembly.Empty) ids
 
@@ -141,8 +157,10 @@
         ///     Determines whether assembly is cached.
         /// </summary>
         /// <param name="id">Assembly id.</param>
-        member __.IsCachedAssembly (id : AssemblyId) =
-            match __.GetCachedAssemblyInfo id with
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
+        member __.IsCachedAssembly (id : AssemblyId, ?requireIdentical, ?loadPolicy) =
+            match __.GetCachedAssemblyInfo (id, ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy) with
             | Loaded _ | LoadedWithStaticIntialization _ -> true
             | _ -> false
 

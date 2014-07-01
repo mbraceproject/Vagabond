@@ -118,7 +118,8 @@
         mkStatefulActor Map.empty (fun state (pa, policy, req) -> loadAssembly pickler tryGetLocal state req policy pa)
 
 
-    let getAssemblyLoadInfo (loader : AssemblyLoader) (id : AssemblyId) = loader.PostAndReply (PortableAssembly.Empty id, false, AssemblyLocalResolutionPolicy.None)
+    let getAssemblyLoadInfo (loader : AssemblyLoader) requireIdentical loadPolicy (id : AssemblyId) = 
+        loader.PostAndReply (PortableAssembly.Empty id, requireIdentical, loadPolicy)
 
     /// assembly receive protocol on the client side
     let assemblyReceiveProtocol (loader : AssemblyLoader) requireIdentical loadPolicy (publisher : IRemoteAssemblyPublisher) = async {
@@ -127,7 +128,7 @@
 
         // step 2. resolve dependencies that are missing from client
         let tryCheckLoadStatus (id : AssemblyId) =
-            match getAssemblyLoadInfo loader id with
+            match getAssemblyLoadInfo loader requireIdentical loadPolicy id with
             | NotLoaded id
             | LoadFault (id,_) -> Some id
             | Loaded _ -> None

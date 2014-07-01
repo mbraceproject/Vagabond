@@ -32,10 +32,13 @@
             let policy = defaultArg policy _loadPolicy
             loader.PostAndReply(pa, req, policy)
 
+
         /// <summary>
         ///     Client for loading type initialization blobs of dynamic assembly slices.
         /// </summary>
         /// <param name="pickler">Specify a custom pickler instance.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         new (?pickler : BasePickler, ?requireIdentical, ?loadPolicy) =
             let pickler = match pickler with Some p -> p | None -> FsPickler.CreateBinary() :> _
             new VagrantClient(pickler, (fun _ -> false), ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy)
@@ -47,18 +50,28 @@
         ///     Get the current assembly load state for given assembly id.
         /// </summary>
         /// <param name="id"></param>
-        member __.GetAssemblyLoadInfo(id : AssemblyId) = getAssemblyLoadInfo loader id
+        member __.GetAssemblyLoadInfo(id : AssemblyId, ?requireIdentical, ?loadPolicy) =
+            let requireIdentical = defaultArg requireIdentical _requireIdentical
+            let loadPolicy = defaultArg loadPolicy _loadPolicy
+            getAssemblyLoadInfo loader requireIdentical loadPolicy id
 
         /// <summary>
         ///     Gets the current assembly load states for given ids.
         /// </summary>
         /// <param name="ids"></param>
-        member __.GetAssemblyLoadInfo(ids : AssemblyId list) = List.map (getAssemblyLoadInfo loader) ids
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
+        member __.GetAssemblyLoadInfo(ids : AssemblyId list, ?requireIdentical, ?loadPolicy) =
+            let requireIdentical = defaultArg requireIdentical _requireIdentical
+            let loadPolicy = defaultArg loadPolicy _loadPolicy
+            List.map (getAssemblyLoadInfo loader requireIdentical loadPolicy) ids
 
         /// <summary>
         ///     Determines whether assembly is loaded.
         /// </summary>
         /// <param name="id">Assembly id.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.IsLoadedAssembly (id : AssemblyId) =
             match __.GetAssemblyLoadInfo id with
             | Loaded _ | LoadedWithStaticIntialization _ -> true
@@ -68,6 +81,8 @@
         ///     Loads the type initializers from given dependency package.
         /// </summary>
         /// <param name="assembly">Portable assembly package to be loaded.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.LoadPortableAssembly(assembly : PortableAssembly, ?loadPolicy, ?requireIdentical : bool) =
             loadAssembly requireIdentical loadPolicy assembly
 
@@ -75,6 +90,8 @@
         ///     Loads the type initializers from given dependency packages.
         /// </summary>
         /// <param name="assemblies">Portable assembly packages to be loaded.</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.LoadPortableAssemblies(assemblies : seq<PortableAssembly>, ?loadPolicy, ?requireIdentical : bool) =
             assemblies |> Seq.map (loadAssembly requireIdentical loadPolicy) |> Seq.toList
 
@@ -82,6 +99,8 @@
         ///     Receive dependencies as supplied by the remote assembly publisher
         /// </summary>
         /// <param name="publisher">The remote publisher</param>
+        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
+        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
         member __.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy, ?requireIdentical) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
             let requireIdentical = defaultArg requireIdentical _requireIdentical
@@ -104,7 +123,8 @@
     /// <param name="typeConverter">specifies a custom type name converter.</param>
     [<Sealed>]
     [<AutoSerializable(false)>]
-    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?requireIdentical, ?loadPolicy) =
+    type VagrantServer(?outpath : string, ?dynamicAssemblyProfiles : IDynamicAssemblyProfile list, 
+                                                ?typeConverter : ITypeNameConverter, ?requireIdentical, ?loadPolicy) =
 
         let outpath = 
             match outpath with

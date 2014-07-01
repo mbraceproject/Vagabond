@@ -8,8 +8,11 @@
     /// Specifies what assemblies are to be loaded 
     /// locally by the runtime if possible.
     type AssemblyLocalResolutionPolicy =
+        /// No assembly should be looked up by runtime
         | None = 0
+        /// Only signed assemblies should be looked up by runtime
         | StrongNamesOnly = 1
+        /// All assembly names can be looked up by runtime
         | All = 2
 
     /// unique identifier for assembly

@@ -100,8 +100,8 @@
             try Some <| Assembly.Load(fullName)
             with :? FileNotFoundException | :? FileLoadException -> None
 
-    /// computes a unique assembly identifier
 
+    /// computes a unique assembly identifier
 
     type AssemblyIdGenerator private () =
         static let idCache = new ConcurrentDictionary<Assembly, AssemblyId> ()

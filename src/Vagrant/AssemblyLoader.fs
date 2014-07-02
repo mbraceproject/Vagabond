@@ -7,13 +7,14 @@
 
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.AssemblyCache
 
 
     //
     // assembly loader protocol implementation
     //
 
-    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly * bool * AssemblyLocalResolutionPolicy, AssemblyLoadInfo>
+//    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly * bool * AssemblyLocalResolutionPolicy, AssemblyLoadInfo>
 
     /// need an assembly resolution handler when loading assemblies at runtime
 

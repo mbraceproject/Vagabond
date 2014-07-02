@@ -74,52 +74,52 @@
         | _ -> generationIndex, mkPortableAssembly includeImage None assembly
 
 
-    type AssemblyExporter = StatefulActor<Map<AssemblyId, int>, Assembly * bool, PortableAssembly>
-
-    let mkAssemblyExporter pickler (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
-        mkStatefulActor Map.empty (fun state (a,includeImg) -> exportAssembly pickler (stateF()) state includeImg a)
-
-
-
-
-
-    /// server-side protocol implementation
-
-    let assemblySubmitProtocol (exporter : AssemblyExporter) (receiver : IRemoteAssemblyReceiver) (assemblies : Assembly list) =
-
-        async {
-            let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
-
-            // Step 1. submit assembly identifiers to receiver; get back loaded state
-            let headers = assemblies |> List.map (fun a -> a.AssemblyId)
-            let! info = receiver.GetLoadedAssemblyInfo headers
-        
-            // Step 2. detect dependencies that require posting
-            let tryGetPortableAssembly (info : AssemblyLoadInfo) =
-                match info with
-                | LoadFault(id, (:?VagrantException as e)) -> raise e
-                | LoadFault(id, e) -> 
-                    raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
-                | NotLoaded id -> 
-                    Some <| exporter.PostAndReply(index.[id], true)
-                | Loaded _ -> None
-                | LoadedWithStaticIntialization(id, si) when si.IsPartial ->
-                    Some <| exporter.PostAndReply(index.[info.Id], false)
-                | LoadedWithStaticIntialization _ -> None
-                
-
-            let portableAssemblies = info |> List.choose tryGetPortableAssembly
-            let! loadResults = receiver.PushAssemblies portableAssemblies
-
-            // Step 3. check load results; if client replies with fault, fail.
-            let gatherErrors (info : AssemblyLoadInfo) =
-                match info with
-                | LoadFault(id, (:?VagrantException as e)) -> raise e
-                | LoadFault(id, _)
-                | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
-                | Loaded _ -> None
-                | LoadedWithStaticIntialization(_,info) -> Some info.Errors
-
-            let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat
-            return staticInitializationErrors
-        }
+//    type AssemblyExporter = StatefulActor<Map<AssemblyId, int>, Assembly * bool, PortableAssembly>
+//
+//    let mkAssemblyExporter pickler (stateF : unit -> DynamicAssemblyCompilerState) : AssemblyExporter = 
+//        mkStatefulActor Map.empty (fun state (a,includeImg) -> exportAssembly pickler (stateF()) state includeImg a)
+//
+//
+//
+//
+//
+//    /// server-side protocol implementation
+//
+//    let assemblySubmitProtocol (exporter : AssemblyExporter) (receiver : IRemoteAssemblyReceiver) (assemblies : Assembly list) =
+//
+//        async {
+//            let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
+//
+//            // Step 1. submit assembly identifiers to receiver; get back loaded state
+//            let headers = assemblies |> List.map (fun a -> a.AssemblyId)
+//            let! info = receiver.GetLoadedAssemblyInfo headers
+//        
+//            // Step 2. detect dependencies that require posting
+//            let tryGetPortableAssembly (info : AssemblyLoadInfo) =
+//                match info with
+//                | LoadFault(id, (:?VagrantException as e)) -> raise e
+//                | LoadFault(id, e) -> 
+//                    raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
+//                | NotLoaded id -> 
+//                    Some <| exporter.PostAndReply(index.[id], true)
+//                | Loaded _ -> None
+//                | LoadedWithStaticIntialization(id, si) when si.IsPartial ->
+//                    Some <| exporter.PostAndReply(index.[info.Id], false)
+//                | LoadedWithStaticIntialization _ -> None
+//                
+//
+//            let portableAssemblies = info |> List.choose tryGetPortableAssembly
+//            let! loadResults = receiver.PushAssemblies portableAssemblies
+//
+//            // Step 3. check load results; if client replies with fault, fail.
+//            let gatherErrors (info : AssemblyLoadInfo) =
+//                match info with
+//                | LoadFault(id, (:?VagrantException as e)) -> raise e
+//                | LoadFault(id, _)
+//                | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
+//                | Loaded _ -> None
+//                | LoadedWithStaticIntialization(_,info) -> Some info.Errors
+//
+//            let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat
+//            return staticInitializationErrors
+//        }

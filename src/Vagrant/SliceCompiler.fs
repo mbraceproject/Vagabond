@@ -123,8 +123,8 @@
         with e -> state, Error e
 
 
-    /// initializes a stateful compilation actor
-
-    let mkCompilationAgent (profiles : IDynamicAssemblyProfile list) (outpath : string) =
-        let init = initCompilerState profiles outpath 
-        mkStatefulActor init compileDynamicAssemblySlices
+//    /// initializes a stateful compilation actor
+//
+//    let mkCompilationAgent (profiles : IDynamicAssemblyProfile list) (outpath : string) =
+//        let init = initCompilerState profiles outpath 
+//        mkStatefulActor init compileDynamicAssemblySlices

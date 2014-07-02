@@ -93,6 +93,9 @@
                         | None -> System.Reflection.Assembly.Load(bytes)
                         | Some symbols -> System.Reflection.Assembly.Load(bytes, symbols)
 
+                    // manually set assembly id for loaded assembly
+                    AssemblyIdGenerator.SetAssemblyId(assembly, pa.Id)
+
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
                         raise <| VagrantException(msg)

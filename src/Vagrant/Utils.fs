@@ -102,23 +102,29 @@
 
     /// computes a unique assembly identifier
 
-    let computeAssemblyId : Assembly -> AssemblyId =
-        let hashAlgorithm = SHA256Managed.Create()
-        let hostId = Guid.NewGuid().ToByteArray()
-        let compute (assembly : Assembly) =
+
+    type AssemblyIdGenerator private () =
+        static let idCache = new ConcurrentDictionary<Assembly, AssemblyId> ()
+        static let hashAlgorithm = SHA256Managed.Create()
+        static let hostId = Guid.NewGuid().ToByteArray()
+
+        static let computeHash (assembly : Assembly) =
             let hash =
                 if assembly.IsDynamic then
                     let this = BitConverter.GetBytes(assembly.GetHashCode())
                     Array.append hostId this
-                else
+                elif File.Exists(assembly.Location) then
                     use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
                     hashAlgorithm.ComputeHash(fs)
+                else
+                    raise <| new VagrantException(sprintf "could not resolve location for '%O'." assembly)
 
             { FullName = assembly.FullName ; ImageHash = hash }
 
-        concurrentMemoize compute
+        static member GetAssemblyId (assembly : Assembly) = idCache.GetOrAdd(assembly, computeHash)
+        static member SetAssemblyId (assembly : Assembly, id : AssemblyId) = idCache.TryAdd(assembly, id) |> ignore
 
-    type Assembly with member a.AssemblyId = computeAssemblyId a
+    type Assembly with member a.AssemblyId = AssemblyIdGenerator.GetAssemblyId a
 
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 

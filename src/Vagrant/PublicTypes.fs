@@ -7,13 +7,16 @@
 
     /// Specifies what assemblies are to be loaded 
     /// locally by the runtime if possible.
-    type AssemblyLocalResolutionPolicy =
+    type AssemblyResolutionPolicy =
         /// No assembly should be looked up by runtime
-        | None = 0
+        | NoResolution = 1
         /// Only signed assemblies should be looked up by runtime
-        | StrongNamesOnly = 1
+        | ResolveStrongNames = 2
         /// All assembly names can be looked up by runtime
-        | All = 2
+        | ResolveAll = 2
+        /// If assembly is to be resolved locally, then it should have identical SHA256 hashcode.
+        | RequireIdentical = 4
+            
 
     /// unique identifier for assembly
     [<StructuralComparison>]

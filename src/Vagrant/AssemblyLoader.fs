@@ -14,6 +14,8 @@
     // assembly loader protocol implementation
     //
 
+    type AssemblyLoadState = Map<AssemblyId, (* isLoadedInAppDomain *) bool * AssemblyLoadInfo>
+
 //    type AssemblyLoader = StatefulActor<Map<AssemblyId, AssemblyLoadInfo>, PortableAssembly * bool * AssemblyLocalResolutionPolicy, AssemblyLoadInfo>
 
     /// need an assembly resolution handler when loading assemblies at runtime
@@ -24,14 +26,18 @@
 
     /// portable assembly load protocol implementation
 
-    let loadAssembly (pickler : BasePickler) (isLocalDynamicSlice : AssemblyId -> bool)
-                        (state : Map<AssemblyId, AssemblyLoadInfo>) 
-                        (loadPolicy : AssemblyLocalResolutionPolicy) (requireIdenticalAssembly : bool)
-                        (pa : PortableAssembly) =
+//    let loadAssembly (pickler : BasePickler) (isLocalDynamicSlice : AssemblyId -> bool)
+//                        (state : Map<AssemblyId, AssemblyLoadInfo>) 
+//                        (loadPolicy : AssemblyLocalResolutionPolicy) (requireIdenticalAssembly : bool)
+//                        (pa : PortableAssembly) =
+    let loadAssembly (pickler : BasePickler) (cacheDir : string) 
+                        (isLocalDynamicAssemblySlice : AssemblyId -> bool)
+                        (loadState : AssemblyLoadState) (policy : AssemblyResolutionPolicy)
+                        (cacheOnly : bool) (pa : PortableAssembly) =
 
         // return operators
-        let success info = state.Add(pa.Id, info), info
-        let error e = state, LoadFault(pa.Id, e)
+        let success info = loadState.Add(pa.Id, info), info
+        let error e = loadState, LoadFault(pa.Id, e)
 
         // loads the static initializer for given portable assembly
         // requires the assembly to be already loaded in the current AppDomain
@@ -63,11 +69,17 @@
 
 
         let loadAssembly (pa : PortableAssembly) =
+
             let tryLoadLocal =
-                match loadPolicy with
-                | AssemblyLocalResolutionPolicy.All -> true
-                | AssemblyLocalResolutionPolicy.StrongNamesOnly when pa.Id.IsStrongAssembly -> true
+                match policy with
+                // this is wrong should do .HasFlag
+                | AssemblyResolutionPolicy.ResolveAll -> true
+                | AssemblyResolutionPolicy.ResolveStrongNames when pa.Id.IsStrongAssembly -> true
                 | _ -> false
+
+            let cacheEntry = CachePath.Resolve cacheDir pa.Id
+            match getAssemblyCacheState pickler cacheEntry pa.Id with
+            | Loaded
 
             // try load from AppDomain or machine
             let locallyLoaded =

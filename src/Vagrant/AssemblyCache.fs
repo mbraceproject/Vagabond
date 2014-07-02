@@ -47,16 +47,18 @@
 
 
     let getAssemblyCacheState (pickler : BasePickler) (path : CachePath) (id : AssemblyId) =
+        try
+            if not <| File.Exists path.Assembly then NotLoaded id
+            else
+                match tryReadMetadata pickler path with
+                | Some info when File.Exists path.StaticInitializer -> LoadedWithStaticIntialization(id, info)
+                | Some _ ->
+                    let msg = sprintf "cache error: missing static initialization file for assembly '%s'" id.FullName
+                    LoadFault(id, VagrantException(msg))
 
-        if not <| File.Exists path.Assembly then NotLoaded id
-        else
-            match tryReadMetadata pickler path with
-            | Some info when File.Exists path.StaticInitializer -> LoadedWithStaticIntialization(id, info)
-            | Some _ ->
-                let msg = sprintf "cache error: missing static initialization file for assembly '%s'" id.FullName
-                LoadFault(id, VagrantException(msg))
+                | None -> Loaded id
 
-            | None -> Loaded id
+        with e -> LoadFault(id, e)
 
     /// write new static initializer to cache
     let writeStaticInitializer (pickler : BasePickler) (path : CachePath) (previous : StaticInitializationInfo option) (init : StaticInitializer) =
@@ -70,6 +72,15 @@
 
     /// write portable assembly to cache
     let cachePortableAssembly (pickler : BasePickler) (path : CachePath) (pa : PortableAssembly) =
+        match getAssemblyCacheState pickler path pa.Id with
+        | Loaded _ -> ()
+        | LoadedWithStaticIntialization(id, info) ->
+            match pa.StaticInitializer with
+            | Some init -> writeStaticInitializer pickler path (Some info) init |> ignore
+            | None -> ()
+
+        | _ ->
+
         match pa.Image with
         | None -> invalidOp <| sprintf "Portable assembly '%O' lacking image." pa.Id
         | Some img ->

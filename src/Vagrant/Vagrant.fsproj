@@ -61,9 +61,10 @@
     <Compile Include="AssemblyParser.fs" />
     <Compile Include="DependencyAnalysis.fs" />
     <Compile Include="SliceCompiler.fs" />
-    <Compile Include="AssemblyExporter.fs" />
     <Compile Include="AssemblyCache.fs" />
+    <Compile Include="AssemblyExporter.fs" />
     <Compile Include="AssemblyLoader.fs" />
+    <Compile Include="Daemon.fs" />
     <Compile Include="Vagrant.fs" />
     <Compile Include="Extras.fs" />
     <None Include="packages.config" />

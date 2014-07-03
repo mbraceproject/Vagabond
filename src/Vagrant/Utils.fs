@@ -164,45 +164,62 @@
 
         aux [] g
 
-
-    /// A stateful agent implementation with readable inner state
-
-    type StatefulActor<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
-        
-        let stateRef = ref init
-
-        let cts = new System.Threading.CancellationTokenSource()
-
-        let rec behaviour (state : 'State) (mailbox : MailboxProcessor<'Input * AsyncReplyChannel<Exn<'Output>>>) =
-            async {
-                let! input, rc = mailbox.Receive()
-
-                let state, reply = 
-                    try 
-                        let state, output = f state input
-                        state, Success output
-                    with e ->
-                        state, Error e
-
-                // published state must be updated *before* replying
-                stateRef := state
-                rc.Reply reply
-
-                return! behaviour state mailbox
-            }
-
-        let agent = MailboxProcessor.Start (behaviour init, cts.Token)
-
-        member __.CurrentState = !stateRef
-        member __.PostAndReply input = agent.PostAndReply(fun ch -> input,ch).Value
-
-        member __.Dispose () = cts.Cancel()
-
-        interface IDisposable with
-            member __.Dispose () = cts.Cancel()
+    type AssemblyLoadInfo with
+        static member SetIsLoaded (aI : AssemblyLoadInfo) =
+            match aI with
+            | Loaded(id, false, info) -> Loaded(id, true, info)
+            | _ -> aI
 
 
-    let mkStatefulActor (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulActor<_,_,_>(init, f)
+
+    type ReplyChannel<'T> internal (rc : AsyncReplyChannel<Exn<'T>>) =
+        member __.Reply (t : 'T) = rc.Reply <| Success t
+        member __.Reply (t : Exn<'T>) = rc.Reply t
+        member __.ReplyWithError (e : exn) = rc.Reply <| Error e
+
+    and MailboxProcessor<'T> with
+        member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) =
+            m.PostAndReply(fun ch -> msgB (new ReplyChannel<_>(ch))).Value
+
+
+//    /// A stateful agent implementation with readable inner state
+//
+//    type StatefulActor<'State, 'Input, 'Output>(init : 'State, f : 'State -> 'Input -> 'State * 'Output) =
+//        
+//        let stateRef = ref init
+//
+//        let cts = new System.Threading.CancellationTokenSource()
+//
+//        let rec behaviour (state : 'State) (mailbox : MailboxProcessor<'Input * AsyncReplyChannel<Exn<'Output>>>) =
+//            async {
+//                let! input, rc = mailbox.Receive()
+//
+//                let state, reply = 
+//                    try 
+//                        let state, output = f state input
+//                        state, Success output
+//                    with e ->
+//                        state, Error e
+//
+//                // published state must be updated *before* replying
+//                stateRef := state
+//                rc.Reply reply
+//
+//                return! behaviour state mailbox
+//            }
+//
+//        let agent = MailboxProcessor.Start (behaviour init, cts.Token)
+//
+//        member __.CurrentState = !stateRef
+//        member __.PostAndReply input = agent.PostAndReply(fun ch -> input,ch).Value
+//
+//        member __.Dispose () = cts.Cancel()
+//
+//        interface IDisposable with
+//            member __.Dispose () = cts.Cancel()
+//
+//
+//    let mkStatefulActor (init : 'S) (f : 'S -> 'I -> 'S * 'O) = new StatefulActor<_,_,_>(init, f)
 
 
 

@@ -7,37 +7,38 @@
     open Nessos.FsPickler
 
     open Nessos.Vagrant
-    open Nessos.Vagrant.SliceCompilerTypes
     open Nessos.Vagrant.Utils
+    open Nessos.Vagrant.SliceCompilerTypes
+    open Nessos.Vagrant.AssemblyStore
 
+    type ExporterState = Map<AssemblyId, int>
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
-    let mkPortableAssembly includeImage staticInitializer (assembly : Assembly) =
-        let image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
-        let symbols =
-            if includeImage then
-                // TODO : mdb?
-                let symbolFile = Path.ChangeExtension(assembly.Location, "pdb")
-                if File.Exists symbolFile then
-                    Some <| File.ReadAllBytes symbolFile
-                else
-                    None
-            else
-                None
-                
-        {
-            Id = assembly.AssemblyId
-            Image = image
-            Symbols = symbols
-            StaticInitializer = staticInitializer
-        }
+//    let mkPortableAssembly includeImage staticInitializer (assembly : Assembly) =
+//        let image = if includeImage then Some <| File.ReadAllBytes assembly.Location else None
+//        let symbols =
+//            if includeImage then
+//                // TODO : mdb?
+//                let symbolFile = Path.ChangeExtension(assembly.Location, "pdb")
+//                if File.Exists symbolFile then
+//                    Some <| File.ReadAllBytes symbolFile
+//                else
+//                    None
+//            else
+//                None
+//                
+//        {
+//            Id = assembly.AssemblyId
+//            Image = image
+//            Symbols = symbols
+//            StaticInitializer = staticInitializer
+//        }
 
     /// export a portable assembly based on given compiler state and arguments
 
-    let exportAssembly (pickler : BasePickler) (compilerState : DynamicAssemblyCompilerState) 
-                        (generationIndex : Map<AssemblyId, int>) (includeImage : bool) (assembly : Assembly) =
-
-        let id = assembly.AssemblyId
+    let exportAssembly (pickler : BasePickler) (store : AssemblyStore)
+                        (compilerState : DynamicAssemblyCompilerState) (generationIndex : ExporterState) 
+                        (includeImage : bool) (id : AssemblyId) =
 
         match compilerState.TryFindSliceInfo id.FullName with
         | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
@@ -68,10 +69,18 @@
                 }
 
             let generationIndex = generationIndex.Add(id, generation)
-            
-            generationIndex, mkPortableAssembly includeImage (Some staticInitializer) assembly
+            let pa = store.CreatePortableAssembly(sliceInfo.Assembly, includeImage = includeImage)
+            generationIndex, { pa with StaticInitializer = Some staticInitializer }
 
-        | _ -> generationIndex, mkPortableAssembly includeImage None assembly
+        | Some(_, sliceInfo) -> generationIndex, store.CreatePortableAssembly(sliceInfo.Assembly, includeImage = includeImage)
+
+        | None ->
+            match tryGetLoadedAssembly id.FullName with
+            | Some assembly -> generationIndex, store.CreatePortableAssembly(assembly, includeImage = includeImage)
+            | None ->
+                match store.TryGetCachedAssemblyInfo id with
+                | Some info -> generationIndex, store.CreatePortableAssembly(info, includeImage = includeImage)
+                | None -> invalidOp "could not find assembly location."
 
 
 //    type AssemblyExporter = StatefulActor<Map<AssemblyId, int>, Assembly * bool, PortableAssembly>

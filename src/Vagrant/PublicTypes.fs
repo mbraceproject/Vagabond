@@ -7,15 +7,16 @@
 
     /// Specifies what assemblies are to be loaded 
     /// locally by the runtime if possible.
-    type AssemblyResolutionPolicy =
-        /// No assembly should be looked up by runtime
-        | NoResolution = 1
+    type AssemblyLoadPolicy =
+        | None = 0
         /// Only signed assemblies should be looked up by runtime
-        | ResolveStrongNames = 2
+        | ResolveStrongNames = 1
         /// All assembly names can be looked up by runtime
         | ResolveAll = 2
         /// If assembly is to be resolved locally, then it should have identical SHA256 hashcode.
         | RequireIdentical = 4
+        /// Assemblies are to be cached only, not loaded in AppDomain
+        | CacheOnly = 8
             
 
     /// unique identifier for assembly
@@ -86,15 +87,13 @@
     type AssemblyLoadInfo =
         | NotLoaded of AssemblyId
         | LoadFault of AssemblyId * exn
-        | Loaded of AssemblyId
-        | LoadedWithStaticIntialization of AssemblyId * StaticInitializationInfo
+        | Loaded of AssemblyId * isAppDomainLoaded:bool * staticInitialization:StaticInitializationInfo option
     with
         member info.Id = 
             match info with
             | NotLoaded id
             | LoadFault (id,_)
-            | Loaded id -> id
-            | LoadedWithStaticIntialization(id,_) -> id
+            | Loaded (id,_,_) -> id
 
     /// Defines an abstract assembly load target; to be used by VagrantServer
     type IRemoteAssemblyReceiver =

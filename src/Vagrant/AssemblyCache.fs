@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.AssemblyStore
+﻿module internal Nessos.Vagrant.AssemblyCache
 
     open System
     open System.IO
@@ -9,7 +9,7 @@
     open Nessos.Vagrant
     open Nessos.Vagrant.Utils
 
-    type StoredAssemblyInfo =
+    type CachedAssemblyInfo =
         {
             Id : AssemblyId
             Location : string
@@ -17,7 +17,7 @@
             StaticInitializer : (string * StaticInitializationInfo) option
         }
 
-    type AssemblyStore (cacheDirectory : string, pickler : BasePickler) =
+    type AssemblyCache (cacheDirectory : string, pickler : BasePickler) =
         do
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)
@@ -91,23 +91,26 @@
             else
                 None
 
+        member __.IsCachedAssembly(id : AssemblyId) =
+            __.TryGetCachedAssemblyInfo(id).IsSome
+
         member __.GetStaticAssemblyInfo(assembly : Assembly) =
             if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
                 invalidArg assembly.FullName "assembly is dynamic or not persistable."
             else
-                getPersistedAssemblyInfo assembly.Location assembly.AssemblyId
+                getPersistedAssemblyInfo assembly.Location assembly.AssemblyIdss
 
-        member __.CreatePortableAssembly(pai : StoredAssemblyInfo, includeImage : bool) =
+        member __.CreatePortableAssembly(cai : CachedAssemblyInfo, includeImage : bool) =
 
             let image =
-                if includeImage then Some <| File.ReadAllBytes pai.Location
+                if includeImage then Some <| File.ReadAllBytes cai.Location
                 else
                     None
 
-            let symbols = pai.Symbols |> Option.map File.ReadAllBytes
+            let symbols = cai.Symbols |> Option.map File.ReadAllBytes
 
             let staticInit =
-                match pai.StaticInitializer with
+                match cai.StaticInitializer with
                 | None -> None
                 | Some(path, info) ->
                     let data = File.ReadAllBytes path
@@ -118,7 +121,7 @@
                     }
 
             {
-                Id = pai.Id
+                Id = cai.Id
                 Image = image
                 Symbols = symbols
                 StaticInitializer = staticInit
@@ -164,11 +167,12 @@
                     { Id = pa.Id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = staticInit }
 
 
-        member __.Cache(assembly : Assembly) =
+        member __.Cache(assembly : Assembly, ?asId : AssemblyId) =
             let info = __.GetStaticAssemblyInfo assembly
-            let cachePath = getCachedAssemblyPath info.Id
+            let id = defaultArg asId info.Id
+            let cachePath = getCachedAssemblyPath id
             if File.Exists cachePath then
-                getPersistedAssemblyInfo cachePath info.Id
+                getPersistedAssemblyInfo cachePath id
             else
                 File.Copy(assembly.Location, cachePath)
                 let symbols =
@@ -179,7 +183,7 @@
                         File.Copy(s, symFile)
                         Some symFile
 
-                { Id = info.Id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = None }
+                { Id = id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = None }
                     
 //                    match pa.StaticInitializer, info.StaticInitializer with
 //                    | None, init -> init

@@ -171,3 +171,78 @@
             cacheActor.CurrentState 
             |> Seq.map(function (KeyValue(_,(_,info))) -> info) 
             |> Seq.toList
+
+//
+//
+//    /// server-side protocol implementation
+//
+//    let assemblySubmitProtocol (exporter : AssemblyExporter) (receiver : IRemoteAssemblyReceiver) (assemblies : Assembly list) =
+//
+//        async {
+//            let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
+//
+//            // Step 1. submit assembly identifiers to receiver; get back loaded state
+//            let headers = assemblies |> List.map (fun a -> a.AssemblyId)
+//            let! info = receiver.GetLoadedAssemblyInfo headers
+//        
+//            // Step 2. detect dependencies that require posting
+//            let tryGetPortableAssembly (info : AssemblyLoadInfo) =
+//                match info with
+//                | LoadFault(id, (:?VagrantException as e)) -> raise e
+//                | LoadFault(id, e) -> 
+//                    raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
+//                | NotLoaded id -> 
+//                    Some <| exporter.PostAndReply(index.[id], true)
+//                | Loaded _ -> None
+//                | LoadedWithStaticIntialization(id, si) when si.IsPartial ->
+//                    Some <| exporter.PostAndReply(index.[info.Id], false)
+//                | LoadedWithStaticIntialization _ -> None
+//                
+//
+//            let portableAssemblies = info |> List.choose tryGetPortableAssembly
+//            let! loadResults = receiver.PushAssemblies portableAssemblies
+//
+//            // Step 3. check load results; if client replies with fault, fail.
+//            let gatherErrors (info : AssemblyLoadInfo) =
+//                match info with
+//                | LoadFault(id, (:?VagrantException as e)) -> raise e
+//                | LoadFault(id, _)
+//                | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
+//                | Loaded _ -> None
+//                | LoadedWithStaticIntialization(_,info) -> Some info.Errors
+//
+//            let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat
+//            return staticInitializationErrors
+//        }
+
+
+
+//    /// assembly receive protocol on the client side
+//    let assemblyReceiveProtocol (loader : AssemblyLoader) requireIdentical loadPolicy (publisher : IRemoteAssemblyPublisher) = async {
+//        // step 1. download dependencies required by publisher
+//        let! dependencies = publisher.GetRequiredAssemblyInfo()
+//
+//        // step 2. resolve dependencies that are missing from client
+//        let tryCheckLoadStatus (id : AssemblyId) =
+//            match getAssemblyLoadInfo loader requireIdentical loadPolicy id with
+//            | NotLoaded id
+//            | LoadFault (id,_) -> Some id
+//            | Loaded _ -> None
+//            | LoadedWithStaticIntialization _ -> None
+//
+//        let missing = dependencies |> List.choose tryCheckLoadStatus
+//
+//        if missing.Length > 0 then
+//            // step 3. download portable assemblies for missing dependencies
+//            let! assemblies = publisher.PullAssemblies missing
+//            let loadResults = assemblies |> List.map (fun a -> loader.PostAndReply(a, requireIdentical, loadPolicy))
+//
+//            let checkLoadResult (info : AssemblyLoadInfo) =
+//                match info with
+//                | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
+//                | LoadFault(_, (:? VagrantException as e)) -> raise e
+//                | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
+//                | Loaded _ | LoadedWithStaticIntialization _ -> ()
+//
+//            List.iter checkLoadResult loadResults
+//    }

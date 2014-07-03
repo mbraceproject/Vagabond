@@ -122,9 +122,15 @@
             { FullName = assembly.FullName ; ImageHash = hash }
 
         static member GetAssemblyId (assembly : Assembly) = idCache.GetOrAdd(assembly, computeHash)
-        static member SetAssemblyId (assembly : Assembly, id : AssemblyId) = idCache.TryAdd(assembly, id) |> ignore
 
     type Assembly with member a.AssemblyId = AssemblyIdGenerator.GetAssemblyId a
+
+    let canBeLocallyResolved (policy : AssemblyLoadPolicy) (id : AssemblyId) =
+        if policy.HasFlag AssemblyLoadPolicy.ResolveAll then true
+        elif policy.HasFlag AssemblyLoadPolicy.ResolveStrongNames then 
+            id.IsStrongAssembly
+        else
+            false
 
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
@@ -180,6 +186,22 @@
     and MailboxProcessor<'T> with
         member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) =
             m.PostAndReply(fun ch -> msgB (new ReplyChannel<_>(ch))).Value
+
+        member m.PostAndAsyncReply (msgB : ReplyChannel<'R> -> 'T) = async {
+            let! result = m.PostAndAsyncReply(fun ch -> msgB(new ReplyChannel<_>(ch)))
+            return result.Value
+        }
+
+
+    and MailboxProxessor =
+        static member Stateful (init, processF : 'State -> 'Message -> Async<'State>, ?ct) =
+            let rec loop state (self : MailboxProcessor<'Message>) = async {
+                let! message = self.Receive()
+                let! state' = processF state message
+                return! loop state' self
+            }
+
+            new MailboxProcessor<_>(loop init, ?cancellationToken = ct)
 
 
 //    /// A stateful agent implementation with readable inner state

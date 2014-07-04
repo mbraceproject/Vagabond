@@ -39,6 +39,7 @@
         /// FsPickler type name converter for use with other formats
         member __.TypeConverter = daemon.TypeNameConverter
 
+        /// Default load policy 
         member __.DefaultLoadPolicy
             with get () = _loadPolicy
             and set p = _loadPolicy <- p
@@ -88,24 +89,40 @@
 
             remapDependencies daemon.CompilerState dependencies
 
+        /// <summary>
+        ///     Checks if assembly id is a locally generated dynamic assembly slice.
+        /// </summary>
+        /// <param name="id">input assembly id.</param>
         member __.IsLocalDynamicAssemblySlice(id : AssemblyId) =
-            isLocalDynamicAssemblySlice daemon.CompilerState id
+            daemon.CompilerState.IsLocalDynamicAssemblySlice id
 
         /// <summary>
         ///     Returns the dynamic assembly slice corresponding to the given type, if exists.
         /// </summary>
-        /// <param name="t"></param>
+        /// <param name="t">input type.</param>
         member __.TryGetSliceOfType(t : Type) =
             let t = if t.IsGenericType && not t.IsGenericTypeDefinition then t.GetGenericTypeDefinition() else t
             match daemon.CompilerState.DynamicAssemblies.TryFind t.Assembly.FullName with
             | None -> None
             | Some dyn -> dyn.TryGetSlice t |> Option.map (fun s -> s.Assembly)
 
-
+        
+        /// <summary>
+        ///     Creates a portable assembly out of a given assembly id.
+        /// </summary>
+        /// <param name="id">assembly id</param>
+        /// <param name="includeAssemblyImage">include assembly image in portable assembly.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
         member __.CreatePortableAssembly(id : AssemblyId, includeAssemblyImage : bool, ?loadPolicy) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
             daemon.PostAndReply(fun ch -> GetPortableAssembly(loadPolicy, includeAssemblyImage, id, ch))
 
+        /// <summary>
+        ///     Creates portable assemblies out of given assembly ids.
+        /// </summary>
+        /// <param name="ids"></param>
+        /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.CreatePortableAssemblies(ids : seq<AssemblyId>, includeAssemblyImage : bool, ?loadPolicy) =
             Seq.toList ids
             |> List.map (fun id -> __.CreatePortableAssembly(id, includeAssemblyImage, ?loadPolicy = loadPolicy))
@@ -120,19 +137,38 @@
             __.CreatePortableAssembly(assembly.AssemblyId, includeAssemblyImage)
 
 
+        /// <summary>
+        ///     Gets the local assembly load info for given assembly id.
+        /// </summary>
+        /// <param name="id">Given assembly id.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.GetAssemblyLoadInfo(id : AssemblyId, ?loadPolicy) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
             daemon.PostAndReply(fun ch -> GetAssemblyLoadInfo(loadPolicy, id, ch))
 
+        /// <summary>
+        ///     Gets the local assembly load info for given assembly ids.
+        /// </summary>
+        /// <param name="ids">Given assembly ids.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy) =
             Seq.toList ids
             |> List.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
 
-
+        /// <summary>
+        ///     Loads portable assembly to the local machine.
+        /// </summary>
+        /// <param name="pa">Input portable assembly.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.LoadPortableAssembly(pa : PortableAssembly, ?loadPolicy) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
             daemon.PostAndReply(fun ch -> LoadAssembly(loadPolicy, pa, ch))
 
+        /// <summary>
+        ///     Loads portable assemblies to the local machine.
+        /// </summary>
+        /// <param name="pas">Input portable assemblies.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.LoadPortableAssemblies(pas : seq<PortableAssembly>, ?loadPolicy) =
             Seq.toList pas
             |> List.map (fun pa -> __.LoadPortableAssembly(pa, ?loadPolicy = loadPolicy))

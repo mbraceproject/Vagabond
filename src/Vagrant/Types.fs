@@ -32,6 +32,7 @@
     with
         member id.GetName() = new AssemblyName(id.FullName)
         member id.IsStrongAssembly = let pkt = id.GetName().GetPublicKeyToken() in pkt <> null && pkt <> [||]
+
         override id.ToString() = id.FullName
 
     /// static initialization data for portable assembly
@@ -69,9 +70,6 @@
         member pa.GetName() = pa.Id.GetName()
         override id.ToString() = id.FullName
 
-        static member Empty (id : AssemblyId) =
-            { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
-
     /// Static initialization metadata
     [<NoEquality; NoComparison>] 
     type StaticInitializationInfo =
@@ -97,30 +95,6 @@
             | NotLoaded id
             | LoadFault (id,_)
             | Loaded (id,_,_) -> id
-
-    /// customizes slicing behaviour on given dynamic assembly
-    type IDynamicAssemblyProfile =
-
-        /// identifies dynamic assemblies that match this profile
-        abstract IsMatch : Assembly -> bool
-
-        /// a short description of the profile
-        abstract Description : string
-        
-        /// Specifies if type is to be included in every iteration of the slice
-        abstract AlwaysIncludeType: Type -> bool
-
-        /// Specifies if type is to be erased from slices
-        abstract EraseType : Type -> bool
-
-        /// Specifies if static constructor is to be erased
-        abstract EraseStaticConstructor : Type -> bool
-
-        /// Specifies if static field is to be pickled
-        abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
-
-        /// Decides if given slices requires fresh evaluation of assemblies
-        abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
 
 
     type VagrantException (message : string, ?inner : exn) =

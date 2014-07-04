@@ -81,7 +81,7 @@
                 // finally, attempt to resolve from AppDomain
 
                 let localAssembly =
-                    if canBeLocallyResolved policy id then tryLoadAssembly id.FullName
+                    if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
                     else tryGetLoadedAssembly id.FullName
 
                 match localAssembly with
@@ -99,7 +99,7 @@
 
 
     //
-    // assembly loader protocol implementation
+    // assembly import protocol implementation
     //
 
     let importAssembly (state : VagrantState) (policy : AssemblyLoadPolicy) (pa : PortableAssembly) =
@@ -142,7 +142,7 @@
 
             // Attempt resolving locally
             let localAssembly =
-                if canBeLocallyResolved policy pa.Id then
+                if pa.Id.CanBeResolvedLocally policy then
                     tryLoadAssembly pa.FullName
                 else
                     tryGetLoadedAssembly pa.FullName
@@ -190,7 +190,7 @@
         try
             match state.AssemblyImportState.TryFind pa.Id with
             // dynamic assembly slice generated in local process
-            | None when isLocalDynamicAssemblySlice state.CompilerState pa.Id -> success <| Loaded (pa.Id, true, None)
+            | None when state.CompilerState.IsLocalDynamicAssemblySlice pa.Id -> success <| Loaded (pa.Id, true, None)
             // assembly not registered in state, attempt to load now
             | None -> loadAssembly pa
             // assembly loaded with static initializers, attempt to update

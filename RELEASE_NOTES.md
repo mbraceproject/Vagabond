@@ -1,6 +1,7 @@
-#### 0.1.5, 27 Jun 2014
+#### 0.2.0, 27 Jun 2014
 * Update FsPickler version
-* Move dependency resolution to FsPickler functionality.
+* Change dependency resolution method.
+* Simplify public API.
 
 #### 0.1.4, 26 Jun 2014
 * Bug fix in transitive dependency resolution.

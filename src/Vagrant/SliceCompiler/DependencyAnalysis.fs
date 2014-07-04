@@ -2,15 +2,11 @@
 
     open System
     open System.IO
-    open System.Collections
     open System.Collections.Generic
-    open System.Runtime.Serialization
-    open System.Runtime.CompilerServices
     open System.Reflection
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant.Utils
     open Nessos.Vagrant.AssemblyParser
     open Nessos.Vagrant.SliceCompilerTypes
 

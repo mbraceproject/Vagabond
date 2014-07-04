@@ -12,7 +12,6 @@
 
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.SliceCompilerTypes
-    open Nessos.Vagrant.Serialization
     open Nessos.Vagrant.AssemblyParser
     open Nessos.Vagrant.DependencyAnalysis
 
@@ -96,8 +95,6 @@
 
         sliceInfo, state
 
-
-
     /// compiles a collection of assemblies
 
     let compileDynamicAssemblySlices (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
@@ -121,10 +118,3 @@
             List.fold compileSlice (state, Success []) parsedDynamicAssemblies
 
         with e -> state, Error e
-
-
-//    /// initializes a stateful compilation actor
-//
-//    let mkCompilationAgent (profiles : IDynamicAssemblyProfile list) (outpath : string) =
-//        let init = initCompilerState profiles outpath 
-//        mkStatefulActor init compileDynamicAssemblySlices

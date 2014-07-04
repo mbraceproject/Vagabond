@@ -41,6 +41,24 @@
             | Some (InNoSlice | InAllSlices) -> raise <| new VagrantException(sprintf "type '%O' does not correspond to a slice." t)
             | Some (InSpecificSlice s) -> Some s
 
+        member s.HasFreshTypes =
+            let currentTypeCount =
+                if not runsOnMono.Value then
+                    s.DynamicAssembly.GetTypes().Length
+                else
+                    // mono needs different approach since Assembly.GetTypes() only returns top-level types
+                    let count = ref 0
+                    let rec countTypes (types : Type []) =
+                        count := !count + types.Length
+                        for t in types do
+                            countTypes <| t.GetNestedTypes(BindingFlags.NonPublic ||| BindingFlags.Public)
+
+                    countTypes <| s.DynamicAssembly.GetTypes()
+                    !count
+
+            let compiledTypeCount = s.TypeIndex.Count
+            currentTypeCount > compiledTypeCount
+
         static member Init(a : Assembly, profile : IDynamicAssemblyProfile) =
             {
                 DynamicAssembly = a
@@ -70,3 +88,6 @@
                 | None -> None
                 | Some info -> info.GeneratedSlices.TryFind sliceId |> Option.map (fun slice -> info, slice)
             | None -> None
+
+        member s.IsLocalDynamicAssemblySlice (id : AssemblyId) = 
+            s.TryGetDynamicAssemblyId(id.FullName).IsSome

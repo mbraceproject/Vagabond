@@ -55,7 +55,7 @@ Target "AssemblyInfo" (fun _ ->
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
 
-  let vagrantFS = "src/Vagrant/assemblyInfo.fs"
+  let vagrantFS = "src/Vagrant/AssemblyInfo.fs"
   CreateFSharpAssemblyInfo vagrantFS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 

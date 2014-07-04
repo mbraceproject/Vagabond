@@ -52,18 +52,18 @@
   <Import Project="$(FSharpTargetsPath)" />
   <Import Project="$(SolutionDir)\.nuget\NuGet.targets" Condition="Exists('$(SolutionDir)\.nuget\NuGet.targets')" />
   <ItemGroup>
-    <Compile Include="assemblyInfo.fs" />
-    <Compile Include="PublicTypes.fs" />
-    <Compile Include="AssemblyProfiles.fs" />
-    <Compile Include="SliceCompilerTypes.fs" />
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
-    <Compile Include="Serialization.fs" />
-    <Compile Include="AssemblyParser.fs" />
-    <Compile Include="DependencyAnalysis.fs" />
-    <Compile Include="SliceCompiler.fs" />
-    <Compile Include="AssemblyCache.fs" />
-    <Compile Include="AssemblyManagement.fs" />
-    <Compile Include="VagrantDaemon.fs" />
+    <Compile Include="SliceCompiler\DynamicAssemblyProfile.fs" />
+    <Compile Include="SliceCompiler\SliceCompilerTypes.fs" />
+    <Compile Include="SliceCompiler\Serialization.fs" />
+    <Compile Include="SliceCompiler\AssemblyParser.fs" />
+    <Compile Include="SliceCompiler\DependencyAnalysis.fs" />
+    <Compile Include="SliceCompiler\SliceCompiler.fs" />
+    <Compile Include="AssemblyManagement\AssemblyCache.fs" />
+    <Compile Include="AssemblyManagement\AssemblyManagement.fs" />
+    <Compile Include="AssemblyManagement\Daemon.fs" />
     <Compile Include="Vagrant.fs" />
     <Compile Include="Extras.fs" />
     <None Include="packages.config" />

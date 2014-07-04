@@ -20,7 +20,7 @@
         
         let endpoint = defaultArg endpoint defaultConnectionString
 
-        static let vagrant = new VagrantClient()
+        static let vagrant = new Vagrant()
         
         let rec serverLoop (inbox : MailboxProcessor<ServerMsg>) = async {
             let! msg = inbox.Receive()
@@ -59,7 +59,7 @@
 
     type ThunkClient internal (?serverEndPoint : string, ?proc : Process) =
 
-        static let vagrant = new VagrantServer()
+        static let vagrant = new Vagrant()
         static do TcpActor.SetDefaultPickler(vagrant.Pickler)
 
         let serverEndPoint = defaultArg serverEndPoint defaultConnectionString

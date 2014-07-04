@@ -109,9 +109,6 @@
             let state = { state with AssemblyImportState = state.AssemblyImportState.Add(pa.Id, info) }
             state, info
 
-        let isLocalDynamicAssemblySlice (id : AssemblyId) = 
-            state.CompilerState.TryGetDynamicAssemblyId(id.FullName).IsSome
-
         let loadInAppDomain = not <| policy.HasFlag AssemblyLoadPolicy.CacheOnly
 
         // loads the static initializer for given portable assembly
@@ -188,12 +185,12 @@
                 else
                     success <| Loaded(pa.Id, false, cacheInfo.StaticInitializer |> Option.map snd)
                 
-            | None -> success <| NotLoaded pa.Id
+            | None -> state, NotLoaded pa.Id
 
         try
             match state.AssemblyImportState.TryFind pa.Id with
             // dynamic assembly slice generated in local process
-            | None when isLocalDynamicAssemblySlice pa.Id -> success <| Loaded (pa.Id, true, None)
+            | None when isLocalDynamicAssemblySlice state.CompilerState pa.Id -> success <| Loaded (pa.Id, true, None)
             // assembly not registered in state, attempt to load now
             | None -> loadAssembly pa
             // assembly loaded with static initializers, attempt to update

@@ -8,241 +8,154 @@
 
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.DependencyAnalysis
-    open Nessos.Vagrant.AssemblyExporter
-    open Nessos.Vagrant.AssemblyCache
 
-    /// <summary>
-    ///     A collection of general purpose utilities used by Vagrant
-    /// </summary>
-    type VagrantUtils =
+    [<AutoOpen>]
+    module Extras =
 
-        /// <summary>
-        ///     Returns all type instances that appear in given object graph.
-        /// </summary>
-        /// <param name="obj">object graph to be traversed</param>
-        static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj |> fst
+        /// Defines an abstract assembly load target; to be used by VagrantServer
+        type IRemoteAssemblyReceiver =
+            /// receives the assembly load state of the remote party for the given id's
+            abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
+            /// upload a set of portable assemblies to the remote party
+            abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadInfo list>
 
-        /// <summary>
-        ///     Resolves all assembly dependencies of given object graph.
-        /// </summary>
-        /// <param name="obj">object graph to be traversed</param>
-        static member ComputeAssemblyDependencies(obj:obj) =
-            computeDependencies obj 
-            |> Seq.map fst
-            |> traverseDependencies None
+        /// Defines an abstract assembly exporter; to be used by VagrantClient
+        type IRemoteAssemblyPublisher =
+            /// receives a collection of dependencies required by remote publisher
+            abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
+            /// request portable assemblies from publisher
+            abstract PullAssemblies : AssemblyId list -> Async<PortableAssembly list>
 
         /// <summary>
-        ///     Resolves all assembly dependencies of given assembly.
+        ///     A collection of general purpose utilities used by Vagrant
         /// </summary>
-        /// <param name="assembly">assembly to be traversed</param>
-        static member ComputeAssemblyDependencies(assembly:Assembly) = 
-            traverseDependencies None [assembly]
+        type VagrantUtils =
 
-        /// <summary>
-        ///     Resolves all assembly dependencies of given assemblies.
-        /// </summary>
-        /// <param name="assemblies"></param>
-        static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = 
-            traverseDependencies None assemblies
+            /// <summary>
+            ///     Returns all type instances that appear in given object graph.
+            /// </summary>
+            /// <param name="obj">object graph to be traversed</param>
+            static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj |> fst
 
+            /// <summary>
+            ///     Resolves all assembly dependencies of given object graph.
+            /// </summary>
+            /// <param name="obj">object graph to be traversed</param>
+            static member ComputeAssemblyDependencies(obj:obj) =
+                computeDependencies obj 
+                |> Seq.map fst
+                |> traverseDependencies None
 
-        /// <summary>
-        ///     Computes a unique id for given static assembly.
-        /// </summary>
-        /// <param name="assembly">a static assembly.</param>
-        static member ComputeAssemblyId (assembly : Assembly) = 
-            let _ = assembly.Location // force exception in case of dynamic assembly
-            assembly.AssemblyId
+            /// <summary>
+            ///     Resolves all assembly dependencies of given assembly.
+            /// </summary>
+            /// <param name="assembly">assembly to be traversed</param>
+            static member ComputeAssemblyDependencies(assembly:Assembly) = 
+                traverseDependencies None [assembly]
 
-
-        /// <summary>
-        ///     Creates a portable assembly package.
-        /// </summary>
-        /// <param name="assembly">input assembly</param>
-        static member CreatePortableAssembly (assembly : Assembly) =
-            mkPortableAssembly true None assembly
-
-
-
-    /// <summary>
-    ///     Persist assemblies and Vagrant-related metadata to disk.
-    /// </summary>
-    /// <param name="cacheDirectory">Local directory for caching assemblies.</param>
-    /// <param name="pickler">Custom FsPickler instance.</param>
-    /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-    /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-    type VagrantCache(cacheDirectory : string, ?pickler : BasePickler, ?loadPolicy, ?requireIdentical) =
-        do 
-            if not <| Directory.Exists cacheDirectory then
-                raise <| new DirectoryNotFoundException(cacheDirectory)
-
-        let _loadPolicy = defaultArg loadPolicy AssemblyLocalResolutionPolicy.StrongNamesOnly
-        let _requireIndetical = defaultArg requireIdentical true
+            /// <summary>
+            ///     Resolves all assembly dependencies of given assemblies.
+            /// </summary>
+            /// <param name="assemblies"></param>
+            static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = 
+                traverseDependencies None assemblies
 
 
-        let pickler = match pickler with Some p -> p | None -> FsPickler.CreateBinary() :> _
-        let cacheActor = initAssemblyCache pickler cacheDirectory
+            /// <summary>
+            ///     Computes a unique id for given static assembly.
+            /// </summary>
+            /// <param name="assembly">a static assembly.</param>
+            static member ComputeAssemblyId (assembly : Assembly) = 
+                let _ = assembly.Location // force exception in case of dynamic assembly
+                assembly.AssemblyId
 
-        let cacheAssembly requireIdentical loadPolicy pa =
-            cacheActor.PostAndReply(pa, 
-                defaultArg requireIdentical _requireIndetical, 
-                defaultArg loadPolicy _loadPolicy)
+
+        type Vagrant with
+            
+            /// <summary>
+            ///     Apply a built-in assembly distribution protocol using a user-defined submit function.
+            /// </summary>
+            /// <param name="receiver">User provided assembly submit operation.</param>
+            /// <param name="assemblies">Assemblies to be exported.</param>
+            member v.SubmitAssemblies(receiver : IRemoteAssemblyReceiver, assemblies : seq<Assembly>) = async {
+                let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
+
+                // Step 1. submit assembly identifiers to receiver; get back loaded state
+                let headers = index |> Map.toList |> List.map fst
+                let! info = receiver.GetLoadedAssemblyInfo headers
         
-        /// <summary>
-        ///     Save given portable assembly to cache
-        /// </summary>
-        /// <param name="assembly">The assembly to persist.</param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-        member __.Cache(assembly : PortableAssembly, ?requireIdentical, ?loadPolicy) =
-            cacheAssembly requireIdentical loadPolicy assembly
+                // Step 2. detect dependencies that require posting
+                let tryGetPortableAssembly (info : AssemblyLoadInfo) =
+                    match info with
+                    | LoadFault(id, (:?VagrantException as e)) -> raise e
+                    | LoadFault(id, e) -> 
+                        raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
+                    | NotLoaded id -> 
+                        Some <| v.CreatePortableAssembly(id, includeAssemblyImage = true)
+                    | Loaded(id,_,Some si) when si.IsPartial ->
+                        Some <| v.CreatePortableAssembly(id, includeAssemblyImage = false)
+                    | Loaded _ -> None
 
-        /// <summary>
-        ///     Save given portable assemblies to cache
-        /// </summary>
-        /// <param name="assemblies"></param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-        member __.Cache(assemblies : PortableAssembly list, ?requireIdentical, ?loadPolicy) =
-            List.map (cacheAssembly requireIdentical loadPolicy) assemblies
+                let portableAssemblies = info |> List.choose tryGetPortableAssembly
+                let! loadResults = receiver.PushAssemblies portableAssemblies
 
-        /// directory used by the cache
-        member __.CacheDirectory = cacheDirectory
+                // Step 3. check load results; if client replies with fault, fail.
+                let gatherErrors (info : AssemblyLoadInfo) =
+                    match info with
+                    | LoadFault(id, (:?VagrantException as e)) -> raise e
+                    | LoadFault(id, _)
+                    | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
+                    | Loaded(_,_,Some info) -> Some info.Errors
+                    | Loaded _ -> None
 
-        /// <summary>
-        ///     Loads given portable assembly from cache, if it exists.
-        /// </summary>
-        /// <param name="id">Provided assembly id.</param>
-        /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-        member __.TryGetCachedAssembly (id : AssemblyId, ?includeImage, ?requireIdentical, ?loadPolicy) =
-            let includeImage = defaultArg includeImage true
-            let loadPolicy = defaultArg loadPolicy _loadPolicy
-            let requireIdentical = defaultArg requireIdentical _requireIndetical
-            tryGetPortableAssemblyFromCache cacheActor cacheDirectory 
-                includeImage requireIdentical loadPolicy id
+                let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat
+                return staticInitializationErrors
+            }
 
-        /// <summary>
-        ///     Loads given portable assembly from cache, if it exists.
-        /// </summary>
-        /// <param name="id">Provided assembly id.</param>
-        /// <param name="includeImage">Specifies whether to include image. Defaults to true.</param>      
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
-        member __.GetCachedAssembly (id : AssemblyId, ?includeImage, ?requireIdentical, ?loadPolicy) =
-            match __.TryGetCachedAssembly(id, ?includeImage = includeImage, ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy) with
-            | None -> raise <| new VagrantException(sprintf "could not load '%s' from cache" id.FullName)
-            | Some pa -> pa
-
-        /// <summary>
-        ///     Retrieves assembly cache information
-        /// </summary>
-        /// <param name="id">Assembly id.</param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
-        member __.GetCachedAssemblyInfo (id : AssemblyId, ?requireIdentical, ?loadPolicy) =
-            cacheAssembly requireIdentical loadPolicy (PortableAssembly.Empty id)
-
-        /// <summary>
-        ///     Retrieves assembly cache information for given id's.
-        /// </summary>
-        /// <param name="ids">Assembly id's.</param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
-        member __.GetCachedAssemblyInfo (ids : AssemblyId list, ?requireIdentical, ?loadPolicy) =
-            List.map (cacheAssembly requireIdentical loadPolicy << PortableAssembly.Empty) ids
-
-        /// <summary>
-        ///     Determines whether assembly is cached.
-        /// </summary>
-        /// <param name="id">Assembly id.</param>
-        /// <param name="requireIdentical">Require that loaded assembly must be of identical SHA256 hashcode. Defaults to false.</param>
-        /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>  
-        member __.IsCachedAssembly (id : AssemblyId, ?requireIdentical, ?loadPolicy) =
-            match __.GetCachedAssemblyInfo (id, ?requireIdentical = requireIdentical, ?loadPolicy = loadPolicy) with
-            | Loaded _ | LoadedWithStaticIntialization _ -> true
-            | _ -> false
-
-        /// <summary>
-        ///     Get currently loaded assembly state.
-        /// </summary>
-        member __.CachedAssemblies = 
-            cacheActor.CurrentState 
-            |> Seq.map(function (KeyValue(_,(_,info))) -> info) 
-            |> Seq.toList
-
-//
-//
-//    /// server-side protocol implementation
-//
-//    let assemblySubmitProtocol (exporter : AssemblyExporter) (receiver : IRemoteAssemblyReceiver) (assemblies : Assembly list) =
-//
-//        async {
-//            let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
-//
-//            // Step 1. submit assembly identifiers to receiver; get back loaded state
-//            let headers = assemblies |> List.map (fun a -> a.AssemblyId)
-//            let! info = receiver.GetLoadedAssemblyInfo headers
-//        
-//            // Step 2. detect dependencies that require posting
-//            let tryGetPortableAssembly (info : AssemblyLoadInfo) =
-//                match info with
-//                | LoadFault(id, (:?VagrantException as e)) -> raise e
-//                | LoadFault(id, e) -> 
-//                    raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
-//                | NotLoaded id -> 
-//                    Some <| exporter.PostAndReply(index.[id], true)
-//                | Loaded _ -> None
-//                | LoadedWithStaticIntialization(id, si) when si.IsPartial ->
-//                    Some <| exporter.PostAndReply(index.[info.Id], false)
-//                | LoadedWithStaticIntialization _ -> None
-//                
-//
-//            let portableAssemblies = info |> List.choose tryGetPortableAssembly
-//            let! loadResults = receiver.PushAssemblies portableAssemblies
-//
-//            // Step 3. check load results; if client replies with fault, fail.
-//            let gatherErrors (info : AssemblyLoadInfo) =
-//                match info with
-//                | LoadFault(id, (:?VagrantException as e)) -> raise e
-//                | LoadFault(id, _)
-//                | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
-//                | Loaded _ -> None
-//                | LoadedWithStaticIntialization(_,info) -> Some info.Errors
-//
-//            let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat
-//            return staticInitializationErrors
-//        }
+            /// <summary>
+            ///     Apply the built-in assembly distribution protocol using user-defined function.
+            /// </summary>
+            /// <param name="receiver">User provided assembly submit operation.</param>
+            /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
+            /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
+            member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation) =
+                let assemblies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
+                v.SubmitAssemblies(receiver, assemblies)
 
 
+            /// <summary>
+            ///     Receive dependencies as supplied by the remote assembly publisher
+            /// </summary>
+            /// <param name="publisher">The remote publisher</param>
+            /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
+            member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy) = async {
 
-//    /// assembly receive protocol on the client side
-//    let assemblyReceiveProtocol (loader : AssemblyLoader) requireIdentical loadPolicy (publisher : IRemoteAssemblyPublisher) = async {
-//        // step 1. download dependencies required by publisher
-//        let! dependencies = publisher.GetRequiredAssemblyInfo()
-//
-//        // step 2. resolve dependencies that are missing from client
-//        let tryCheckLoadStatus (id : AssemblyId) =
-//            match getAssemblyLoadInfo loader requireIdentical loadPolicy id with
-//            | NotLoaded id
-//            | LoadFault (id,_) -> Some id
-//            | Loaded _ -> None
-//            | LoadedWithStaticIntialization _ -> None
-//
-//        let missing = dependencies |> List.choose tryCheckLoadStatus
-//
-//        if missing.Length > 0 then
-//            // step 3. download portable assemblies for missing dependencies
-//            let! assemblies = publisher.PullAssemblies missing
-//            let loadResults = assemblies |> List.map (fun a -> loader.PostAndReply(a, requireIdentical, loadPolicy))
-//
-//            let checkLoadResult (info : AssemblyLoadInfo) =
-//                match info with
-//                | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
-//                | LoadFault(_, (:? VagrantException as e)) -> raise e
-//                | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
-//                | Loaded _ | LoadedWithStaticIntialization _ -> ()
-//
-//            List.iter checkLoadResult loadResults
-//    }
+                // step 1. download dependencies required by publisher
+                let! dependencies = publisher.GetRequiredAssemblyInfo()
+
+                // step 2. resolve dependencies that are missing from client
+                let tryCheckLoadStatus (id : AssemblyId) =
+                    if v.IsLocalDynamicAssemblySlice id then None
+                    else
+                        match v.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy) with
+                        | NotLoaded id
+                        | LoadFault (id,_) -> Some id
+                        | Loaded (id,_, Some info) when info.IsPartial -> Some id
+                        | Loaded _ -> None
+
+                let missing = dependencies |> List.choose tryCheckLoadStatus
+
+                if missing.Length > 0 then
+                    // step 3. download portable assemblies for missing dependencies
+                    let! assemblies = publisher.PullAssemblies missing
+                    let loadResults = v.LoadPortableAssemblies(assemblies, ?loadPolicy = loadPolicy)
+
+                    let checkLoadResult (info : AssemblyLoadInfo) =
+                        match info with
+                        | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
+                        | LoadFault(_, (:? VagrantException as e)) -> raise e
+                        | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
+                        | Loaded _ -> ()
+
+                    List.iter checkLoadResult loadResults
+            }

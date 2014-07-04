@@ -32,6 +32,7 @@
     with
         member id.GetName() = new AssemblyName(id.FullName)
         member id.IsStrongAssembly = let pkt = id.GetName().GetPublicKeyToken() in pkt <> null && pkt <> [||]
+        override id.ToString() = id.FullName
 
     /// static initialization data for portable assembly
     [<NoEquality; NoComparison>]
@@ -66,6 +67,8 @@
     with
         member pa.FullName = pa.Id.FullName
         member pa.GetName() = pa.Id.GetName()
+        override id.ToString() = id.FullName
+
         static member Empty (id : AssemblyId) =
             { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
 
@@ -95,20 +98,6 @@
             | LoadFault (id,_)
             | Loaded (id,_,_) -> id
 
-    /// Defines an abstract assembly load target; to be used by VagrantServer
-    type IRemoteAssemblyReceiver =
-        /// receives the assembly load state of the remote party for the given id's
-        abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
-        /// upload a set of portable assemblies to the remote party
-        abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadInfo list>
-
-    /// Defines an abstract assembly exporter; to be used by VagrantClient
-    type IRemoteAssemblyPublisher =
-        /// receives a collection of dependencies required by remote publisher
-        abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
-        /// request portable assemblies from publisher
-        abstract PullAssemblies : AssemblyId list -> Async<PortableAssembly list>
-
     /// customizes slicing behaviour on given dynamic assembly
     type IDynamicAssemblyProfile =
 
@@ -135,4 +124,4 @@
 
 
     type VagrantException (message : string, ?inner : exn) =
-        inherit Exception(sprintf "Vagrant error: %s"  message, defaultArg inner null)
+        inherit Exception(message, defaultArg inner null)

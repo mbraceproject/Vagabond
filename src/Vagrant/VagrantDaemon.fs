@@ -56,8 +56,8 @@
                     // note: it is essential that the compiler state ref cell is updated *before*
                     // a reply is given; this is to eliminate a certain class of race conditions.
                     compilerState := compState
-
                     do rc.Reply result
+
                     return { state with CompilerState = compState }
 
                 with e ->
@@ -104,9 +104,10 @@
         let cts = new System.Threading.CancellationTokenSource()
         let actor = MailboxProxessor.Stateful (initState, processMessage, ct = cts.Token)
 
-
         member __.Start() = actor.Start()
         member __.Stop() = cts.Cancel()
+
+        member __.CompilerState = !compilerState
 
         member __.DefaultPickler = defaultPickler
         member __.TypeNameConverter = typeNameConverter

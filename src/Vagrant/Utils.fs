@@ -132,6 +132,9 @@
         else
             false
 
+    let isLocalDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (id : AssemblyId) = 
+        state.TryGetDynamicAssemblyId(id.FullName).IsSome
+
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
     type DynamicAssemblyState with

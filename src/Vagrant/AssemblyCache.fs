@@ -98,7 +98,7 @@
             if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
                 invalidArg assembly.FullName "assembly is dynamic or not persistable."
             else
-                getPersistedAssemblyInfo assembly.Location assembly.AssemblyIdss
+                getPersistedAssemblyInfo assembly.Location assembly.AssemblyId
 
         member __.CreatePortableAssembly(cai : CachedAssemblyInfo, includeImage : bool) =
 

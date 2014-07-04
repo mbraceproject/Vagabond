@@ -113,7 +113,7 @@
 
         // loads the static initializer for given portable assembly
         // requires the assembly to be already loaded in the current AppDomain
-        let tryLoadStaticInitializer (previous : StaticInitializationInfo option) (pa : PortableAssembly) =
+        let tryLoadStaticInitializer (previous : StaticInitializationInfo option) (cacheInfo : CachedAssemblyInfo) =
             let tryLoad (fI : FieldInfo, data : Exn<byte []>) =
                 match data with
                 | Success bytes ->
@@ -123,19 +123,20 @@
                     with e -> Some(fI, e)
                 | Error e -> Some(fI, e)
 
-            match previous, pa.StaticInitializer with
-            | None, None -> Loaded (pa.Id, true, None)
+            match previous, cacheInfo.StaticInitializer with
+            | None, None -> Loaded (cacheInfo.Id, true, None)
             // keep the previous static initializer if PA has none
-            | Some previous, None -> Loaded(pa.Id, true, Some previous)
+            | Some previous, None -> Loaded(cacheInfo.Id, true, Some previous)
             // silently discard if loaded generation larger than current
-            | Some info, Some init when info.Generation > init.Generation ->  Loaded(pa.Id, true, Some info)
+            | Some info, Some (_,init) when info.Generation > init.Generation ->  Loaded(cacheInfo.Id, true, Some info)
 
             // perform the static initialization
-            | _, Some init ->
-                let initializers = state.Pickler.UnPickle<StaticInitializers>(init.Data)
+            | _, Some (path, init) ->
+                let data = File.ReadAllBytes path
+                let initializers = state.Pickler.UnPickle<StaticInitializers>(data)
                 let errors = Array.choose tryLoad initializers
                 let info = { Generation = init.Generation ; Errors = errors ; IsPartial = init.IsPartial }
-                Loaded(pa.Id, true, Some info)
+                Loaded(cacheInfo.Id, true, Some info)
 
 
         let loadAssembly (pa : PortableAssembly) =
@@ -181,7 +182,7 @@
                         raise <| VagrantException(msg)
 
                     else
-                        success <| tryLoadStaticInitializer None pa
+                        success <| tryLoadStaticInitializer None cacheInfo
                 else
                     success <| Loaded(pa.Id, false, cacheInfo.StaticInitializer |> Option.map snd)
                 
@@ -203,7 +204,7 @@
                         let cacheInfo = state.AssemblyCache.Cache pa
                         
                         if loadInAppDomain || isLoadedLocal then
-                            success <| tryLoadStaticInitializer (Some info) pa
+                            success <| tryLoadStaticInitializer (Some info) cacheInfo
                         else
                             success <| Loaded(id, false, cacheInfo.StaticInitializer |> Option.map snd)
 

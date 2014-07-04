@@ -138,7 +138,7 @@
                 let info = getPersistedAssemblyInfo cachePath pa.Id
                 let staticInit =
                     match pa.StaticInitializer with
-                    | None -> None
+                    | None -> info.StaticInitializer
                     | Some init -> writeStaticInitializer cachePath info.StaticInitializer init
 
                 { info with StaticInitializer = staticInit }

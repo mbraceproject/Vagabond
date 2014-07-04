@@ -198,15 +198,12 @@
             | Some (Loaded(id, isLoadedLocal, Some info) as l) ->
                 if not isLoadedLocal && loadInAppDomain then loadAssembly pa
                 else
-                    match pa.StaticInitializer with
-                    | None -> state, l
-                    | Some init ->
-                        let cacheInfo = state.AssemblyCache.Cache pa
+                    let cacheInfo = state.AssemblyCache.Cache pa
                         
-                        if loadInAppDomain || isLoadedLocal then
-                            success <| tryLoadStaticInitializer (Some info) cacheInfo
-                        else
-                            success <| Loaded(id, false, cacheInfo.StaticInitializer |> Option.map snd)
+                    if loadInAppDomain || isLoadedLocal then
+                        success <| tryLoadStaticInitializer (Some info) cacheInfo
+                    else
+                        success <| Loaded(id, false, cacheInfo.StaticInitializer |> Option.map snd)
 
             | Some result -> state, result
 

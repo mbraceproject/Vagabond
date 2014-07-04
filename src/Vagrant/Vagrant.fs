@@ -165,6 +165,14 @@
             daemon.PostAndReply(fun ch -> LoadAssembly(loadPolicy, pa, ch))
 
         /// <summary>
+        ///     Loads an assembly that is already cached in local machine.
+        /// </summary>
+        /// <param name="id">input assembly id.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+        member __.LoadCachedAssembly(id : AssemblyId, ?loadPolicy) =
+            __.LoadPortableAssembly(PortableAssembly.Empty id, ?loadPolicy = loadPolicy)
+
+        /// <summary>
         ///     Loads portable assemblies to the local machine.
         /// </summary>
         /// <param name="pas">Input portable assemblies.</param>

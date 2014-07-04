@@ -36,33 +36,27 @@ The included implementation of
 is a straightforward example that uses Vagrant.
 What follows is a brief overview of the basic API.
 
-#### Vagrant Server
-
-A code export environment can be initialized as follows:
+A Vagrant environment can be initialized as follows:
 ```fsharp
 open Nessos.Vagrant
 
-let server = new VagrantServer()
+let vagrant = new Vagrant(cacheDirectory = "/assemblyCache/")
 ```
 Given an arbitrary object, dependencies are resolved like so:
 ```fsharp
 let obj = Some(fun x -> printfn "%d" x; x + 1) :> obj
 
-let assemblies : Assembly list = server.ComputeObjectDependencies(obj, permitCompilation = true)
+let assemblies : Assembly list = vagrant.ComputeObjectDependencies(obj, permitCompilation = true)
 ```
 An assembly can be exported by writing
 ```fsharp
-let portableAssembly : PortableAssembly = vagrant.MakePortableAssembly(assembly, includeAssemblyImage = true)
+let portableAssembly : PortableAssembly = vagrant.CreatePortableAssembly(assembly, includeAssemblyImage = true)
 ```
 A portable assembly contains necessary data to load the specified assembly in a remote process.
 
-#### Vagrant Client
-
-On the client side, assemblies can be loaded like so:
+Assemblies can be loaded like so:
 ```fsharp
-let client = new VagrantClient()
-
-let response : AssemblyLoadResponse = client.LoadPortableAssembly(portableAssembly)
+let response : AssemblyLoadInfo = vagrant.LoadPortableAssembly(portableAssembly)
 ```
 
 #### Communication

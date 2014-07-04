@@ -108,6 +108,7 @@
         member __.Stop() = cts.Cancel()
 
         member __.CompilerState = !compilerState
+        member __.CacheDirectory = assemblyCache.CacheDirectory
 
         member __.DefaultPickler = defaultPickler
         member __.TypeNameConverter = typeNameConverter

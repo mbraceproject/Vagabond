@@ -82,6 +82,7 @@
                 StaticInitializer = metadata
             }
 
+        member __.CacheDirectory = cacheDirectory
 
         member __.TryGetCachedAssemblyInfo(id : AssemblyId) =
             let cachePath = getCachedAssemblyPath id

@@ -38,6 +38,8 @@
         member __.Pickler = daemon.DefaultPickler
         /// FsPickler type name converter for use with other formats
         member __.TypeConverter = daemon.TypeNameConverter
+        /// Cache directory used by Vagrant
+        member __.CachePath = daemon.CacheDirectory
 
         /// Default load policy 
         member __.DefaultLoadPolicy
@@ -165,6 +167,15 @@
             daemon.PostAndReply(fun ch -> LoadAssembly(loadPolicy, pa, ch))
 
         /// <summary>
+        ///     Loads portable assemblies to the local machine.
+        /// </summary>
+        /// <param name="pas">Input portable assemblies.</param>
+        /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+        member __.LoadPortableAssemblies(pas : seq<PortableAssembly>, ?loadPolicy) =
+            Seq.toList pas
+            |> List.map (fun pa -> __.LoadPortableAssembly(pa, ?loadPolicy = loadPolicy))
+
+        /// <summary>
         ///     Loads an assembly that is already cached in local machine.
         /// </summary>
         /// <param name="id">input assembly id.</param>
@@ -173,10 +184,10 @@
             __.LoadPortableAssembly(PortableAssembly.Empty id, ?loadPolicy = loadPolicy)
 
         /// <summary>
-        ///     Loads portable assemblies to the local machine.
+        ///     Loads assembly id's that are already cached in local machine.
         /// </summary>
-        /// <param name="pas">Input portable assemblies.</param>
+        /// <param name="id">input assembly id.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-        member __.LoadPortableAssemblies(pas : seq<PortableAssembly>, ?loadPolicy) =
-            Seq.toList pas
-            |> List.map (fun pa -> __.LoadPortableAssembly(pa, ?loadPolicy = loadPolicy))
+        member __.LoadCachedAssemblies(ids : seq<AssemblyId>, ?loadPolicy) =
+            Seq.toList ids
+            |> List.map (fun id -> __.LoadPortableAssembly(PortableAssembly.Empty id, ?loadPolicy = loadPolicy))

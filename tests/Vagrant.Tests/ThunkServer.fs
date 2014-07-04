@@ -1,6 +1,7 @@
 ﻿module Nessos.Vagrant.Tests.ThunkServer
 
     open System
+    open System.IO
     open System.Reflection
     open System.Diagnostics
 
@@ -11,6 +12,11 @@
 
     let private defaultConnectionString = "127.0.0.1:38979"
 
+    let private vagrant =
+        let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
+        let _ = Directory.CreateDirectory cacheDir
+        new Vagrant(cacheDirectory = cacheDir)
+
     type private ServerMsg =
         | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyLoadInfo list>
         | LoadAssemblies of PortableAssembly list * AsyncReplyChannel<AssemblyLoadInfo list>
@@ -19,8 +25,6 @@
     type ThunkServer (?endpoint : string) =
         
         let endpoint = defaultArg endpoint defaultConnectionString
-
-        static let vagrant = new Vagrant()
         
         let rec serverLoop (inbox : MailboxProcessor<ServerMsg>) = async {
             let! msg = inbox.Receive()
@@ -59,7 +63,6 @@
 
     type ThunkClient internal (?serverEndPoint : string, ?proc : Process) =
 
-        static let vagrant = new Vagrant()
         static do TcpActor.SetDefaultPickler(vagrant.Pickler)
 
         let serverEndPoint = defaultArg serverEndPoint defaultConnectionString

@@ -23,6 +23,12 @@
             AssemblyCache : AssemblyCache
         }
 
+    /// registers an assembly resolution handler based on AppDomain lookups;
+    /// this is needed since assembly lookups often fail when loaded at runtime.
+    let registerAssemblyResolutionHandler () = 
+        System.AppDomain.CurrentDomain.add_AssemblyResolve <|
+            new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
+
     ///
     /// exports a portable assembly
     ///

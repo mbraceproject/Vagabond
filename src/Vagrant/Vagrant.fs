@@ -12,6 +12,8 @@
 
     type Vagrant (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
 
+        static do AssemblyManagement.registerAssemblyResolutionHandler ()
+
         let cacheDirectory = match cacheDirectory with None -> Path.GetTempPath() | Some d -> d
 
         let profiles = 

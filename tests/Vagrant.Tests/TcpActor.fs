@@ -51,7 +51,7 @@
     type private PicklerRegistry () =
         static let container = ref None
 
-        static member SetDefaultPickler(p : BasePickler, ?overwrite) =
+        static member SetDefaultPickler(p : FsPicklerBase, ?overwrite) =
             let overwrite = defaultArg overwrite false
             lock container (fun () ->
                 match !container with
@@ -82,7 +82,7 @@
         | Fault of exn
 
         
-    type TcpActor<'T> (mailbox : MailboxProcessor<'T>, endpoint : IPEndPoint, ?pickler : BasePickler) =
+    type TcpActor<'T> (mailbox : MailboxProcessor<'T>, endpoint : IPEndPoint, ?pickler : FsPicklerBase) =
 
         let pickler = match pickler with None -> PicklerRegistry.DefaultPickler | Some p -> p
         let listener = new TcpListener(endpoint)
@@ -131,7 +131,7 @@
     
     and 
         [<CustomPickler>]
-        TcpActorClient<'T>(serverEndpoint : IPEndPoint, ?pickler : BasePickler) =
+        TcpActorClient<'T>(serverEndpoint : IPEndPoint, ?pickler : FsPicklerBase) =
         
         let pickler = match pickler with None -> PicklerRegistry.DefaultPickler | Some p -> p
 
@@ -183,17 +183,17 @@
             let port = int <| tokens.[1]
             new IPEndPoint(ipAddr, port)
 
-        static member SetDefaultPickler(p : BasePickler, ?overwrite) = PicklerRegistry.SetDefaultPickler(p, ?overwrite = overwrite)
+        static member SetDefaultPickler(p : FsPicklerBase, ?overwrite) = PicklerRegistry.SetDefaultPickler(p, ?overwrite = overwrite)
 
-        static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : IPEndPoint, ?pickler : BasePickler) =
+        static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : IPEndPoint, ?pickler : FsPicklerBase) =
             let mailbox = MailboxProcessor.Start behaviour
             new TcpActor<'T>(mailbox, ipEndPoint, ?pickler = pickler)
 
-        static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : string, ?pickler : BasePickler) =
+        static member Create<'T>(behaviour : MailboxProcessor<'T> -> Async<unit>, ipEndPoint : string, ?pickler : FsPicklerBase) =
             TcpActor.Create(behaviour, parseEndpoint ipEndPoint, ?pickler = pickler)
 
-        static member Connect<'T>(serverEndPoint : IPEndPoint, ?pickler : BasePickler) =
+        static member Connect<'T>(serverEndPoint : IPEndPoint, ?pickler : FsPicklerBase) =
             new TcpActorClient<'T>(serverEndPoint, ?pickler = pickler)
 
-        static member Connect<'T>(serverEndPoint : string, ?pickler : BasePickler) =
+        static member Connect<'T>(serverEndPoint : string, ?pickler : FsPicklerBase) =
             new TcpActorClient<'T>(parseEndpoint serverEndPoint, ?pickler = pickler)

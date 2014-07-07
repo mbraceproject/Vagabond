@@ -19,7 +19,7 @@
             AssemblyExportState : Map<AssemblyId, int>
             AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
 
-            Pickler : BasePickler
+            Pickler : FsPicklerBase
             AssemblyCache : AssemblyCache
         }
 

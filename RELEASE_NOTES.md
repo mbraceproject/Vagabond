@@ -1,3 +1,6 @@
+#### 0.2.1, 7 Jul 2014
+* Update FsPickler version
+
 #### 0.2.0, 27 Jun 2014
 * Update FsPickler version
 * Change dependency resolution method.

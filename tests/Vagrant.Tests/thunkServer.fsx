@@ -52,7 +52,7 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 Example 3: Type providers
 **)
 
-#r "../../packages/FSharp.Data.2.0.8/lib/net40/FSharp.Data.dll"
+#r "../../packages/FSharp.Data.2.0.9/lib/net40/FSharp.Data.dll"
 
 open FSharp.Data
 

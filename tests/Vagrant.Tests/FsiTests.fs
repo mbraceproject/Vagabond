@@ -66,7 +66,7 @@
                     | None ->
                         let dummy = new StringReader("")
                         let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
-                        let fsi = new FsiEvaluationSession(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, Console.Out, Console.Error)
+                        let fsi = FsiEvaluationSession.Create(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, Console.Out, Console.Error)
                         container := Some fsi; fsi)
 
             static member Stop () =

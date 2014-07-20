@@ -17,7 +17,7 @@
             StaticInitializer : (string * StaticInitializationInfo) option
         }
 
-    type AssemblyCache (cacheDirectory : string, pickler : FsPicklerBase) =
+    type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         do
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)

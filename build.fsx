@@ -6,6 +6,7 @@
 #r "packages/FAKE/tools/FakeLib.dll"
 //#load "packages/SourceLink.Fake/tools/SourceLink.fsx"
 open System
+open System.IO
 open Fake 
 open Fake.Git
 open Fake.ReleaseNotesHelper
@@ -115,6 +116,20 @@ FinalTarget "CloseTestRunner" (fun _ ->
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
+let addAssembly (target : string) assembly =
+    let includeFile force file =
+        let file = file
+        if File.Exists (Path.Combine("nuget", file)) then [(file, Some target, None)]
+        elif force then raise <| new FileNotFoundException(file)
+        else []
+
+    seq {
+        yield! includeFile true assembly
+        yield! includeFile false <| Path.ChangeExtension(assembly, "pdb")
+        yield! includeFile false <| Path.ChangeExtension(assembly, "xml")
+        yield! includeFile false <| assembly + ".config"
+    }
+
 Target "NuGet" (fun _ ->
     // Format the description to fit on a single line (remove \r\n and double-spaces)
     let description = description.Replace("\r", "").Replace("\n", "").Replace("  ", " ")
@@ -129,14 +144,22 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
-                    ("FsPickler", "0.9.9")
-                    ("Mono.Cecil", RequireExactly "0.9.5.4")
+                    "FsPickler", "0.9.9"
                 ]
             Tags = tags
             OutputPath = "bin"
             ToolPath = nugetPath
             AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetkey" })
+            Publish = hasBuildParam "nugetkey"
+            References = [ "Vagrant.dll" ]
+            Files =
+                [
+                    yield! addAssembly @"lib\net45" @"..\bin\Mono.Cecil.dll"
+                    yield! addAssembly @"lib\net45" @"..\bin\Vagrant.Cecil.dll"
+                    yield! addAssembly @"lib\net45" @"..\bin\Vagrant.dll"
+                ]
+            
+            })
         ("nuget/" + project + ".nuspec")
 )
 
@@ -148,7 +171,7 @@ Target "Release" DoNothing
 
 Target "Prepare" DoNothing
 Target "PrepareRelease" DoNothing
-Target "All" DoNothing
+Target "Default" DoNothing
 
 "Clean"
   ==> "RestorePackages"
@@ -156,12 +179,12 @@ Target "All" DoNothing
   ==> "Prepare"
   ==> "Build"
   ==> "RunTests"
-  ==> "All"
+  ==> "Default"
 
-"All"
+"Default"
   ==> "PrepareRelease" 
   ==> "NuGet"
   ==> "Release"
 
+RunTargetOrDefault "Default"
 //RunTargetOrDefault "Release"
-RunTargetOrDefault "All"

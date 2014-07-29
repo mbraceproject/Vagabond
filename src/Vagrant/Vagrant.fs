@@ -10,13 +10,16 @@
     open Nessos.Vagrant.DependencyAnalysis
     open Nessos.Vagrant.Daemon
 
-    type Vagrant (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
+    /// Vagrant Object which instantiates a dynamic assembly compiler, loader and exporter state
+
+    [<AutoSerializable(false)>]
+    type Vagrant private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
 
         static do AssemblyManagement.registerAssemblyResolutionHandler ()
 
         let cacheDirectory = match cacheDirectory with None -> Path.GetTempPath() | Some d -> d
 
-        let profiles = 
+        let profiles =
             match profiles with
             | Some ps -> ps
             | None -> [ new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile ]
@@ -33,6 +36,16 @@
 
         let compile (assemblies : Assembly list) = 
             daemon.PostAndReply(fun ch -> CompileDynamicAssemblySlice(assemblies, ch))
+
+        /// <summary>
+        ///     Initializes a new Vagrant instance.
+        /// </summary>
+        /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
+        /// <param name="profiles">Dynamic assembly configuration profiles.</param>
+        /// <param name="typeConverter">FsPickler type name converter.</param>
+        /// <param name="loadPolicy">Default assembly load policy.</param>
+        static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
+            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
         /// Unique identifier for the slice compiler
         member __.UUId = daemon.CompilerState.ServerId

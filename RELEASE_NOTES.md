@@ -1,3 +1,6 @@
+#### 0.2.3, 29 Jul 2014
+* Packaging changes
+
 #### 0.2.2, 20 Jul 2014
 * Update FsPickler version
 

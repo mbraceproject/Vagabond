@@ -15,7 +15,7 @@
     let private vagrant =
         let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
         let _ = Directory.CreateDirectory cacheDir
-        new Vagrant(cacheDirectory = cacheDir)
+        Vagrant.Initialize(cacheDirectory = cacheDir)
 
     type private ServerMsg =
         | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyLoadInfo list>

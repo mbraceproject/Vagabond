@@ -9,6 +9,8 @@
     open Nessos.Vagrant.Utils
     open Nessos.Vagrant.DependencyAnalysis
 
+    /// Collection of extensions and utilities for use with Vagrant
+
     [<AutoOpen>]
     module Extras =
 

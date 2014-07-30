@@ -1,3 +1,6 @@
+#### 0.2.4, 30 Jul 2014
+* Update dependency traversal logic.
+
 #### 0.2.3, 29 Jul 2014
 * Packaging changes
 

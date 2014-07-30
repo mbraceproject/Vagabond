@@ -43,46 +43,46 @@
 
         Seq.toArray types, Seq.toArray assemblies
 
+
+    /// assemblies ignored by Vagrant during assembly traversal
+
+    let private isIgnoredAssembly =
+        let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
+        let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
+        let vagrantAssemblies = 
+            [| 
+                typeof<Mono.Cecil.AssemblyDefinition>
+                typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig>
+                typeof<Nessos.Vagrant.AssemblyId>
+            |] |> Array.map (fun t -> t.Assembly)
+
+        fun (a:Assembly) ->
+            Array.exists ((=) a) vagrantAssemblies ||
+                Array.exists ((=) (getPublicKey a)) systemPkt
+
+    /// locally resolve an assembly by qualified name
+
+    let private tryResolveAssembly (state : DynamicAssemblyCompilerState option) (fullName : string) =
+        match state |> Option.bind (fun s -> s.TryFindSliceInfo fullName) with
+        | Some (_,info) -> Some info.Assembly
+        | None ->
+            match tryLoadAssembly fullName with
+            | Some a when isIgnoredAssembly a -> None
+            | Some _ as r -> r
+            | None -> 
+                let msg = sprintf "could not locate dependency '%s'. Try adding an explicit reference." fullName
+                raise <| new VagrantException(msg)
+
     /// recursively traverse assembly dependency graph
 
     let traverseDependencies (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
-
-        let isIgnoredAssembly =
-            let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-            let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
-            let vagrantAssemblies = 
-                [| 
-                    typeof<Mono.Cecil.AssemblyDefinition>
-                    typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig>
-                    typeof<Nessos.Vagrant.AssemblyId>
-                |] |> Array.map (fun t -> t.Assembly)
-
-            fun (a:Assembly) ->
-                Array.exists ((=) a) vagrantAssemblies ||
-                    Array.exists ((=) (getPublicKey a)) systemPkt
-
-        let tryResolveLoadedAssembly (an : AssemblyName) =
-            match tryGetLoadedAssembly an.FullName with
-            | Some a when isIgnoredAssembly a -> None
-            | Some _ as s -> s
-            | None ->
-                match state |> Option.bind (fun s -> s.TryFindSliceInfo an.FullName) with
-                // if a slice, return from compiler state directly as not loaded in AppDomain
-                | Some (_,slice) -> Some slice.Assembly
-                | None ->
-                    try
-                        // attempt loading from local machine
-                        let a = Assembly.Load an
-                        if isIgnoredAssembly a then None
-                        else Some a
-                    with :? FileNotFoundException -> None
 
         let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
             match remaining with
             | [] -> graph |> Map.toList |> List.map snd
             | a :: tail when graph.ContainsKey a.AssemblyId || isIgnoredAssembly a -> traverseDependencyGraph graph tail
             | a :: tail -> 
-                let dependencies = a.GetReferencedAssemblies() |> Array.choose tryResolveLoadedAssembly |> Array.toList
+                let dependencies = a.GetReferencedAssemblies() |> Array.choose (fun an -> tryResolveAssembly state an.FullName) |> Array.toList
                 traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 
         let dependencies =
@@ -120,7 +120,7 @@
                 // parse dynamic assembly
                 let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
 
-                let dependencies = dependencies |> List.choose tryGetLoadedAssembly
+                let dependencies = dependencies |> List.choose (tryResolveAssembly (Some state))
 
                 let graph' = graph.Add(a.AssemblyId, (a, dependencies, sliceData))
                 

@@ -1,3 +1,6 @@
+#### 0.2.5, 17 Aug 2014
+* Update FsPickler version
+
 #### 0.2.4, 30 Jul 2014
 * Update dependency traversal logic.
 

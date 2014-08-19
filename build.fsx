@@ -163,6 +163,24 @@ Target "NuGet" (fun _ ->
         ("nuget/" + project + ".nuspec")
 )
 
+// Doc generation
+
+Target "GenerateDocs" (fun _ ->
+    executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"] [] |> ignore
+)
+
+Target "ReleaseDocs" (fun _ ->
+    let tempDocsDir = "temp/gh-pages"
+    CleanDir tempDocsDir
+    Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
+
+    fullclean tempDocsDir
+    CopyRecursive "docs/output" tempDocsDir true |> tracefn "%A"
+    StageAll tempDocsDir
+    Commit tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
+    Branches.push tempDocsDir
+)
+
 
 Target "Release" DoNothing
 
@@ -182,7 +200,9 @@ Target "Default" DoNothing
   ==> "Default"
 
 "Default"
-  ==> "PrepareRelease" 
+  ==> "PrepareRelease"
+  ==> "GenerateDocs"
+  ==> "ReleaseDocs"
   ==> "NuGet"
   ==> "Release"
 

@@ -13,7 +13,7 @@
     #nowarn "42"
 
     [<AutoOpen>]
-    module Utils =
+    module internal Utils =
 
         let inline raise (e : System.Exception) = (# "throw" e : 'T #)
 

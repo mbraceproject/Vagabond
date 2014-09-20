@@ -528,13 +528,18 @@ namespace Nessos.Vagrant.Cecil
 
             method_definition.ImplAttributes = (MC.MethodImplAttributes)(int)method.GetMethodImplementationFlags();
 
+            declaringType.Methods.Add(method_definition);
+
             var method_info = method as MethodInfo;
 
-            if (method_info != null)
-                foreach (var generic_parameter in MapGenericParameters(method_info.GetGenericArguments(), method_definition))
-                    method_definition.GenericParameters.Add(generic_parameter);
+			if (method_info != null) {
+				var generic_parameters = method_info.GetGenericArguments ();
+				for (int i = 0; i < generic_parameters.Length; i++)
+					method_definition.GenericParameters.Add (GenericParameterFor (generic_parameters [i], method_definition));
 
-            declaringType.Methods.Add(method_definition);
+				for (int i = 0; i < generic_parameters.Length; i++)
+					MapGenericParameterConstraints (generic_parameters [i], method_definition.GenericParameters [i], method_definition);
+			}
 
             foreach (var parameter in method.GetParameters())
                 MapParameter(method_definition, parameter);
@@ -576,23 +581,26 @@ namespace Nessos.Vagrant.Cecil
         private TypeDefinition TypeDefinitionFor(Type type, TypeDefinition declaringType)
         {
             var type_definition = new TypeDefinition(
-                (declaringType == null) ? type.Namespace : "",
+                type.IsNested ? "" : type.Namespace,
                 type.Name,
                 (MC.TypeAttributes)type.Attributes,
                 _assembly_definition.MainModule.TypeSystem.Object);
-
-            foreach (var generic_parameter in MapGenericParameters(type.GetGenericArguments(), type_definition))
-                type_definition.GenericParameters.Add(generic_parameter);
 
             if (declaringType == null)
                 _assembly_definition.MainModule.Types.Add(type_definition);
             else
                 declaringType.NestedTypes.Add(type_definition);
 
-            if (type.BaseType == null)
-                type_definition.BaseType = null;
-            else
-                type_definition.BaseType = CreateReference(type.BaseType, type_definition);
+			var generic_parameters = type.GetGenericArguments ();
+			for (int i = 0; i < generic_parameters.Length; i++)
+				type_definition.GenericParameters.Add (GenericParameterFor (generic_parameters[i], type_definition));
+
+			for (int i = 0; i < generic_parameters.Length; i++)
+				MapGenericParameterConstraints (generic_parameters [i], type_definition.GenericParameters [i], type_definition);
+
+            type_definition.BaseType = type.BaseType != null
+				? CreateReference (type.BaseType, type_definition)
+				: null;
 
             var layout = type.StructLayoutAttribute;
 
@@ -611,21 +619,21 @@ namespace Nessos.Vagrant.Cecil
             return type_definition;
         }
 
-        private IEnumerable<GenericParameter> MapGenericParameters(Type[] genericParameters, IGenericParameterProvider owner)
+        private static GenericParameter GenericParameterFor(Type genericParameter, IGenericParameterProvider owner)
         {
-            foreach (var p in genericParameters)
-            {
-                var generic_parameter = new GenericParameter(p.Name, owner)
-                {
-                    Attributes = (MC.GenericParameterAttributes)(int)p.GenericParameterAttributes
-                };
-
-                foreach (var constraint in p.GetGenericParameterConstraints())
-                    generic_parameter.Constraints.Add(CreateReference(constraint));
-
-                yield return generic_parameter;
-            }
+			return new GenericParameter (genericParameter.Name, owner) {
+				Attributes = (MC.GenericParameterAttributes) (int) genericParameter.GenericParameterAttributes
+			};
         }
+
+		private void MapGenericParameterConstraints (Type genericParameter, GenericParameter gp, IGenericParameterProvider owner)
+		{
+			foreach (var constraint in genericParameter.GetGenericParameterConstraints ()) {
+				gp.Constraints.Add (owner.GenericParameterType == GenericParameterType.Type
+					? CreateReference(constraint, (TypeReference) owner)
+					: CreateReference(constraint, (MethodReference) owner));
+ 			}
+ 		}
 
         private static ParameterDefinition ParameterFor(MR.Instruction instruction, MethodDefinition method)
         {

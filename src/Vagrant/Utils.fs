@@ -117,7 +117,7 @@
                     let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
                     aux (t :: sorted) g0
 
-            aux [] g
+            List.rev <| aux [] g
 
 
 

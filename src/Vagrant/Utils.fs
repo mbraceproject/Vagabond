@@ -15,8 +15,6 @@
     [<AutoOpen>]
     module internal Utils =
 
-        let inline raise (e : System.Exception) = (# "throw" e : 'T #)
-
         let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
         /// Value or exception

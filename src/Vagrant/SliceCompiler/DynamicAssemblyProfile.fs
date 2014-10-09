@@ -41,7 +41,7 @@
             member __.PickleStaticField (_,_) = false
             member __.IsPartiallyEvaluatedSlice _ _ = false
 
-
+    /// Dynamic Assembly profile for F# Interactive
     type FsiDynamicAssemblyProfile () =
 
         let fsiAssemblyName = "FSI-ASSEMBLY"

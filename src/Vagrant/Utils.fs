@@ -13,9 +13,7 @@
     #nowarn "42"
 
     [<AutoOpen>]
-    module Utils =
-
-        let inline raise (e : System.Exception) = (# "throw" e : 'T #)
+    module internal Utils =
 
         let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
@@ -117,7 +115,7 @@
                     let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
                     aux (t :: sorted) g0
 
-            aux [] g
+            List.rev <| aux [] g
 
 
 

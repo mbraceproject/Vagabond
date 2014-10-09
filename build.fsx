@@ -144,7 +144,7 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
-                    "FsPickler", "0.9.9"
+                    "FsPickler", "0.9.11"
                 ]
             Tags = tags
             OutputPath = "bin"
@@ -161,6 +161,24 @@ Target "NuGet" (fun _ ->
             
             })
         ("nuget/" + project + ".nuspec")
+)
+
+// Doc generation
+
+Target "GenerateDocs" (fun _ ->
+    executeFSIWithArgs "docs/tools" "generate.fsx" ["--define:RELEASE"] [] |> ignore
+)
+
+Target "ReleaseDocs" (fun _ ->
+    let tempDocsDir = "temp/gh-pages"
+    CleanDir tempDocsDir
+    Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
+
+    fullclean tempDocsDir
+    CopyRecursive "docs/output" tempDocsDir true |> tracefn "%A"
+    StageAll tempDocsDir
+    Commit tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
+    Branches.push tempDocsDir
 )
 
 
@@ -182,8 +200,10 @@ Target "Default" DoNothing
   ==> "Default"
 
 "Build"
-  ==> "PrepareRelease" 
+  ==> "PrepareRelease"
   ==> "NuGet"
+  ==> "GenerateDocs"
+  ==> "ReleaseDocs"
   ==> "Release"
 
 RunTargetOrDefault "Default"

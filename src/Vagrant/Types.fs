@@ -96,6 +96,6 @@
             | LoadFault (id,_)
             | Loaded (id,_,_) -> id
 
-
+    /// Exception raised by Vagrant
     type VagrantException (message : string, ?inner : exn) =
         inherit Exception(message, defaultArg inner null)

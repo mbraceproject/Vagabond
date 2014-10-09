@@ -181,10 +181,9 @@ Target "Default" DoNothing
   ==> "RunTests"
   ==> "Default"
 
-"Default"
+"Build"
   ==> "PrepareRelease" 
   ==> "NuGet"
   ==> "Release"
 
 RunTargetOrDefault "Default"
-//RunTargetOrDefault "Release"

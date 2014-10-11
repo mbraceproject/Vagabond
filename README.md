@@ -15,4 +15,4 @@ All documentation and related material can be found [here](http://nessos.github.
 Head (branch `master`) Build & Unit tests
 
 * Windows/.NET [![Build status](https://ci.appveyor.com/api/projects/status/wqhmeo9bgipg92ew/branch/master)](https://ci.appveyor.com/project/nessos/vagrant)
-* Mac OS X/Mono 3.8 [![Build Status](https://travis-ci.org/nessos/Vagrant.png?branch=master)](https://travis-ci.org/nessos/Vagrant/branches)
+* Mac OS X/Mono 3.10 [![Build Status](https://travis-ci.org/nessos/Vagrant.png?branch=master)](https://travis-ci.org/nessos/Vagrant/branches)

@@ -17,7 +17,11 @@
 
         static do AssemblyManagement.registerAssemblyResolutionHandler ()
 
-        let cacheDirectory = match cacheDirectory with None -> Path.GetTempPath() | Some d -> d
+        let cacheDirectory = 
+            match cacheDirectory with 
+            | Some d when Directory.Exists d -> d
+            | Some d -> raise <| new DirectoryNotFoundException(d)
+            | None -> Path.GetTempPath() 
 
         let profiles =
             match profiles with

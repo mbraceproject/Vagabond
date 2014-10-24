@@ -97,10 +97,10 @@
 
     /// compiles a collection of assemblies
 
-    let compileDynamicAssemblySlices (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
+    let compileDynamicAssemblySlices ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
         try
             // resolve dynamic assembly dependency graph
-            let parsedDynamicAssemblies = parseDynamicAssemblies state assemblies
+            let parsedDynamicAssemblies = parseDynamicAssemblies ignoreF requireLoaded state assemblies
 
             // exceptions are handled explicitly so that returned state reflects the last successful compilation
             let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>)

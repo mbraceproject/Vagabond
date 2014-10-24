@@ -29,9 +29,9 @@
             abstract PullAssemblies : AssemblyId list -> Async<AssemblyPackage list>
 
         /// <summary>
-        ///     A collection of general purpose utilities used by Vagrant
+        ///     A collection of general purpose utilities on dependency traversal.
         /// </summary>
-        type VagrantUtils =
+        type Utilities =
 
             /// <summary>
             ///     Returns all type instances that appear in given object graph.
@@ -43,24 +43,45 @@
             ///     Resolves all assembly dependencies of given object graph.
             /// </summary>
             /// <param name="obj">object graph to be traversed</param>
-            static member ComputeAssemblyDependencies(obj:obj) =
+            /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+            /// <param name="requireLoadedInAppDomain">
+            ///     Demand all transitive dependencies be loadable in current AppDomain.
+            ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+            /// </param>
+            static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?requireLoadedInAppDomain) =
+                let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+                let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
                 computeDependencies obj 
                 |> Seq.map fst
-                |> traverseDependencies None
+                |> traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None
 
             /// <summary>
             ///     Resolves all assembly dependencies of given assembly.
             /// </summary>
             /// <param name="assembly">assembly to be traversed</param>
-            static member ComputeAssemblyDependencies(assembly:Assembly) = 
-                traverseDependencies None [assembly]
+            /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+            /// <param name="requireLoadedInAppDomain">
+            ///     Demand all transitive dependencies be loadable in current AppDomain.
+            ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+            /// </param>
+            static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly, ?requireLoadedInAppDomain) = 
+                let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+                let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+                traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None [assembly]
 
             /// <summary>
             ///     Resolves all assembly dependencies of given assemblies.
             /// </summary>
             /// <param name="assemblies"></param>
-            static member ComputeAssemblyDependencies(assemblies:seq<Assembly>) = 
-                traverseDependencies None assemblies
+            /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+            /// <param name="requireLoadedInAppDomain">
+            ///     Demand all transitive dependencies be loadable in current AppDomain.
+            ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+            /// </param>
+            static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly, ?requireLoadedInAppDomain) = 
+                let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+                let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+                traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None assemblies
 
 
             /// <summary>

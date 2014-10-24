@@ -13,7 +13,8 @@
     /// Vagrant Object which instantiates a dynamic assembly compiler, loader and exporter state
 
     [<AutoSerializable(false)>]
-    type Vagrant private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
+    type Vagrant private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
+                            ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy) =
 
         static do AssemblyManagement.registerAssemblyResolutionHandler ()
 
@@ -21,7 +22,10 @@
             match cacheDirectory with 
             | Some d when Directory.Exists d -> d
             | Some d -> raise <| new DirectoryNotFoundException(d)
-            | None -> Path.GetTempPath() 
+            | None -> Path.GetTempPath()
+
+        let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
 
         let profiles =
             match profiles with
@@ -30,7 +34,7 @@
 
         let mutable _loadPolicy = defaultArg loadPolicy <| AssemblyLoadPolicy.ResolveStrongNames
 
-        let daemon = new VagrantDaemon(cacheDirectory, profiles, ?tyConv = typeConverter)
+        let daemon = new VagrantDaemon(cacheDirectory, profiles, requireLoadedInAppDomain, isIgnoredAssembly, ?tyConv = typeConverter)
 
         do daemon.Start()
 
@@ -47,9 +51,16 @@
         /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
         /// <param name="profiles">Dynamic assembly configuration profiles.</param>
         /// <param name="typeConverter">FsPickler type name converter.</param>
+        /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+        /// <param name="requireLoadedInAppDomain">
+        ///     Demand all transitive dependencies be loadable in current AppDomain.
+        ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+        /// </param>
         /// <param name="loadPolicy">Default assembly load policy.</param>
-        static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, ?loadPolicy) =
-            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
+        static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
+                                    ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy) =
+            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
+                            ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
         /// Unique identifier for the slice compiler
         member __.UUId = daemon.CompilerState.ServerId
@@ -108,7 +119,7 @@
                 let assemblies = getDynamicDependenciesRequiringCompilation daemon.CompilerState dependencies
                 let _ = compile assemblies in ()
 
-            remapDependencies daemon.CompilerState dependencies
+            remapDependencies isIgnoredAssembly requireLoadedInAppDomain daemon.CompilerState dependencies
 
         /// <summary>
         ///     Checks if assembly id is a locally generated dynamic assembly slice.

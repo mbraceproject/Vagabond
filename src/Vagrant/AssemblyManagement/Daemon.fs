@@ -22,7 +22,7 @@
         | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
         | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
-    type VagrantDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, ?tyConv) =
+    type VagrantDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
         do 
             if not <| Directory.Exists cacheDirectory then
@@ -44,6 +44,8 @@
 
                 Pickler = defaultPickler
                 AssemblyCache = assemblyCache
+                IsIgnoredAssembly = isIgnoredAssembly
+                RequireDependenciesLoadedInAppDomain = requireLoaded
             }
         
         let processMessage (state : VagrantState) (message : VagrantMessage) = async {
@@ -51,7 +53,7 @@
             match message with
             | CompileDynamicAssemblySlice (assemblies, rc) ->
                 try
-                    let compState, result = compileDynamicAssemblySlices state.CompilerState assemblies
+                    let compState, result = compileDynamicAssemblySlices state.IsIgnoredAssembly state.RequireDependenciesLoadedInAppDomain state.CompilerState assemblies
 
                     // note: it is essential that the compiler state ref cell is updated *before*
                     // a reply is given; this is to eliminate a certain class of race conditions.

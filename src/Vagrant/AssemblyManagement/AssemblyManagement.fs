@@ -21,6 +21,10 @@
 
             Pickler : FsPicklerSerializer
             AssemblyCache : AssemblyCache
+            IsIgnoredAssembly : Assembly -> bool
+            /// result in failure if any of the listed transitive
+            /// cannot be loaded in the local AppDomain.
+            RequireDependenciesLoadedInAppDomain : bool
         }
 
     /// registers an assembly resolution handler based on AppDomain lookups;

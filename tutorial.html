@@ -79,12 +79,12 @@ What follows is a brief overview of the basic API.</p>
 </pre>
 </td>
 <td class="snippet"><pre class="fssnip">
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs20', 26)" onmouseover="showTip(event, 'fs20', 26)" class="i">portableAssembly</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 27)" onmouseover="showTip(event, 'fs9', 27)" class="i">vagrant</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs21', 28)" onmouseover="showTip(event, 'fs21', 28)" class="i">CreatePortableAssembly</span>(<span onmouseout="hideTip(event, 'fs3', 29)" onmouseover="showTip(event, 'fs3', 29)" class="i">assembly</span>, <span class="i">includeAssemblyImage</span> <span class="o">=</span> <span class="k">true</span>)</pre>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs20', 26)" onmouseover="showTip(event, 'fs20', 26)" class="i">assemblyPackage</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 27)" onmouseover="showTip(event, 'fs9', 27)" class="i">vagrant</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs21', 28)" onmouseover="showTip(event, 'fs21', 28)" class="i">CreateAssemblyPackage</span>(<span onmouseout="hideTip(event, 'fs3', 29)" onmouseover="showTip(event, 'fs3', 29)" class="i">assembly</span>, <span class="i">includeAssemblyImage</span> <span class="o">=</span> <span class="k">true</span>)</pre>
 </td>
 </tr>
 </table>
 
-<p>A portable assembly contains necessary data to load the specified assembly in a remote process.</p>
+<p>An assembly package contains necessary data to load the specified assembly in a remote process.</p>
 
 <p>Assemblies can be loaded in a remote process like so:</p>
 
@@ -93,7 +93,7 @@ What follows is a brief overview of the basic API.</p>
 </pre>
 </td>
 <td class="snippet"><pre class="fssnip">
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 30)" onmouseover="showTip(event, 'fs22', 30)" class="i">response</span> <span class="o">:</span> <span onmouseout="hideTip(event, 'fs23', 31)" onmouseover="showTip(event, 'fs23', 31)" class="i">AssemblyLoadInfo</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 32)" onmouseover="showTip(event, 'fs9', 32)" class="i">vagrant</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs24', 33)" onmouseover="showTip(event, 'fs24', 33)" class="i">LoadPortableAssembly</span> <span onmouseout="hideTip(event, 'fs20', 34)" onmouseover="showTip(event, 'fs20', 34)" class="i">portableAssembly</span></pre>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 30)" onmouseover="showTip(event, 'fs22', 30)" class="i">response</span> <span class="o">:</span> <span onmouseout="hideTip(event, 'fs23', 31)" onmouseover="showTip(event, 'fs23', 31)" class="i">AssemblyLoadInfo</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 32)" onmouseover="showTip(event, 'fs9', 32)" class="i">vagrant</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs24', 33)" onmouseover="showTip(event, 'fs24', 33)" class="i">LoadAssemblyPackage</span> <span onmouseout="hideTip(event, 'fs20', 34)" onmouseover="showTip(event, 'fs20', 34)" class="i">assemblyPackage</span></pre>
 </td>
 </tr>
 </table>
@@ -128,7 +128,7 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <div class="tip" id="fs7">namespace Nessos</div>
 <div class="tip" id="fs8">namespace Nessos.Vagrant</div>
 <div class="tip" id="fs9">val vagrant : Vagrant<br /><br />Full name: Tutorial.vagrant</div>
-<div class="tip" id="fs10">type Vagrant =<br />&#160;&#160;private new : ?cacheDirectory:string * ?profiles:IDynamicAssemblyProfile list * ?typeConverter:ITypeNameConverter * ?loadPolicy:AssemblyLoadPolicy -&gt; Vagrant<br />&#160;&#160;member CompileDynamicAssemblySlice : assembly:Assembly -&gt; Assembly list<br />&#160;&#160;member ComputeObjectDependencies : obj:obj * ?permitCompilation:bool -&gt; Assembly list<br />&#160;&#160;member CreatePortableAssemblies : ids:seq&lt;AssemblyId&gt; * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; PortableAssembly list<br />&#160;&#160;member CreatePortableAssembly : assembly:Assembly * includeAssemblyImage:bool -&gt; PortableAssembly<br />&#160;&#160;member CreatePortableAssembly : id:AssemblyId * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; PortableAssembly<br />&#160;&#160;member GetAssemblyLoadInfo : ids:seq&lt;AssemblyId&gt; * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo list<br />&#160;&#160;member GetAssemblyLoadInfo : id:AssemblyId * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo<br />&#160;&#160;member GetDynamicAssemblySlices : assembly:Assembly -&gt; Assembly list<br />&#160;&#160;member IsLocalDynamicAssemblySlice : id:AssemblyId -&gt; bool<br />&#160;&#160;...<br /><br />Full name: Nessos.Vagrant.Vagrant</div>
+<div class="tip" id="fs10">type Vagrant =<br />&#160;&#160;private new : ?cacheDirectory:string * ?profiles:IDynamicAssemblyProfile list * ?typeConverter:ITypeNameConverter * ?loadPolicy:AssemblyLoadPolicy -&gt; Vagrant<br />&#160;&#160;member CompileDynamicAssemblySlice : assembly:Assembly -&gt; Assembly list<br />&#160;&#160;member ComputeObjectDependencies : obj:obj * ?permitCompilation:bool -&gt; Assembly list<br />&#160;&#160;member CreateAssemblyPackage : assembly:Assembly * includeAssemblyImage:bool -&gt; AssemblyPackage<br />&#160;&#160;member CreateAssemblyPackage : id:AssemblyId * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyPackage<br />&#160;&#160;member CreateAssemblyPackages : ids:seq&lt;AssemblyId&gt; * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyPackage list<br />&#160;&#160;member GetAssemblyLoadInfo : ids:seq&lt;AssemblyId&gt; * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo list<br />&#160;&#160;member GetAssemblyLoadInfo : id:AssemblyId * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo<br />&#160;&#160;member GetDynamicAssemblySlices : assembly:Assembly -&gt; Assembly list<br />&#160;&#160;member IsLocalDynamicAssemblySlice : id:AssemblyId -&gt; bool<br />&#160;&#160;...<br /><br />Full name: Nessos.Vagrant.Vagrant</div>
 <div class="tip" id="fs11">static member Vagrant.Initialize : ?cacheDirectory:string * ?profiles:IDynamicAssemblyProfile list * ?typeConverter:Nessos.FsPickler.ITypeNameConverter * ?loadPolicy:AssemblyLoadPolicy -&gt; Vagrant</div>
 <div class="tip" id="fs12">val value : (int -&gt; int) option list<br /><br />Full name: Tutorial.value</div>
 <div class="tip" id="fs13">union case Option.Some: Value: &#39;T -&gt; Option&lt;&#39;T&gt;</div>
@@ -138,11 +138,11 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <div class="tip" id="fs17">val id : x:&#39;T -&gt; &#39;T<br /><br />Full name: Microsoft.FSharp.Core.Operators.id</div>
 <div class="tip" id="fs18">val assemblies : Assembly list<br /><br />Full name: Tutorial.assemblies</div>
 <div class="tip" id="fs19">member Vagrant.ComputeObjectDependencies : obj:obj * ?permitCompilation:bool -&gt; Assembly list</div>
-<div class="tip" id="fs20">val portableAssembly : PortableAssembly<br /><br />Full name: Tutorial.portableAssembly</div>
-<div class="tip" id="fs21">member Vagrant.CreatePortableAssembly : assembly:Assembly * includeAssemblyImage:bool -&gt; PortableAssembly<br />member Vagrant.CreatePortableAssembly : id:AssemblyId * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; PortableAssembly</div>
+<div class="tip" id="fs20">val assemblyPackage : AssemblyPackage<br /><br />Full name: Tutorial.assemblyPackage</div>
+<div class="tip" id="fs21">member Vagrant.CreateAssemblyPackage : assembly:Assembly * includeAssemblyImage:bool -&gt; AssemblyPackage<br />member Vagrant.CreateAssemblyPackage : id:AssemblyId * includeAssemblyImage:bool * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyPackage</div>
 <div class="tip" id="fs22">val response : AssemblyLoadInfo<br /><br />Full name: Tutorial.response</div>
 <div class="tip" id="fs23">type AssemblyLoadInfo =<br />&#160;&#160;| NotLoaded of AssemblyId<br />&#160;&#160;| LoadFault of AssemblyId * exn<br />&#160;&#160;| Loaded of AssemblyId * isAppDomainLoaded: bool * staticInitialization: StaticInitializationInfo option<br />&#160;&#160;member Id : AssemblyId<br /><br />Full name: Nessos.Vagrant.AssemblyLoadInfo</div>
-<div class="tip" id="fs24">member Vagrant.LoadPortableAssembly : pa:PortableAssembly * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo</div>
+<div class="tip" id="fs24">member Vagrant.LoadAssemblyPackage : pa:AssemblyPackage * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo</div>
 <div class="tip" id="fs25">val pickler : Nessos.FsPickler.BinarySerializer<br /><br />Full name: Tutorial.pickler</div>
 <div class="tip" id="fs26">property Vagrant.Pickler: Nessos.FsPickler.BinarySerializer</div>
 <div class="tip" id="fs27">val bytes : byte []<br /><br />Full name: Tutorial.bytes</div>

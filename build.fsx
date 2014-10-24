@@ -144,7 +144,7 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
-                    "FsPickler", "0.9.11"
+                    "FsPickler", "1.0.2"
                 ]
             Tags = tags
             OutputPath = "bin"

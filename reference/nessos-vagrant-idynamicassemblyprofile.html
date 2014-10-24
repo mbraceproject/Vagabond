@@ -37,6 +37,7 @@
 
 <h1>IDynamicAssemblyProfile</h1>
 <div class="xmldoc">
+<p>customizes slicing behaviour on given dynamic assembly</p>
 </div>
   <h3>Instance members</h3>
   <table class="table table-bordered member-list">
@@ -47,10 +48,10 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '32', 32)" onmouseover="showTip(event, '32', 32)">
+          <code onmouseout="hideTip(event, '33', 33)" onmouseover="showTip(event, '33', 33)">
             AlwaysIncludeType(arg1)
           </code>
-          <div class="tip" id="32">
+          <div class="tip" id="33">
             <strong>Signature:</strong> Type -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -60,16 +61,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Specifies if type is to be included in every iteration of the slice</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '33', 33)" onmouseover="showTip(event, '33', 33)">
+          <code onmouseout="hideTip(event, '34', 34)" onmouseover="showTip(event, '34', 34)">
             Description
           </code>
-          <div class="tip" id="33">
+          <div class="tip" id="34">
             <strong>Signature:</strong> string<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -79,16 +81,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>a short description of the profile</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '34', 34)" onmouseover="showTip(event, '34', 34)">
+          <code onmouseout="hideTip(event, '35', 35)" onmouseover="showTip(event, '35', 35)">
             EraseStaticConstructor(arg1)
           </code>
-          <div class="tip" id="34">
+          <div class="tip" id="35">
             <strong>Signature:</strong> Type -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -98,16 +101,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Specifies if static constructor is to be erased</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '35', 35)" onmouseover="showTip(event, '35', 35)">
+          <code onmouseout="hideTip(event, '36', 36)" onmouseover="showTip(event, '36', 36)">
             EraseType(arg1)
           </code>
-          <div class="tip" id="35">
+          <div class="tip" id="36">
             <strong>Signature:</strong> Type -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -117,16 +121,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Specifies if type is to be erased from slices</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '36', 36)" onmouseover="showTip(event, '36', 36)">
+          <code onmouseout="hideTip(event, '37', 37)" onmouseover="showTip(event, '37', 37)">
             IsMatch(arg1)
           </code>
-          <div class="tip" id="36">
+          <div class="tip" id="37">
             <strong>Signature:</strong> Assembly -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -136,16 +141,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>identifies dynamic assemblies that match this profile</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '37', 37)" onmouseover="showTip(event, '37', 37)">
+          <code onmouseout="hideTip(event, '38', 38)" onmouseover="showTip(event, '38', 38)">
             IsPartiallyEvaluatedSlice(...)
           </code>
-          <div class="tip" id="37">
+          <div class="tip" id="38">
             <strong>Signature:</strong> (sliceResolver:(Type -&gt; Assembly option)) -&gt; Assembly -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -155,16 +161,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Decides if given slices requires fresh evaluation of assemblies</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '38', 38)" onmouseover="showTip(event, '38', 38)">
+          <code onmouseout="hideTip(event, '39', 39)" onmouseover="showTip(event, '39', 39)">
             PickleStaticField(arg1, isErasedCtor)
           </code>
-          <div class="tip" id="38">
+          <div class="tip" id="39">
             <strong>Signature:</strong> (FieldInfo * isErasedCtor:bool) -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -174,7 +181,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Specifies if static field is to be pickled</p>
+
         </td>
       </tr>
     </tbody>

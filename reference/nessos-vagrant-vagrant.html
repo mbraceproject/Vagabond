@@ -37,6 +37,7 @@
 
 <h1>Vagrant</h1>
 <div class="xmldoc">
+<p>Vagrant Object which instantiates a dynamic assembly compiler, loader and exporter state</p>
 </div>
   <h3>Instance members</h3>
   <table class="table table-bordered member-list">
@@ -47,10 +48,10 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '45', 45)" onmouseover="showTip(event, '45', 45)">
+          <code onmouseout="hideTip(event, '44', 44)" onmouseover="showTip(event, '44', 44)">
             CachePath
           </code>
-          <div class="tip" id="45">
+          <div class="tip" id="44">
             <strong>Signature:</strong> string<br />
                       </div>
         </td>
@@ -59,16 +60,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Cache directory used by Vagrant</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '46', 46)" onmouseover="showTip(event, '46', 46)">
+          <code onmouseout="hideTip(event, '45', 45)" onmouseover="showTip(event, '45', 45)">
             CompileDynamicAssemblySlice(assembly)
           </code>
-          <div class="tip" id="46">
+          <div class="tip" id="45">
             <strong>Signature:</strong> assembly:Assembly -&gt; Assembly list<br />
                       </div>
         </td>
@@ -77,16 +79,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Compiles slices for given dynamic assembly, if required.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '47', 47)" onmouseover="showTip(event, '47', 47)">
+          <code onmouseout="hideTip(event, '46', 46)" onmouseover="showTip(event, '46', 46)">
             ComputeObjectDependencies(...)
           </code>
-          <div class="tip" id="47">
+          <div class="tip" id="46">
             <strong>Signature:</strong> (obj:obj * permitCompilation:bool option) -&gt; Assembly list<br />
                       </div>
         </td>
@@ -95,7 +98,28 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Returns a collection of all assemblies that the given object depends on.
+Dynamic assemblies are substituted for their corresponding static slices.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '47', 47)" onmouseover="showTip(event, '47', 47)">
+            CreateAssemblyPackage(...)
+          </code>
+          <div class="tip" id="47">
+            <strong>Signature:</strong> (assembly:Assembly * includeAssemblyImage:bool) -&gt; AssemblyPackage<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagrant/tree/master/src/Vagrant/Vagrant.fs#L157-157" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Builds an assembly package bundle for given input.</p>
+
         </td>
       </tr>
       <tr>
@@ -105,24 +129,6 @@
             CreateAssemblyPackage(...)
           </code>
           <div class="tip" id="48">
-            <strong>Signature:</strong> (assembly:Assembly * includeAssemblyImage:bool) -&gt; AssemblyPackage<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagrant/tree/master/src/Vagrant/Vagrant.fs#L157-157" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
-            CreateAssemblyPackage(...)
-          </code>
-          <div class="tip" id="49">
             <strong>Signature:</strong> (id:AssemblyId * includeAssemblyImage:bool * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyPackage<br />
                       </div>
         </td>
@@ -131,16 +137,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Creates an assembly package out of a given assembly id.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
+          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
             CreateAssemblyPackages(...)
           </code>
-          <div class="tip" id="50">
+          <div class="tip" id="49">
             <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * includeAssemblyImage:bool * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyPackage list<br />
                       </div>
         </td>
@@ -149,16 +156,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Creates assembly packages out of given assembly ids.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '51', 51)" onmouseover="showTip(event, '51', 51)">
+          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
             DefaultLoadPolicy
           </code>
-          <div class="tip" id="51">
+          <div class="tip" id="50">
             <strong>Signature:</strong> AssemblyLoadPolicy<br />
                       </div>
         </td>
@@ -167,14 +175,34 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Default load policy</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '51', 51)" onmouseover="showTip(event, '51', 51)">
+            DefaultLoadPolicy()
+          </code>
+          <div class="tip" id="51">
+            <strong>Signature:</strong> unit -&gt; AssemblyLoadPolicy<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagrant/tree/master/src/Vagrant/Vagrant.fs#L66-66" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Default load policy</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
-            GetAssemblyLoadInfo(ids, loadPolicy)
+            GetAssemblyLoadInfo(ids, ?loadPolicy)
           </code>
           <div class="tip" id="52">
             <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
@@ -185,14 +213,15 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Gets the local assembly load info for given assembly ids.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '53', 53)" onmouseover="showTip(event, '53', 53)">
-            GetAssemblyLoadInfo(id, loadPolicy)
+            GetAssemblyLoadInfo(id, ?loadPolicy)
           </code>
           <div class="tip" id="53">
             <strong>Signature:</strong> (id:AssemblyId * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
@@ -203,7 +232,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Gets the local assembly load info for given assembly id.</p>
+
         </td>
       </tr>
       <tr>
@@ -221,7 +251,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Returns <em>all</em> assembly slices of given dynamic assembly.</p>
+
         </td>
       </tr>
       <tr>
@@ -239,14 +270,15 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Checks if assembly id is a locally generated dynamic assembly slice.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '56', 56)" onmouseover="showTip(event, '56', 56)">
-            LoadAssemblyPackage(pa, loadPolicy)
+            LoadAssemblyPackage(pa, ?loadPolicy)
           </code>
           <div class="tip" id="56">
             <strong>Signature:</strong> (pa:AssemblyPackage * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
@@ -257,14 +289,15 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Loads assembly package to the local machine.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '57', 57)" onmouseover="showTip(event, '57', 57)">
-            LoadAssemblyPackages(pas, loadPolicy)
+            LoadAssemblyPackages(pas, ?loadPolicy)
           </code>
           <div class="tip" id="57">
             <strong>Signature:</strong> (pas:seq&lt;AssemblyPackage&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
@@ -275,14 +308,15 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Loads assembly packages to the local machine.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '58', 58)" onmouseover="showTip(event, '58', 58)">
-            LoadCachedAssemblies(ids, loadPolicy)
+            LoadCachedAssemblies(ids, ?loadPolicy)
           </code>
           <div class="tip" id="58">
             <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
@@ -293,14 +327,15 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Loads assembly id's that are already cached in local machine.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '59', 59)" onmouseover="showTip(event, '59', 59)">
-            LoadCachedAssembly(id, loadPolicy)
+            LoadCachedAssembly(id, ?loadPolicy)
           </code>
           <div class="tip" id="59">
             <strong>Signature:</strong> (id:AssemblyId * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
@@ -311,7 +346,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Loads an assembly that is already cached in local machine.</p>
+
         </td>
       </tr>
       <tr>
@@ -329,7 +365,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Returns the pickler used by the slice compiler</p>
+
         </td>
       </tr>
       <tr>
@@ -347,7 +384,9 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Returns a list of dynamic assemblies that require slice compilation
+for the given object graph to be exportable.</p>
+
         </td>
       </tr>
       <tr>
@@ -365,7 +404,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Returns the dynamic assembly slice corresponding to the given type, if exists.</p>
+
         </td>
       </tr>
       <tr>
@@ -383,7 +423,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>FsPickler type name converter for use with other formats</p>
+
         </td>
       </tr>
       <tr>
@@ -401,7 +442,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Unique identifier for the slice compiler</p>
+
         </td>
       </tr>
     </tbody>
@@ -427,7 +469,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Initializes a new Vagrant instance.</p>
+
         </td>
       </tr>
     </tbody>

@@ -37,6 +37,7 @@
 
 <h1>IRemoteAssemblyPublisher</h1>
 <div class="xmldoc">
+<p>Defines an abstract assembly exporter; to be used by VagrantClient</p>
 </div>
   <h3>Instance members</h3>
   <table class="table table-bordered member-list">
@@ -47,10 +48,10 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '1', 1)" onmouseover="showTip(event, '1', 1)">
+          <code onmouseout="hideTip(event, '3', 3)" onmouseover="showTip(event, '3', 3)">
             GetRequiredAssemblyInfo()
           </code>
-          <div class="tip" id="1">
+          <div class="tip" id="3">
             <strong>Signature:</strong> unit -&gt; Async&lt;AssemblyId list&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -60,16 +61,17 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>receives a collection of dependencies required by remote publisher</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '2', 2)" onmouseover="showTip(event, '2', 2)">
+          <code onmouseout="hideTip(event, '4', 4)" onmouseover="showTip(event, '4', 4)">
             PullAssemblies(arg1)
           </code>
-          <div class="tip" id="2">
+          <div class="tip" id="4">
             <strong>Signature:</strong> (AssemblyId list) -&gt; Async&lt;AssemblyPackage list&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
@@ -79,7 +81,8 @@
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>request assembly packages from publisher</p>
+
         </td>
       </tr>
     </tbody>

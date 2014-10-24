@@ -30,7 +30,7 @@
             new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
 
     ///
-    /// exports a portable assembly
+    /// exports an assembly package
     ///
 
     let exportAssembly (state : VagrantState) (policy : AssemblyLoadPolicy)
@@ -65,13 +65,13 @@
                 }
 
             let generationIndex = state.AssemblyExportState.Add(id, generation)
-            let pa = state.AssemblyCache.CreatePortableAssembly(sliceInfo.Assembly, includeImage = includeImage)
+            let pa = state.AssemblyCache.CreateAssemblyPackage(sliceInfo.Assembly, includeImage = includeImage)
 
             { state with AssemblyExportState = generationIndex }, 
                 { pa with StaticInitializer = Some staticInitializer }
 
         | Some(_, sliceInfo) -> 
-            let pa = state.AssemblyCache.CreatePortableAssembly(sliceInfo.Assembly, includeImage = includeImage)
+            let pa = state.AssemblyCache.CreateAssemblyPackage(sliceInfo.Assembly, includeImage = includeImage)
             state, pa
 
         | None ->
@@ -79,7 +79,7 @@
             // in that order; this is because cache contains vagrant metadata while AppDomain does not.
             match state.AssemblyCache.TryGetCachedAssemblyInfo id with
             | Some info -> 
-                let pa = state.AssemblyCache.CreatePortableAssembly(info, includeImage = includeImage)
+                let pa = state.AssemblyCache.CreateAssemblyPackage(info, includeImage = includeImage)
                 state, pa
 
             | None ->
@@ -96,7 +96,7 @@
                     raise <| VagrantException(msg)
 
                 | Some a -> 
-                    let pa = state.AssemblyCache.CreatePortableAssembly(a, includeImage = includeImage)
+                    let pa = state.AssemblyCache.CreateAssemblyPackage(a, includeImage = includeImage)
                     state, pa
 
                 | None ->
@@ -108,7 +108,7 @@
     // assembly import protocol implementation
     //
 
-    let importAssembly (state : VagrantState) (policy : AssemblyLoadPolicy) (pa : PortableAssembly) =
+    let importAssembly (state : VagrantState) (policy : AssemblyLoadPolicy) (pa : AssemblyPackage) =
 
         // update state with success
         let success info = 
@@ -117,7 +117,7 @@
 
         let loadInAppDomain = not <| policy.HasFlag AssemblyLoadPolicy.CacheOnly
 
-        // loads the static initializer for given portable assembly
+        // loads the static initializer for given assembly package
         // requires the assembly to be already loaded in the current AppDomain
         let tryLoadStaticInitializer (previous : StaticInitializationInfo option) (cacheInfo : CachedAssemblyInfo) =
             let tryLoad (fI : FieldInfo, data : Exn<byte []>) =
@@ -145,7 +145,7 @@
                 Loaded(cacheInfo.Id, true, Some info)
 
 
-        let loadAssembly (pa : PortableAssembly) =
+        let loadAssembly (pa : AssemblyPackage) =
 
             // Attempt resolving locally
             let localAssembly =

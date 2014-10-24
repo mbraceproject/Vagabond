@@ -18,15 +18,15 @@
         type IRemoteAssemblyReceiver =
             /// receives the assembly load state of the remote party for the given id's
             abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
-            /// upload a set of portable assemblies to the remote party
-            abstract PushAssemblies : PortableAssembly list -> Async<AssemblyLoadInfo list>
+            /// upload a set of assembly packages to the remote party
+            abstract PushAssemblies : AssemblyPackage list -> Async<AssemblyLoadInfo list>
 
         /// Defines an abstract assembly exporter; to be used by VagrantClient
         type IRemoteAssemblyPublisher =
             /// receives a collection of dependencies required by remote publisher
             abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
-            /// request portable assemblies from publisher
-            abstract PullAssemblies : AssemblyId list -> Async<PortableAssembly list>
+            /// request assembly packages from publisher
+            abstract PullAssemblies : AssemblyId list -> Async<AssemblyPackage list>
 
         /// <summary>
         ///     A collection of general purpose utilities used by Vagrant
@@ -87,19 +87,19 @@
                 let! info = receiver.GetLoadedAssemblyInfo headers
         
                 // Step 2. detect dependencies that require posting
-                let tryGetPortableAssembly (info : AssemblyLoadInfo) =
+                let tryGetAssemblyPackage (info : AssemblyLoadInfo) =
                     match info with
                     | LoadFault(id, (:?VagrantException as e)) -> raise e
                     | LoadFault(id, e) -> 
                         raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
                     | NotLoaded id -> 
-                        Some <| v.CreatePortableAssembly(id, includeAssemblyImage = true)
+                        Some <| v.CreateAssemblyPackage(id, includeAssemblyImage = true)
                     | Loaded(id,_,Some si) when si.IsPartial ->
-                        Some <| v.CreatePortableAssembly(id, includeAssemblyImage = false)
+                        Some <| v.CreateAssemblyPackage(id, includeAssemblyImage = false)
                     | Loaded _ -> None
 
-                let portableAssemblies = info |> List.choose tryGetPortableAssembly
-                let! loadResults = receiver.PushAssemblies portableAssemblies
+                let assemblyPackages = info |> List.choose tryGetAssemblyPackage
+                let! loadResults = receiver.PushAssemblies assemblyPackages
 
                 // Step 3. check load results; if client replies with fault, fail.
                 let gatherErrors (info : AssemblyLoadInfo) =
@@ -148,9 +148,9 @@
                 let missing = dependencies |> List.choose tryCheckLoadStatus
 
                 if missing.Length > 0 then
-                    // step 3. download portable assemblies for missing dependencies
+                    // step 3. download assembly packages for missing dependencies
                     let! assemblies = publisher.PullAssemblies missing
-                    let loadResults = v.LoadPortableAssemblies(assemblies, ?loadPolicy = loadPolicy)
+                    let loadResults = v.LoadAssemblyPackages(assemblies, ?loadPolicy = loadPolicy)
 
                     let checkLoadResult (info : AssemblyLoadInfo) =
                         match info with

@@ -19,7 +19,7 @@
 
     type private ServerMsg =
         | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyLoadInfo list>
-        | LoadAssemblies of PortableAssembly list * AsyncReplyChannel<AssemblyLoadInfo list>
+        | LoadAssemblies of AssemblyPackage list * AsyncReplyChannel<AssemblyLoadInfo list>
         | EvaluteThunk of Type * (unit -> obj) * AsyncReplyChannel<Choice<obj, exn>>
 
     type ThunkServer (?endpoint : string) =
@@ -35,7 +35,7 @@
                 rc.Reply replies
 
             | LoadAssemblies (pas, rc) ->
-                let replies = vagrant.LoadPortableAssemblies pas
+                let replies = vagrant.LoadAssemblyPackages pas
                 rc.Reply replies
 
             | EvaluteThunk (ty, f, rc) ->
@@ -72,7 +72,7 @@
             {
                 new IRemoteAssemblyReceiver with
                     member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = client.PostAndReplyAsync(fun ch -> GetAssemblyLoadState(ids, ch))
-                    member __.PushAssemblies(pas : PortableAssembly list) = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas,ch))
+                    member __.PushAssemblies(pas : AssemblyPackage list) = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas,ch))
             }
 
         member __.UploadDependenciesAsync (obj : obj) = async {

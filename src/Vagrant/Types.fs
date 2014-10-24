@@ -35,7 +35,7 @@
 
         override id.ToString() = id.FullName
 
-    /// static initialization data for portable assembly
+    /// static initialization data for assembly package
     [<NoEquality; NoComparison>]
     type StaticInitializer =
         {
@@ -51,7 +51,7 @@
 
     /// Contains information necessary for the exportation of an assembly
     [<NoEquality; NoComparison>] 
-    type PortableAssembly =
+    type AssemblyPackage =
         {
             // Assembly Metadata
             Id : AssemblyId

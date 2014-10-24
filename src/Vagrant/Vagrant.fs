@@ -129,33 +129,33 @@
 
         
         /// <summary>
-        ///     Creates a portable assembly out of a given assembly id.
+        ///     Creates an assembly package out of a given assembly id.
         /// </summary>
         /// <param name="id">assembly id</param>
-        /// <param name="includeAssemblyImage">include assembly image in portable assembly.</param>
+        /// <param name="includeAssemblyImage">include assembly image in assembly package.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
-        member __.CreatePortableAssembly(id : AssemblyId, includeAssemblyImage : bool, ?loadPolicy) =
+        member __.CreateAssemblyPackage(id : AssemblyId, includeAssemblyImage : bool, ?loadPolicy) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
-            daemon.PostAndReply(fun ch -> GetPortableAssembly(loadPolicy, includeAssemblyImage, id, ch))
+            daemon.PostAndReply(fun ch -> GetAssemblyPackage(loadPolicy, includeAssemblyImage, id, ch))
 
         /// <summary>
-        ///     Creates portable assemblies out of given assembly ids.
+        ///     Creates assembly packages out of given assembly ids.
         /// </summary>
         /// <param name="ids"></param>
         /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-        member __.CreatePortableAssemblies(ids : seq<AssemblyId>, includeAssemblyImage : bool, ?loadPolicy) =
+        member __.CreateAssemblyPackages(ids : seq<AssemblyId>, includeAssemblyImage : bool, ?loadPolicy) =
             Seq.toList ids
-            |> List.map (fun id -> __.CreatePortableAssembly(id, includeAssemblyImage, ?loadPolicy = loadPolicy))
+            |> List.map (fun id -> __.CreateAssemblyPackage(id, includeAssemblyImage, ?loadPolicy = loadPolicy))
             
 
         /// <summary>
-        ///     Builds a portable assembly bundle for given input.
+        ///     Builds an assembly package bundle for given input.
         /// </summary>
         /// <param name="assembly">Given assembly.</param>
         /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
-        member __.CreatePortableAssembly(assembly : Assembly, includeAssemblyImage:bool) =
-            __.CreatePortableAssembly(assembly.AssemblyId, includeAssemblyImage)
+        member __.CreateAssemblyPackage(assembly : Assembly, includeAssemblyImage:bool) =
+            __.CreateAssemblyPackage(assembly.AssemblyId, includeAssemblyImage)
 
 
         /// <summary>
@@ -177,22 +177,22 @@
             |> List.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
 
         /// <summary>
-        ///     Loads portable assembly to the local machine.
+        ///     Loads assembly package to the local machine.
         /// </summary>
-        /// <param name="pa">Input portable assembly.</param>
+        /// <param name="pa">Input assembly package.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-        member __.LoadPortableAssembly(pa : PortableAssembly, ?loadPolicy) =
+        member __.LoadAssemblyPackage(pa : AssemblyPackage, ?loadPolicy) =
             let loadPolicy = defaultArg loadPolicy _loadPolicy
             daemon.PostAndReply(fun ch -> LoadAssembly(loadPolicy, pa, ch))
 
         /// <summary>
-        ///     Loads portable assemblies to the local machine.
+        ///     Loads assembly packages to the local machine.
         /// </summary>
-        /// <param name="pas">Input portable assemblies.</param>
+        /// <param name="pas">Input assembly packages.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-        member __.LoadPortableAssemblies(pas : seq<PortableAssembly>, ?loadPolicy) =
+        member __.LoadAssemblyPackages(pas : seq<AssemblyPackage>, ?loadPolicy) =
             Seq.toList pas
-            |> List.map (fun pa -> __.LoadPortableAssembly(pa, ?loadPolicy = loadPolicy))
+            |> List.map (fun pa -> __.LoadAssemblyPackage(pa, ?loadPolicy = loadPolicy))
 
         /// <summary>
         ///     Loads an assembly that is already cached in local machine.
@@ -200,7 +200,7 @@
         /// <param name="id">input assembly id.</param>
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.LoadCachedAssembly(id : AssemblyId, ?loadPolicy) =
-            __.LoadPortableAssembly(PortableAssembly.Empty id, ?loadPolicy = loadPolicy)
+            __.LoadAssemblyPackage(AssemblyPackage.Empty id, ?loadPolicy = loadPolicy)
 
         /// <summary>
         ///     Loads assembly id's that are already cached in local machine.
@@ -209,4 +209,4 @@
         /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
         member __.LoadCachedAssemblies(ids : seq<AssemblyId>, ?loadPolicy) =
             Seq.toList ids
-            |> List.map (fun id -> __.LoadPortableAssembly(PortableAssembly.Empty id, ?loadPolicy = loadPolicy))
+            |> List.map (fun id -> __.LoadAssemblyPackage(AssemblyPackage.Empty id, ?loadPolicy = loadPolicy))

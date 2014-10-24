@@ -17,8 +17,8 @@
     open Nessos.Vagrant.AssemblyManagement
 
     type VagrantMessage = 
-        | LoadAssembly of AssemblyLoadPolicy * PortableAssembly * ReplyChannel<AssemblyLoadInfo>
-        | GetPortableAssembly of AssemblyLoadPolicy * includeImage:bool * AssemblyId * ReplyChannel<PortableAssembly>
+        | LoadAssembly of AssemblyLoadPolicy * AssemblyPackage * ReplyChannel<AssemblyLoadInfo>
+        | GetAssemblyPackage of AssemblyLoadPolicy * includeImage:bool * AssemblyId * ReplyChannel<AssemblyPackage>
         | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
         | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
@@ -64,7 +64,7 @@
                     rc.ReplyWithError e
                     return state
 
-            | GetPortableAssembly (policy, includeImage, id, rc) ->
+            | GetAssemblyPackage (policy, includeImage, id, rc) ->
                 try
                     let state', pa = exportAssembly state policy includeImage id
 
@@ -90,7 +90,7 @@
 
             | GetAssemblyLoadInfo (policy, id, rc) ->
                 try
-                    let state', result = importAssembly state policy <| PortableAssembly.Empty id
+                    let state', result = importAssembly state policy <| AssemblyPackage.Empty id
 
                     rc.Reply result
 

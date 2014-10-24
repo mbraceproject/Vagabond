@@ -35,17 +35,17 @@ let assemblies = vagrant.ComputeObjectDependencies(value, permitCompilation = tr
 
 (** An assembly can be exported by writing *)
 
-let portableAssembly = vagrant.CreatePortableAssembly(assembly, includeAssemblyImage = true)
+let assemblyPackage = vagrant.CreateAssemblyPackage(assembly, includeAssemblyImage = true)
 
 (** 
 
-A portable assembly contains necessary data to load the specified assembly in a remote process.
+An assembly package contains necessary data to load the specified assembly in a remote process.
 
 Assemblies can be loaded in a remote process like so:
 
 *)
 
-let response : AssemblyLoadInfo = vagrant.LoadPortableAssembly portableAssembly
+let response : AssemblyLoadInfo = vagrant.LoadAssemblyPackage assemblyPackage
 
 (**
 

@@ -101,7 +101,7 @@
             else
                 getPersistedAssemblyInfo assembly.Location assembly.AssemblyId
 
-        member __.CreatePortableAssembly(cai : CachedAssemblyInfo, includeImage : bool) =
+        member __.CreateAssemblyPackage(cai : CachedAssemblyInfo, includeImage : bool) =
 
             let image =
                 if includeImage then Some <| File.ReadAllBytes cai.Location
@@ -128,11 +128,11 @@
                 StaticInitializer = staticInit
             }
 
-        member __.CreatePortableAssembly(assembly : Assembly, includeImage) =
+        member __.CreateAssemblyPackage(assembly : Assembly, includeImage) =
             let info = __.GetStaticAssemblyInfo assembly
-            __.CreatePortableAssembly(info, includeImage)
+            __.CreateAssemblyPackage(info, includeImage)
 
-        member __.Cache(pa : PortableAssembly) =
+        member __.Cache(pa : AssemblyPackage) =
             let cachePath = getCachedAssemblyPath pa.Id
             if File.Exists cachePath then
                 let info = getPersistedAssemblyInfo cachePath pa.Id
@@ -146,7 +146,7 @@
             else
                 match pa.Image with
                 | None -> 
-                    let msg = sprintf "Portable assembly '%O' lacking image specification." pa.FullName
+                    let msg = sprintf "Assembly package '%O' lacking image specification." pa.FullName
                     raise <| new VagrantException(msg)
 
                 | Some img -> 

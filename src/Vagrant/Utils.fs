@@ -179,7 +179,7 @@
                 else
                     false
 
-        type PortableAssembly with
+        type AssemblyPackage with
             static member Empty (id : AssemblyId) =
                 { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
 

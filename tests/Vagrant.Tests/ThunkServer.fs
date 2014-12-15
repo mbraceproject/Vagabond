@@ -1,115 +1,117 @@
-﻿module Nessos.Vagrant.Tests.ThunkServer
+﻿namespace Nessos.Vagrant.Tests
 
-    open System
-    open System.IO
-    open System.Reflection
-    open System.Diagnostics
+open System
+open System.IO
+open System.Reflection
+open System.Diagnostics
+open System.Threading.Tasks
 
-    open Microsoft.FSharp.Control
+open Nessos.Thespian
+open Nessos.Thespian.Remote
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.Tests.TcpActor
+open Nessos.Vagrant
 
-    let private defaultConnectionString = "127.0.0.1:38979"
+type private ServerMsg =
+    | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
+    | LoadAssemblies of AssemblyPackage list * IReplyChannel<AssemblyLoadInfo list>
+    | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
 
-    let private vagrant =
-        let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
-        let _ = Directory.CreateDirectory cacheDir
-        Vagrant.Initialize(cacheDirectory = cacheDir)
-
-    type private ServerMsg =
-        | GetAssemblyLoadState of AssemblyId list * AsyncReplyChannel<AssemblyLoadInfo list>
-        | LoadAssemblies of AssemblyPackage list * AsyncReplyChannel<AssemblyLoadInfo list>
-        | EvaluteThunk of Type * (unit -> obj) * AsyncReplyChannel<Choice<obj, exn>>
-
-    type ThunkServer (?endpoint : string) =
+type ThunkServer private () =
         
-        let endpoint = defaultArg endpoint defaultConnectionString
-        
-        let rec serverLoop (inbox : MailboxProcessor<ServerMsg>) = async {
-            let! msg = inbox.Receive()
+    let rec serverLoop (self : Actor<ServerMsg>) = async {
+        let! msg = self.Receive()
 
-            match msg with
-            | GetAssemblyLoadState (ids, rc) ->
-                let replies = ids |> List.map vagrant.GetAssemblyLoadInfo
-                rc.Reply replies
+        match msg with
+        | GetAssemblyLoadState (ids, rc) ->
+            let replies = ids |> List.map VagrantConfig.Vagrant.GetAssemblyLoadInfo
+            do! rc.Reply replies
 
-            | LoadAssemblies (pas, rc) ->
-                let replies = vagrant.LoadAssemblyPackages pas
-                rc.Reply replies
+        | LoadAssemblies (pas, rc) ->
+            let replies = VagrantConfig.Vagrant.LoadAssemblyPackages pas
+            do! rc.Reply replies
 
-            | EvaluteThunk (ty, f, rc) ->
-                printfn "Evaluating thunk of type '%O'" ty
-                let result = 
-                    try 
-                        let o = f () 
-                        printfn "Got result: %A" o
-                        Choice1Of2 o
-                    with e -> 
-                        printfn "Execution failed with: %A" e
-                        Choice2Of2 e
+        | EvaluteThunk (ty, f, rc) ->
+            printfn "Evaluating thunk of type '%O'" ty
+            let result = 
+                try 
+                    let o = f () 
+                    printfn "Got result: %A" o
+                    Choice1Of2 o
+                with e -> 
+                    printfn "Execution failed with: %A" e
+                    Choice2Of2 e
 
-                rc.Reply result
+            do! rc.Reply result
 
-            return! serverLoop inbox
+        return! serverLoop self
+    }
+
+    let actor = serverLoop |> Actor.bind |> Actor.Publish
+
+    do printfn "ThunkServer listening at %O\n" Actor.EndPoint
+
+    member __.Stop = actor.Stop()
+    member __.Uri = ActorRef.toUri actor.Ref
+
+    static member Start () = new ThunkServer()
+
+
+type ThunkClient internal (uri : string, ?proc : Process) =
+    
+    let server : ActorRef<ServerMsg> = ActorRef.fromUri uri
+
+    static let mutable exe = None
+
+    let assemblyUploader =
+        {
+            new IRemoteAssemblyReceiver with
+                member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
+                member __.PushAssemblies(pas : AssemblyPackage list) = server.PostWithReply(fun ch -> LoadAssemblies(pas,ch))
         }
 
-        let actor = TcpActor.Create(serverLoop, endpoint, vagrant.Pickler)
+    member __.UploadDependenciesAsync (obj : obj) = async {
+        let! errors = VagrantConfig.Vagrant.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
+        return ()
+    }
 
-        do printfn "ThunkServer(TM) listening at %s\n" endpoint
+    member __.UploadDependencies (obj:obj) = __.UploadDependenciesAsync obj |> Async.RunSynchronously
 
-        member __.Stop = actor.Stop()
+    member __.EvaluateThunkAsync (f : unit -> 'T) = async {
+        // load dependencies to server
+        do! __.UploadDependenciesAsync f
 
+        // evaluate thunk
+        let! result = server.PostWithReply(fun ch -> EvaluteThunk(typeof<'T>, (fun () -> f () :> obj), ch))
 
-    type ThunkClient internal (?serverEndPoint : string, ?proc : Process) =
+        return
+            match result with
+            | Choice1Of2 o -> o :?> 'T
+            | Choice2Of2 e -> raise e
+    }
 
-        static do TcpActor.SetDefaultPickler(vagrant.Pickler)
+    member __.EvaluateThunk (f : unit -> 'T) = __.EvaluateThunkAsync f |> Async.RunSynchronously
+    member __.EvaluateDelegate (f : Func<'T>) = __.EvaluateThunk f.Invoke
+    member __.Kill() = proc |> Option.iter (fun p -> p.Kill())
 
-        let serverEndPoint = defaultArg serverEndPoint defaultConnectionString
-        let client = TcpActor.Connect<ServerMsg>(serverEndPoint)
+    /// Gets or sets the server executable location.
+    static member Executable
+        with get () = match exe with None -> invalidOp "unset executable path." | Some e -> e
+        and set path = 
+            let path = Path.GetFullPath path
+            if File.Exists path then exe <- Some path
+            else raise <| FileNotFoundException(path)
 
-        let assemblyUploader =
-            {
-                new IRemoteAssemblyReceiver with
-                    member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = client.PostAndReplyAsync(fun ch -> GetAssemblyLoadState(ids, ch))
-                    member __.PushAssemblies(pas : AssemblyPackage list) = client.PostAndReplyAsync(fun ch -> LoadAssemblies(pas,ch))
-            }
+    static member InitLocalAsync () = async {
+        use receiver = Receiver.create<string> () |> Actor.Publish
+        let! awaiter = receiver.ReceiveEvent |> Async.AwaitEvent |> Async.StartChild
 
-        member __.UploadDependenciesAsync (obj : obj) = async {
+        let argument = VagrantConfig.Pickler.Pickle receiver.Ref |> System.Convert.ToBase64String
+        let proc = Process.Start(ThunkClient.Executable, argument)
 
-            let! errors = vagrant.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
-            return ()
-        }
+        let! serverUri = awaiter
+        return new ThunkClient(serverUri, proc)
+    }
+    
+    static member InitLocal () = ThunkClient.InitLocalAsync() |> Async.RunSynchronously
 
-        member __.UploadDependencies (obj:obj) = __.UploadDependenciesAsync obj |> Async.RunSynchronously
-
-        member __.EvaluateThunkAsync (f : unit -> 'T) = async {
-
-            // load dependencies to server
-            do! __.UploadDependenciesAsync f
-
-            // evaluate thunk
-            let! result = client.PostAndReplyAsync(fun ch -> EvaluteThunk(typeof<'T>, (fun () -> f () :> obj), ch))
-
-            return
-                match result with
-                | Choice1Of2 o -> o :?> 'T
-                | Choice2Of2 e -> raise e
-        }
-
-        member __.EvaluateThunk (f : unit -> 'T) = __.EvaluateThunkAsync f |> Async.RunSynchronously
-        member __.EvaluateDelegate (f : Func<'T>) = __.EvaluateThunk f.Invoke
-        member __.Kill() = proc |> Option.iter (fun p -> p.Kill())
-
-        static member InitLocal(?serverExecutable, ?serverEndPoint) =
-            let serverEndPoint = defaultArg serverEndPoint defaultConnectionString
-            let executable =
-                match serverExecutable with
-                | None -> Assembly.GetExecutingAssembly().Location
-                | Some e -> e
-            
-            let proc = System.Diagnostics.Process.Start(executable, serverEndPoint)
-            do System.Threading.Thread.Sleep(1000)
-            new ThunkClient(serverEndPoint, proc)
-
-        static member Connect(?serverEndPoint : string) = new ThunkClient(?serverEndPoint = serverEndPoint)
+    static member Connect(uri : string) = new ThunkClient(uri)

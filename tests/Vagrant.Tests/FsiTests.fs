@@ -99,14 +99,16 @@
                     "FsPickler.dll"
                     "Mono.Cecil.dll"
                     "Vagrant.dll"
+                    "Thespian.dll"
                     "LinqOptimizer.Base.dll"
                     "LinqOptimizer.Core.dll"
                     "LinqOptimizer.FSharp.dll"
                     "Vagrant.Tests.exe"
                 ]
 
-            fsi.EvalInteraction "open Nessos.Vagrant.Tests.ThunkServer"
-            fsi.EvalInteraction <| "let client = ThunkClient.InitLocal(serverExecutable = " + thisExe + ")"
+            fsi.EvalInteraction "open Nessos.Vagrant.Tests"
+            fsi.EvalInteraction <| "ThunkClient.Executable <- " + thisExe
+            fsi.EvalInteraction "let client = ThunkClient.InitLocal()"
 
         [<TestFixtureTearDown>]
         let stopFsiSession () =
@@ -274,39 +276,40 @@
         let ``12 Remotely deploy an actor definition`` () =
 
             let code = """
-            open Microsoft.FSharp.Control
-            open Nessos.Vagrant.Tests.TcpActor
+            open Nessos.Thespian
 
-            // takes an input, replies with an aggregate sum
-            let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
+            type Counter =
+                | Increment of int
+                | GetCount of IReplyChannel<int>
+
+            let rec loop state (self : Actor<Counter>) =
                 async {
-                    let! msg, rc = inbox.Receive ()
-
-                    printfn "Received %d. Thanks!" msg
-
-                    rc.Reply state
-
-                    return! loop (state + msg) inbox
+                    let! msg = self.Receive ()
+                    match msg with
+                    | Increment i -> 
+                        printfn "Increment by %d" i
+                        return! loop (i + state) self
+                    | GetCount rc ->
+                        do! rc.Reply state
+                        return! loop state self
                 }
 
-            let deployActor () = 
-                printfn "deploying actor..."
-                let a = TcpActor.Create(loop 0, "localhost:18979")
-                printfn "done"
-                a.GetClient()
+            let deployActor (behaviour : Actor<'T> -> Async<unit>) : ActorRef<'T> = 
+                client.EvaluateThunk(fun () ->
+                    printfn "deploying actor..."
+                    let actor = Actor.bind behaviour |> Actor.Publish
+                    actor.Ref)
 """
 
             let fsi = FsiSession.Value
 
             fsi.EvalInteraction code
-            fsi.EvalInteraction "let actorRef = client.EvaluateThunk deployActor"
-            fsi.EvalInteraction "let postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch"
-            fsi.EvalInteraction "do client.UploadDependencies postAndReply"
+            fsi.EvalInteraction "let actorRef = deployActor (loop 0)"
 
             for i in 1 .. 100 do
-                fsi.EvalInteraction "let _ = postAndReply 1"
+                fsi.EvalInteraction "actorRef <-- Increment 1"
 
-            fsi.EvalExpression "postAndReply 0" |> shouldEqual 100
+            fsi.EvalExpression "actorRef <!= GetCount" |> shouldEqual 100
 
         [<Test>]
         let ``13. Add reference to external library`` () =
@@ -375,9 +378,9 @@
             let code = """
             let cell = ref 0
             for i in 1 .. 100 do
-                cell := client.EvaluateThunk <| fun () -> !cell + 1
+                cell := client.EvaluateThunk <| fun () -> cell.Value + 1
 
-            !cell
+            cell.Value
             """
 
             fsi.EvalExpression code |> shouldEqual 100

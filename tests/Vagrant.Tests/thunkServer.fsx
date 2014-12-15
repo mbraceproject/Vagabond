@@ -16,11 +16,11 @@ Dependency resolution and exportation logic is handled transparently by Vagrant
 #r "FsPickler.dll"
 #r "Vagrant.Tests.exe"
 
-open Nessos.Vagrant.Tests.ThunkServer
+open Nessos.Vagrant.Tests
 
 // initialize & test a local instance
-let server = __SOURCE_DIRECTORY__ + "/../../bin/Vagrant.Tests.exe"
-let client = ThunkClient.InitLocal(serverExecutable = server)
+ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/Vagrant.Tests.exe"
+let client = ThunkClient.InitLocal()
 
 (**
 Example 1: simple, incremental interactions
@@ -107,34 +107,37 @@ runRemoteAsync test
 Example 5: Deploy a locally defined actor
 **)
 
-open Microsoft.FSharp.Control
-open Nessos.Vagrant.Tests.TcpActor
+#r "Thespian.dll"
+open Nessos.Thespian
 
-let rec loop state (inbox : MailboxProcessor<int * AsyncReplyChannel<int>>) =
+let deployRemoteActor (behaviour : Actor<'T> -> Async<unit>) : ActorRef<'T> = 
+    client.EvaluateThunk(fun () ->
+        printfn "deploying actor..."
+        let actor = Actor.bind behaviour |> Actor.Publish
+        actor.Ref)
+
+type Counter =
+    | Increment of int
+    | GetCount of IReplyChannel<int>
+
+let rec loop state (self : Actor<Counter>) =
     async {
-        let! msg, rc = inbox.Receive ()
-
-        printfn "Received %d. Thanks!" msg
-
-        rc.Reply state
-
-        return! loop (state + msg) inbox
+        let! msg = self.Receive ()
+        match msg with
+        | Increment i -> 
+            printfn "Increment by %d" i
+            return! loop (i + state) self
+        | GetCount rc ->
+            do! rc.Reply state
+            return! loop state self
     }
 
-let deployActor () = 
-    printfn "deploying actor..."
-    let a = TcpActor.Create(loop 0, "localhost:18979")
-    printfn "done"
-    a.GetClient()
+let ref = deployRemoteActor (loop 0)
 
-// deploy
-let rec actorRef = client.EvaluateThunk deployActor
-and postAndReply x = actorRef.PostAndReply <| fun ch -> x,ch
-
-// send messages
-postAndReply 1
-postAndReply 2
-postAndReply 3
+ref <-- Increment 1
+ref <-- Increment 2
+ref <-- Increment 3
+ref <!= GetCount
 
 (*
 Example 6: Deploy library-generated dynamic assemblies

@@ -11,7 +11,7 @@ open Nessos.Thespian.Remote
 
 open Nessos.Vagrant
 
-type private ServerMsg =
+type internal ServerMsg =
     | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
     | LoadAssemblies of AssemblyPackage list * IReplyChannel<AssemblyLoadInfo list>
     | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
@@ -51,14 +51,13 @@ type ThunkServer private () =
     do printfn "ThunkServer listening at %O\n" Actor.EndPoint
 
     member __.Stop = actor.Stop()
+    member internal __.Ref = actor.Ref
     member __.Uri = ActorRef.toUri actor.Ref
 
     static member Start () = new ThunkServer()
 
 
-type ThunkClient internal (uri : string, ?proc : Process) =
-    
-    let server : ActorRef<ServerMsg> = ActorRef.fromUri uri
+type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
 
     static let mutable exe = None
 
@@ -102,16 +101,16 @@ type ThunkClient internal (uri : string, ?proc : Process) =
             else raise <| FileNotFoundException(path)
 
     static member InitLocalAsync () = async {
-        use receiver = Receiver.create<string> () |> Actor.Publish
+        use receiver = Receiver.create<ActorRef<ServerMsg>> () |> Actor.Publish
         let! awaiter = receiver.ReceiveEvent |> Async.AwaitEvent |> Async.StartChild
 
         let argument = VagrantConfig.Pickler.Pickle receiver.Ref |> System.Convert.ToBase64String
         let proc = Process.Start(ThunkClient.Executable, argument)
 
-        let! serverUri = awaiter
-        return new ThunkClient(serverUri, proc)
+        let! serverRef = awaiter
+        return new ThunkClient(serverRef, proc)
     }
     
     static member InitLocal () = ThunkClient.InitLocalAsync() |> Async.RunSynchronously
 
-    static member Connect(uri : string) = new ThunkClient(uri)
+    static member Connect(uri : string) = new ThunkClient(ActorRef.fromUri uri)

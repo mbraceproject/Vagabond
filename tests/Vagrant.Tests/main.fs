@@ -13,11 +13,11 @@ let main args =
     let receiver =
         if args.Length > 0 then 
             let bytes = args.[0] |> System.Convert.FromBase64String 
-            VagrantConfig.Pickler.UnPickle<ActorRef<string>> bytes |> Some
+            VagrantConfig.Pickler.UnPickle<ActorRef<ActorRef<ServerMsg>>> bytes |> Some
         else
             None
 
     let server = ThunkServer.Start()
-    receiver |> Option.iter (fun r -> r.Post server.Uri)
+    receiver |> Option.iter (fun r -> r.Post server.Ref)
     while true do Thread.Sleep 1000
     0

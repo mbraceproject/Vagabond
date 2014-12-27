@@ -1,3 +1,4 @@
+* 0.2.8 - add ignored assemblies functionality in Vagrant initialization API.
 * 0.2.7 - rename AssemblyPackage type, add support for user-defined assembly ignore rules
 * 0.2.6 - bug fixes
 * 0.2.5 - update FsPickler

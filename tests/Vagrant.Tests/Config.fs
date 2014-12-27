@@ -1,6 +1,7 @@
 ﻿namespace Nessos.Vagrant.Tests
 
 open System
+open System.Reflection
 open System.Threading
 open System.IO
 
@@ -14,16 +15,10 @@ open Nessos.Vagrant
 /// Vagrant configuration container
 type VagrantConfig private () =
 
-    // vagrant initialization
-    static let ignoredAssemblies =
-        let this = System.Reflection.Assembly.GetExecutingAssembly()
-        let dependencies = Utilities.ComputeAssemblyDependencies(this, requireLoadedInAppDomain = false)
-        new System.Collections.Generic.HashSet<_>(dependencies)
-
     static let vagrant =
         let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
         let _ = Directory.CreateDirectory cacheDir
-        Vagrant.Initialize(cacheDirectory = cacheDir, isIgnoredAssembly = ignoredAssemblies.Contains)
+        Vagrant.Initialize(cacheDirectory = cacheDir, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
     static member Vagrant = vagrant
     static member Pickler = vagrant.Pickler

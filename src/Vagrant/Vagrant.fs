@@ -66,26 +66,20 @@
         /// <summary>
         ///     Initializes a new Vagrant instance.
         /// </summary>
+        /// <param name="ignoredAssemblies">Ignore assemblies and their dependencies.</param>
         /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
         /// <param name="profiles">Dynamic assembly configuration profiles.</param>
         /// <param name="typeConverter">FsPickler type name converter.</param>
-        /// <param name="ignoredAssemblies">Ignore assemblies and their dependencies.</param>
         /// <param name="requireLoadedInAppDomain">
         ///     Demand all transitive dependencies be loadable in current AppDomain.
         ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
         /// </param>
         /// <param name="loadPolicy">Default assembly load policy.</param>
-        static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
-                                    ?ignoredAssemblies : seq<Assembly>, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy) =
-            let isIgnoredAssembly =
-                match ignoredAssemblies with
-                | None -> None
-                | Some assemblies ->
-                    let traversed = traverseDependencies (fun _ -> false) false None assemblies
-                    let set = new System.Collections.Generic.HashSet<_>(traversed)
-                    Some (fun a -> set.Contains a)
-
-            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
+        static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list,
+                                    ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy) =
+            let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
+            let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
+            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
                             ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
         /// Unique identifier for the slice compiler

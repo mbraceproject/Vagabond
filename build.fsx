@@ -51,8 +51,8 @@ let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let vagrantCS = "src/Vagabond.Cecil/Properties/AssemblyInfo.cs"
-  CreateCSharpAssemblyInfo vagrantCS
+  let vagabondCS = "src/Vagabond.Cecil/Properties/AssemblyInfo.cs"
+  CreateCSharpAssemblyInfo vagabondCS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
 

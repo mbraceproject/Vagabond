@@ -80,7 +80,7 @@
 
         | None ->
             // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain
-            // in that order; this is because cache contains vagrant metadata while AppDomain does not.
+            // in that order; this is because cache contains vagabond metadata while AppDomain does not.
             match state.AssemblyCache.TryGetCachedAssemblyInfo id with
             | Some info -> 
                 let pa = state.AssemblyCache.CreateAssemblyPackage(info, includeImage = includeImage)

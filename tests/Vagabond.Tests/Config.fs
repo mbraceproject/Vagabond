@@ -15,13 +15,13 @@ open Nessos.Vagabond
 /// Vagabond configuration container
 type VagabondConfig private () =
 
-    static let vagrant =
+    static let vagabond =
         let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
         let _ = Directory.CreateDirectory cacheDir
         Vagabond.Initialize(cacheDirectory = cacheDir, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
-    static member Vagabond = vagrant
-    static member Pickler = vagrant.Pickler
+    static member Vagabond = vagabond
+    static member Pickler = vagabond.Pickler
 
 /// Actor configuration tools
 type Actor private () =

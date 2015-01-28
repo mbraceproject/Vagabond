@@ -25,17 +25,17 @@ A Vagabond environment can be initialized as follows:
 
 open Nessos.Vagabond
 
-let vagrant = Vagabond.Initialize(cacheDirectory = "/tmp/vagrant")
+let vagabond = Vagabond.Initialize(cacheDirectory = "/tmp/vagabond")
 
 (** Given an arbitrary object, dependencies are resolved like so: *)
 
 let value = [ Some(fun x -> printfn "%d" x; x + 1) ; None ; Some id ]
 
-let assemblies = vagrant.ComputeObjectDependencies(value, permitCompilation = true)
+let assemblies = vagabond.ComputeObjectDependencies(value, permitCompilation = true)
 
 (** An assembly can be exported by writing *)
 
-let assemblyPackage = vagrant.CreateAssemblyPackage(assembly, includeAssemblyImage = true)
+let assemblyPackage = vagabond.CreateAssemblyPackage(assembly, includeAssemblyImage = true)
 
 (** 
 
@@ -45,7 +45,7 @@ Assemblies can be loaded in a remote process like so:
 
 *)
 
-let response : AssemblyLoadInfo = vagrant.LoadAssemblyPackage assemblyPackage
+let response : AssemblyLoadInfo = vagabond.LoadAssemblyPackage assemblyPackage
 
 (**
 
@@ -58,6 +58,6 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 
 *)
 
-let pickler = vagrant.Pickler
+let pickler = vagabond.Pickler
 
 let bytes = pickler.Pickle(value)

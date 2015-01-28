@@ -57,7 +57,7 @@
     let private isIgnoredAssembly =
         let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
         let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
-        let vagrantAssemblies = 
+        let vagabondAssemblies = 
             [| 
                 typeof<Mono.Cecil.AssemblyDefinition>
                 typeof<Nessos.Vagabond.Cecil.IAssemblyParserConfig>
@@ -65,7 +65,7 @@
             |] |> Array.map (fun t -> t.Assembly)
 
         fun (a:Assembly) ->
-            Array.exists ((=) a) vagrantAssemblies ||
+            Array.exists ((=) a) vagabondAssemblies ||
                 Array.exists ((=) (getPublicKey a)) systemPkt
 
     /// locally resolve an assembly by qualified name

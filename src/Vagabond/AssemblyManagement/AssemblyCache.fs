@@ -22,7 +22,7 @@
             if not <| Directory.Exists cacheDirectory then
                 raise <| new DirectoryNotFoundException(cacheDirectory)
 
-        static let metadataExt = ".vagrant"
+        static let metadataExt = ".vagabond"
         static let staticInitExt = ".init"
         static let symbolsExt = if runsOnMono.Value then ".mdb" else ".pdb"
 

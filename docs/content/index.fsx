@@ -11,7 +11,7 @@ open System.Reflection
 
 (**
 
-# Nessos.Vagabond
+# Vagabond
 
 On-demand distribution of code (e.g. lambdas) for remote execution is a problem often 
 exacerbated by the presence of dynamic assemblies. Dynamic assemblies appear in situations 

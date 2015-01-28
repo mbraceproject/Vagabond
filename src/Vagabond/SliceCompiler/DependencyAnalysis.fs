@@ -12,6 +12,14 @@
 
     open Microsoft.FSharp.Reflection
 
+    let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
+        match tryGetTopologicalOrdering dependencies with
+        | Choice1Of2 sorted -> sorted
+        | Choice2Of2 cycles ->
+            // graph not DAG, return an appropriate exception
+            let cycles = cycles |> Seq.map (fun (a,_) -> a.GetName().Name) |> String.concat ", "
+            raise <| new VagabondException(sprintf "Came across cyclic dependencies of assemblies: %s" cycles)
+
     let gatherObjectDependencies (graph:obj) =
         let types = new HashSet<Type> ()
         let assemblies = new HashSet<Assembly> ()
@@ -90,7 +98,7 @@
             assemblies
             |> Seq.toList
             |> traverseDependencyGraph Map.empty
-            |> getTopologicalOrdering
+            |> getAssemblyOrdering
 
         // check for assemblies of identical qualified name
         match dependencies |> Seq.groupBy(fun a -> a.FullName) |> Seq.tryFind (fun (_,assemblies) -> Seq.length assemblies > 1) with
@@ -134,7 +142,7 @@
         dynamicAssemblies
         |> Seq.map (function KeyValue(_, (a, deps,_)) -> a, deps |> List.filter (fun a -> a.IsDynamic))
         |> Seq.toList
-        |> getTopologicalOrdering
+        |> getAssemblyOrdering
         |> List.map (fun a -> let _,_,data = dynamicAssemblies.[a.AssemblyId] in data)
 
 

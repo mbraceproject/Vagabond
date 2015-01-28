@@ -105,19 +105,19 @@
 
         type Graph<'T> = ('T * 'T list) list
 
-        let getTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) =
+        /// Attempt to compute a topological sorting for graph if DAG,
+        /// If not DAG returns the reduced DAG for further debugging
+        let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, Graph<'T>> =
             let rec aux sorted (g : Graph<'T>) =
-                if g.IsEmpty then sorted else
+                if g.IsEmpty then Choice1Of2 (List.rev sorted) else
 
                 match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-                | None ->  failwith "internal error: dependency graph is not a DAG."
+                | None -> Choice2Of2 g // not a DAG, return reduced graph
                 | Some (t,_) ->
                     let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
                     aux (t :: sorted) g0
 
-            List.rev <| aux [] g
-
-
+            aux [] g
 
         type ReplyChannel<'T> internal (rc : AsyncReplyChannel<Exn<'T>>) =
             member __.Reply (t : 'T) = rc.Reply <| Success t

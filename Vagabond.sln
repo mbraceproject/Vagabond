@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.30723.0
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{1F1B4F0F-2998-4D74-865B-9122611C2B14}"
 	ProjectSection(SolutionItems) = preProject
@@ -20,7 +20,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60
 		License.md = License.md
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
-		nuget\Vagrant.nuspec = nuget\Vagrant.nuspec
+		nuget\Vagabond.nuspec = nuget\Vagabond.nuspec
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A6E19-CB54-495B-8F63-6FF508D15949}"
@@ -28,11 +28,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A
 		tests\Vagrant.Tests\thunkServer.fsx = tests\Vagrant.Tests\thunkServer.fsx
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant", "src\Vagrant\Vagrant.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond", "src\Vagabond\Vagabond.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagrant.Tests", "tests\Vagrant.Tests\Vagrant.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond.Tests", "tests\Vagabond.Tests\Vagabond.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vagrant.Cecil", "src\Vagrant.Cecil\Vagrant.Cecil.csproj", "{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vagabond.Cecil", "src\Vagabond.Cecil\Vagabond.Cecil.csproj", "{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{E2A7A569-92D7-4A47-86C0-B0B9C680D530}"
 EndProject

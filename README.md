@@ -1,4 +1,4 @@
-## Nessos.Vagabond
+## Vagabond
 
 A library that facilitates the distribution of code for the .NET framework. [[Nuget](http://www.nuget.org/packages/Vagabond/)]
 

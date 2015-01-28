@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.Tests.Main
+﻿module internal Nessos.Vagabond.Tests.Main
 
 open System
 open System.IO
@@ -13,7 +13,7 @@ let main args =
     let receiver =
         if args.Length > 0 then 
             let bytes = args.[0] |> System.Convert.FromBase64String 
-            VagrantConfig.Pickler.UnPickle<ActorRef<ActorRef<ServerMsg>>> bytes |> Some
+            VagabondConfig.Pickler.UnPickle<ActorRef<ActorRef<ServerMsg>>> bytes |> Some
         else
             None
 

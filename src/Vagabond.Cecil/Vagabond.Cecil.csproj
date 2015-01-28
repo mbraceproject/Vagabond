@@ -7,8 +7,8 @@
     <ProjectGuid>{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Nessos.Vagrant.Cecil</RootNamespace>
-    <AssemblyName>Vagrant.Cecil</AssemblyName>
+    <RootNamespace>Nessos.Vagabond.Cecil</RootNamespace>
+    <AssemblyName>Vagabond.Cecil</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\..\</SolutionDir>

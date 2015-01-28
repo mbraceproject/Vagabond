@@ -19,7 +19,7 @@ using Mono.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace Nessos.Vagrant.Cecil
+namespace Nessos.Vagabond.Cecil
 {
     public class AssemblyParser
     {
@@ -532,14 +532,14 @@ namespace Nessos.Vagrant.Cecil
 
             var method_info = method as MethodInfo;
 
-			if (method_info != null) {
-				var generic_parameters = method_info.GetGenericArguments ();
-				for (int i = 0; i < generic_parameters.Length; i++)
-					method_definition.GenericParameters.Add (GenericParameterFor (generic_parameters [i], method_definition));
+            if (method_info != null) {
+                var generic_parameters = method_info.GetGenericArguments ();
+                for (int i = 0; i < generic_parameters.Length; i++)
+                    method_definition.GenericParameters.Add (GenericParameterFor (generic_parameters [i], method_definition));
 
-				for (int i = 0; i < generic_parameters.Length; i++)
-					MapGenericParameterConstraints (generic_parameters [i], method_definition.GenericParameters [i], method_definition);
-			}
+                for (int i = 0; i < generic_parameters.Length; i++)
+                    MapGenericParameterConstraints (generic_parameters [i], method_definition.GenericParameters [i], method_definition);
+            }
 
             foreach (var parameter in method.GetParameters())
                 MapParameter(method_definition, parameter);
@@ -591,16 +591,16 @@ namespace Nessos.Vagrant.Cecil
             else
                 declaringType.NestedTypes.Add(type_definition);
 
-			var generic_parameters = type.GetGenericArguments ();
-			for (int i = 0; i < generic_parameters.Length; i++)
-				type_definition.GenericParameters.Add (GenericParameterFor (generic_parameters[i], type_definition));
+            var generic_parameters = type.GetGenericArguments ();
+            for (int i = 0; i < generic_parameters.Length; i++)
+                type_definition.GenericParameters.Add (GenericParameterFor (generic_parameters[i], type_definition));
 
-			for (int i = 0; i < generic_parameters.Length; i++)
-				MapGenericParameterConstraints (generic_parameters [i], type_definition.GenericParameters [i], type_definition);
+            for (int i = 0; i < generic_parameters.Length; i++)
+                MapGenericParameterConstraints (generic_parameters [i], type_definition.GenericParameters [i], type_definition);
 
             type_definition.BaseType = type.BaseType != null
-				? CreateReference (type.BaseType, type_definition)
-				: null;
+                ? CreateReference (type.BaseType, type_definition)
+                : null;
 
             var layout = type.StructLayoutAttribute;
 
@@ -621,19 +621,19 @@ namespace Nessos.Vagrant.Cecil
 
         private static GenericParameter GenericParameterFor(Type genericParameter, IGenericParameterProvider owner)
         {
-			return new GenericParameter (genericParameter.Name, owner) {
-				Attributes = (MC.GenericParameterAttributes) (int) genericParameter.GenericParameterAttributes
-			};
+            return new GenericParameter (genericParameter.Name, owner) {
+                Attributes = (MC.GenericParameterAttributes) (int) genericParameter.GenericParameterAttributes
+            };
         }
 
-		private void MapGenericParameterConstraints (Type genericParameter, GenericParameter gp, IGenericParameterProvider owner)
-		{
-			foreach (var constraint in genericParameter.GetGenericParameterConstraints ()) {
-				gp.Constraints.Add (owner.GenericParameterType == GenericParameterType.Type
-					? CreateReference(constraint, (TypeReference) owner)
-					: CreateReference(constraint, (MethodReference) owner));
- 			}
- 		}
+        private void MapGenericParameterConstraints (Type genericParameter, GenericParameter gp, IGenericParameterProvider owner)
+        {
+            foreach (var constraint in genericParameter.GetGenericParameterConstraints ()) {
+                gp.Constraints.Add (owner.GenericParameterType == GenericParameterType.Type
+                    ? CreateReference(constraint, (TypeReference) owner)
+                    : CreateReference(constraint, (MethodReference) owner));
+            }
+        }
 
         private static ParameterDefinition ParameterFor(MR.Instruction instruction, MethodDefinition method)
         {

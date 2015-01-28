@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant
+﻿namespace Nessos.Vagabond
 
     open System
     open System.Reflection

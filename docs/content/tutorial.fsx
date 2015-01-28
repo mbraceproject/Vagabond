@@ -3,8 +3,8 @@
 // it to define helpers that you do not want to show in the documentation.
 #I "../../bin"
 #r "FsPickler.dll"
-#r "Vagrant.Cecil.dll"
-#r "Vagrant.dll"
+#r "Vagabond.Cecil.dll"
+#r "Vagabond.dll"
 
 open System
 open System.Reflection
@@ -15,17 +15,17 @@ let assembly = Unchecked.defaultof<Assembly>
 # API Overview
 
 The included implementation of
-[ThunkServer](https://github.com/nessos/Vagrant/blob/master/tests/Vagrant.Tests/ThunkServer.fs) 
-is a straightforward distributed implementation that makes use of Vagrant.
+[ThunkServer](https://github.com/nessos/Vagabond/blob/master/tests/Vagabond.Tests/ThunkServer.fs) 
+is a straightforward distributed implementation that makes use of Vagabond.
 What follows is a brief overview of the basic API.
 
-A Vagrant environment can be initialized as follows:
+A Vagabond environment can be initialized as follows:
 
 *)
 
-open Nessos.Vagrant
+open Nessos.Vagabond
 
-let vagrant = Vagrant.Initialize(cacheDirectory = "/tmp/vagrant")
+let vagrant = Vagabond.Initialize(cacheDirectory = "/tmp/vagrant")
 
 (** Given an arbitrary object, dependencies are resolved like so: *)
 

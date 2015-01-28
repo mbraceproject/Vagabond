@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.SliceCompilerTypes
+﻿module internal Nessos.Vagabond.SliceCompilerTypes
 
     open System
     open System.Reflection
@@ -38,7 +38,7 @@
         member i.TryGetSlice(t : Type) =
             match i.TypeIndex.TryFind t.FullName with
             | None -> None
-            | Some (InNoSlice | InAllSlices) -> raise <| new VagrantException(sprintf "type '%O' does not correspond to a slice." t)
+            | Some (InNoSlice | InAllSlices) -> raise <| new VagabondException(sprintf "type '%O' does not correspond to a slice." t)
             | Some (InSpecificSlice s) -> Some s
 
         member s.HasFreshTypes =

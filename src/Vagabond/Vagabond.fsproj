@@ -7,8 +7,8 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2e62b639-1560-46eb-8528-a604b5d194fb</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Vagrant.Cecil</RootNamespace>
-    <AssemblyName>Vagrant</AssemblyName>
+    <RootNamespace>Vagabond.Cecil</RootNamespace>
+    <AssemblyName>Vagabond</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
     <Name>Vagabond</Name>
@@ -23,7 +23,7 @@
     <OutputPath>..\..\bin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>..\..\bin\Vagrant.XML</DocumentationFile>
+    <DocumentationFile>..\..\bin\Vagabond.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -32,7 +32,7 @@
     <OutputPath>..\..\bin\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>..\..\bin\Vagrant.XML</DocumentationFile>
+    <DocumentationFile>..\..\bin\Vagabond.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>

@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant.Tests
+﻿namespace Nessos.Vagabond.Tests
 
 open System
 open System.Reflection
@@ -10,17 +10,17 @@ open Nessos.Thespian.Serialization
 open Nessos.Thespian.Remote
 open Nessos.Thespian.Remote.TcpProtocol
 
-open Nessos.Vagrant
+open Nessos.Vagabond
 
-/// Vagrant configuration container
-type VagrantConfig private () =
+/// Vagabond configuration container
+type VagabondConfig private () =
 
     static let vagrant =
         let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
         let _ = Directory.CreateDirectory cacheDir
-        Vagrant.Initialize(cacheDirectory = cacheDir, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
+        Vagabond.Initialize(cacheDirectory = cacheDir, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
-    static member Vagrant = vagrant
+    static member Vagabond = vagrant
     static member Pickler = vagrant.Pickler
 
 /// Actor configuration tools
@@ -28,7 +28,7 @@ type Actor private () =
 
     static do
         let _ = System.Threading.ThreadPool.SetMinThreads(100, 100) 
-        defaultSerializer <- new FsPicklerMessageSerializer(VagrantConfig.Pickler)
+        defaultSerializer <- new FsPicklerMessageSerializer(VagabondConfig.Pickler)
         Nessos.Thespian.Default.ReplyReceiveTimeout <- Timeout.Infinite
         TcpListenerPool.RegisterListener(IPEndPoint.any)
 

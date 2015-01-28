@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.AssemblyParser
+﻿module internal Nessos.Vagabond.AssemblyParser
 
     open System
     open System.Reflection
@@ -6,10 +6,10 @@
 
     open Mono.Cecil
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.Cecil
-    open Nessos.Vagrant.SliceCompilerTypes
+    open Nessos.Vagabond
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.Cecil
+    open Nessos.Vagabond.SliceCompilerTypes
 
     type TypeParseInfo =
         | AlwaysIncluded
@@ -95,7 +95,7 @@
             match dynInfo.TypeIndex.TryFind t.FullName with
             | None | Some InAllSlices -> None
             | Some InNoSlice ->
-                raise <| new VagrantException(sprintf "could not compile slice; referenced excluded type '%O' in assembly '%O'." t dynInfo.Name)
+                raise <| new VagabondException(sprintf "could not compile slice; referenced excluded type '%O' in assembly '%O'." t dynInfo.Name)
             | Some (InSpecificSlice slice) -> 
                 Some <| slice.Assembly.GetType(t.FullName, true)
         
@@ -115,7 +115,7 @@
                 DynamicAssemblyState.Init(assembly, profile)
 
             | Some info when info.DynamicAssembly <> assembly ->
-                raise <| new VagrantException(sprintf "ran into duplicate dynamic assemblies of qualified name '%s'. This is not supported." assembly.FullName)
+                raise <| new VagabondException(sprintf "ran into duplicate dynamic assemblies of qualified name '%s'. This is not supported." assembly.FullName)
 
             | Some info -> info
         

@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant
+﻿namespace Nessos.Vagabond
 
     open System
     open System.Reflection
@@ -96,6 +96,6 @@
             | LoadFault (id,_)
             | Loaded (id,_,_) -> id
 
-    /// Exception raised by Vagrant
-    type VagrantException (message : string, ?inner : exn) =
+    /// Exception raised by Vagabond
+    type VagabondException (message : string, ?inner : exn) =
         inherit Exception(message, defaultArg inner null)

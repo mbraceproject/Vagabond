@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.AssemblyManagement
+﻿module internal Nessos.Vagabond.AssemblyManagement
 
     open System
     open System.IO
@@ -6,14 +6,14 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.SliceCompilerTypes
-    open Nessos.Vagrant.AssemblyCache
+    open Nessos.Vagabond
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.SliceCompilerTypes
+    open Nessos.Vagabond.AssemblyCache
 
     type StaticInitializers = (FieldInfo * Exn<byte []>) []
 
-    type VagrantState =
+    type VagabondState =
         {
             CompilerState : DynamicAssemblyCompilerState
             AssemblyExportState : Map<AssemblyId, int>
@@ -37,7 +37,7 @@
     /// exports an assembly package
     ///
 
-    let exportAssembly (state : VagrantState) (policy : AssemblyLoadPolicy)
+    let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy)
                         (includeImage : bool) (id : AssemblyId) =
 
         match state.CompilerState.TryFindSliceInfo id.FullName with
@@ -97,7 +97,7 @@
                 match localAssembly with
                 | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
                     let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
-                    raise <| VagrantException(msg)
+                    raise <| VagabondException(msg)
 
                 | Some a -> 
                     let pa = state.AssemblyCache.CreateAssemblyPackage(a, includeImage = includeImage)
@@ -105,14 +105,14 @@
 
                 | None ->
                     let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
-                    raise <| VagrantException(msg)
+                    raise <| VagabondException(msg)
 
 
     //
     // assembly import protocol implementation
     //
 
-    let importAssembly (state : VagrantState) (policy : AssemblyLoadPolicy) (pa : AssemblyPackage) =
+    let importAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (pa : AssemblyPackage) =
 
         // update state with success
         let success info = 
@@ -162,7 +162,7 @@
             // if specified, check if loaded assembly has identical image hash
             | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> pa.Id ->
                 let msg = sprintf "an incompatible version of '%s' has been loaded." pa.FullName
-                raise <| VagrantException(msg)
+                raise <| VagabondException(msg)
 
             // if GAC, do not cache, just report as loaded
             | Some a when a.GlobalAssemblyCache -> success <| Loaded (pa.Id, true, None)
@@ -185,11 +185,11 @@
 
                     if assembly.FullName <> pa.FullName then
                         let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
-                        raise <| VagrantException(msg)
+                        raise <| VagabondException(msg)
 
                     elif policy.HasFlag AssemblyLoadPolicy.RequireIdentical && assembly.AssemblyId <> pa.Id then
                         let msg = sprintf "an incompatible version of '%s' has been loaded." pa.FullName
-                        raise <| VagrantException(msg)
+                        raise <| VagabondException(msg)
 
                     else
                         success <| tryLoadStaticInitializer None cacheInfo

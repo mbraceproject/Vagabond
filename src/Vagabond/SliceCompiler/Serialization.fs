@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.Serialization
+﻿module internal Nessos.Vagabond.Serialization
 
     open System
     open System.IO
@@ -8,11 +8,11 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.SliceCompilerTypes
+    open Nessos.Vagabond
+    open Nessos.Vagabond.SliceCompilerTypes
 
 
-    type VagrantTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
+    type VagabondTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 
         interface ITypeNameConverter with
             member __.OfSerializedType(typeInfo : TypeInfo) = 
@@ -22,7 +22,7 @@
                 | Some info ->
                     match info.TypeIndex.TryFind typeInfo.Name with
                     | None | Some (InNoSlice | InAllSlices) ->
-                        raise <| new VagrantException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
+                        raise <| new VagabondException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
 
                     | Some (InSpecificSlice slice) -> 
                         { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = slice.Assembly.GetName().Name } }
@@ -35,7 +35,7 @@
 
     let mkTypeNameConverter (tyConv' : ITypeNameConverter option) (stateF : unit -> DynamicAssemblyCompilerState) =
 
-        let tyConv = new VagrantTypeNameConverter(stateF) :> ITypeNameConverter
+        let tyConv = new VagabondTypeNameConverter(stateF) :> ITypeNameConverter
 
         match tyConv' with
         | None -> tyConv

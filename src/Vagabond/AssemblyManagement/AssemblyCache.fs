@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.AssemblyCache
+﻿module internal Nessos.Vagabond.AssemblyCache
 
     open System
     open System.IO
@@ -6,8 +6,8 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.Utils
+    open Nessos.Vagabond
+    open Nessos.Vagabond.Utils
 
     type CachedAssemblyInfo =
         {
@@ -147,7 +147,7 @@
                 match pa.Image with
                 | None -> 
                     let msg = sprintf "Assembly package '%O' lacking image specification." pa.FullName
-                    raise <| new VagrantException(msg)
+                    raise <| new VagabondException(msg)
 
                 | Some img -> 
                     File.WriteAllBytes(cachePath, img)

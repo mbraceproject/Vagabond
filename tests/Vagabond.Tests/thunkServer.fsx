@@ -1,25 +1,25 @@
 ﻿(**
-A Vagrant Demo: ThunkServer
+A Vagabond Demo: ThunkServer
 
-This script offers a demo of the functionality of Vagrant, through an ad-hoc application.
+This script offers a demo of the functionality of Vagabond, through an ad-hoc application.
 ThunkServer, as its name suggests, is a server that receives and executes arbitrary thunks,
-that is functions of type unit -> 'T. ThunkServer uses the Vagrant library to correctly
+that is functions of type unit -> 'T. ThunkServer uses the Vagabond library to correctly
 resolve and submit code dependencies, even if those happen to be dynamic assemblies as
 is the case with F# Interactive.
 
 The actual implementation of ThunkServer is a straightforward 100 lines of code.
-Dependency resolution and exportation logic is handled transparently by Vagrant
+Dependency resolution and exportation logic is handled transparently by Vagabond
 **)
 
 #I "../../bin/"
 
 #r "FsPickler.dll"
-#r "Vagrant.Tests.exe"
+#r "Vagabond.Tests.exe"
 
-open Nessos.Vagrant.Tests
+open Nessos.Vagabond.Tests
 
 // initialize & test a local instance
-ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/Vagrant.Tests.exe"
+ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/Vagabond.Tests.exe"
 let client = ThunkClient.InitLocal()
 
 (**

@@ -17,7 +17,7 @@ open Fake.AssemblyInfoFile
 // Information about the project to be used at NuGet and in AssemblyInfo files
 // --------------------------------------------------------------------------------------
 
-let project = "Vagrant"
+let project = "Vagabond"
 let authors = ["Nessos Information Technologies, Eirik Tsarpalis"]
 let summary = "A library that facilitates the distribution of code in the .NET framework."
 
@@ -26,11 +26,11 @@ let description = summary
 let tags = "F# fsharp dynamic code distribution cecil"
 
 let gitHome = "https://github.com/nessos"
-let gitName = "Vagrant"
+let gitName = "Vagabond"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
 
 
-let testAssemblies = [ "bin/Vagrant.Tests.exe" ]
+let testAssemblies = [ "bin/Vagabond.Tests.exe" ]
 
 //
 //// --------------------------------------------------------------------------------------
@@ -51,12 +51,12 @@ let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let vagrantCS = "src/Vagrant.Cecil/Properties/AssemblyInfo.cs"
+  let vagrantCS = "src/Vagabond.Cecil/Properties/AssemblyInfo.cs"
   CreateCSharpAssemblyInfo vagrantCS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
 
-  let vagrantFS = "src/Vagrant/AssemblyInfo.fs"
+  let vagrantFS = "src/Vagabond/AssemblyInfo.fs"
   CreateFSharpAssemblyInfo vagrantFS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
@@ -151,12 +151,12 @@ Target "NuGet" (fun _ ->
             ToolPath = nugetPath
             AccessKey = getBuildParamOrDefault "nugetkey" ""
             Publish = hasBuildParam "nugetkey"
-            References = [ "Vagrant.dll" ]
+            References = [ "Vagabond.dll" ]
             Files =
                 [
                     yield! addAssembly @"lib\net45" @"..\bin\Mono.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagrant.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagrant.dll"
+                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.Cecil.dll"
+                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.dll"
                 ]
             
             })

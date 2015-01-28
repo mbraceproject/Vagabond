@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.DependencyAnalysis
+﻿module internal Nessos.Vagabond.DependencyAnalysis
 
     open System
     open System.IO
@@ -7,8 +7,8 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant.AssemblyParser
-    open Nessos.Vagrant.SliceCompilerTypes
+    open Nessos.Vagabond.AssemblyParser
+    open Nessos.Vagabond.SliceCompilerTypes
 
     open Microsoft.FSharp.Reflection
 
@@ -44,7 +44,7 @@
         Seq.toArray types, Seq.toArray assemblies
 
 
-    /// assemblies ignored by Vagrant during assembly traversal
+    /// assemblies ignored by Vagabond during assembly traversal
 
     let private isIgnoredAssembly =
         let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
@@ -52,8 +52,8 @@
         let vagrantAssemblies = 
             [| 
                 typeof<Mono.Cecil.AssemblyDefinition>
-                typeof<Nessos.Vagrant.Cecil.IAssemblyParserConfig>
-                typeof<Nessos.Vagrant.AssemblyId>
+                typeof<Nessos.Vagabond.Cecil.IAssemblyParserConfig>
+                typeof<Nessos.Vagabond.AssemblyId>
             |] |> Array.map (fun t -> t.Assembly)
 
         fun (a:Assembly) ->
@@ -71,7 +71,7 @@
             | Some _ as r -> r
             | None when requireLoaded -> 
                 let msg = sprintf "could not locate dependency '%s'. Try adding an explicit reference." fullName
-                raise <| new VagrantException(msg)
+                raise <| new VagabondException(msg)
             | None -> None
 
     /// recursively traverse assembly dependency graph
@@ -96,7 +96,7 @@
         match dependencies |> Seq.groupBy(fun a -> a.FullName) |> Seq.tryFind (fun (_,assemblies) -> Seq.length assemblies > 1) with
         | None -> ()
         | Some(name,_) -> 
-            raise <| new VagrantException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." name)
+            raise <| new VagabondException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." name)
 
         dependencies
 
@@ -169,12 +169,12 @@
         let remap (a : Assembly, ts : seq<Type>) =
             if a.IsDynamic then
                 match state.DynamicAssemblies.TryFind a.FullName with
-                | None -> raise <| new VagrantException(sprintf "no slices have been created for assembly '%s'." a.FullName)
+                | None -> raise <| new VagabondException(sprintf "no slices have been created for assembly '%s'." a.FullName)
                 | Some info ->
                     let remapType (t : Type) =
                         match info.TypeIndex.TryFind t.FullName with
                         | None | Some (InNoSlice | InAllSlices) -> 
-                            raise <| new VagrantException(sprintf "no slice corresponds to dynamic type '%O'." t)
+                            raise <| new VagabondException(sprintf "no slice corresponds to dynamic type '%O'." t)
 
                         | Some (InSpecificSlice slice) -> slice.Assembly
 

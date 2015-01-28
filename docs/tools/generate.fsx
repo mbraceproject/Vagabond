@@ -4,19 +4,19 @@
 // --------------------------------------------------------------------------------------
 
 // Binaries that have XML documentation (in a corresponding generated XML file)
-let referenceBinaries = [ "Vagrant.dll" ]
+let referenceBinaries = [ "Vagabond.dll" ]
 // Web site location for the generated documentation
-let website = "/Vagrant"
+let website = "/Vagabond"
 
-let githubLink = "http://github.com/nessos/Vagrant"
+let githubLink = "http://github.com/nessos/Vagabond"
 
 // Specify more information about your project
 let info =
-  [ "project-name", "Vagrant"
+  [ "project-name", "Vagabond"
     "project-author", "Eirik Tsarpalis"
     "project-summary", "A library for distributing dynamic assemblies"
     "project-github", githubLink
-    "project-nuget", "http://www.nuget.org/packages/Vagrant" ]
+    "project-nuget", "http://www.nuget.org/packages/Vagabond" ]
 
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below

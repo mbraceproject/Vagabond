@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant
+﻿namespace Nessos.Vagabond
     
     open System
     open System.IO
@@ -6,14 +6,14 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.DependencyAnalysis
-    open Nessos.Vagrant.Daemon
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.DependencyAnalysis
+    open Nessos.Vagabond.Daemon
 
-    /// Vagrant Object which instantiates a dynamic assembly compiler, loader and exporter state
+    /// Vagabond Object which instantiates a dynamic assembly compiler, loader and exporter state
 
     [<AutoSerializable(false)>]
-    type Vagrant private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
+    type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
                             ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy) =
 
         static do AssemblyManagement.registerAssemblyResolutionHandler ()
@@ -34,19 +34,19 @@
 
         let mutable _loadPolicy = defaultArg loadPolicy <| AssemblyLoadPolicy.ResolveStrongNames
 
-        let daemon = new VagrantDaemon(cacheDirectory, profiles, requireLoadedInAppDomain, isIgnoredAssembly, ?tyConv = typeConverter)
+        let daemon = new VagabondDaemon(cacheDirectory, profiles, requireLoadedInAppDomain, isIgnoredAssembly, ?tyConv = typeConverter)
 
         do daemon.Start()
 
         static let checkIsDynamic(a : Assembly) = 
             if a.IsDynamic then () 
-            else invalidArg a.FullName "Vagrant: not a dynamic assembly"
+            else invalidArg a.FullName "Vagabond: not a dynamic assembly"
 
         let compile (assemblies : Assembly list) = 
             daemon.PostAndReply(fun ch -> CompileDynamicAssemblySlice(assemblies, ch))
 
         /// <summary>
-        ///     Initializes a new Vagrant instance.
+        ///     Initializes a new Vagabond instance.
         /// </summary>
         /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
         /// <param name="profiles">Dynamic assembly configuration profiles.</param>
@@ -59,12 +59,12 @@
         /// <param name="loadPolicy">Default assembly load policy.</param>
         static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
                                     ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy) =
-            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
+            new Vagabond(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
                             ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
 
         /// <summary>
-        ///     Initializes a new Vagrant instance.
+        ///     Initializes a new Vagabond instance.
         /// </summary>
         /// <param name="ignoredAssemblies">Ignore assemblies and their dependencies.</param>
         /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
@@ -79,7 +79,7 @@
                                     ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy) =
             let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
             let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
-            new Vagrant(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
+            new Vagabond(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
                             ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
         /// Unique identifier for the slice compiler
@@ -88,7 +88,7 @@
         member __.Pickler = daemon.DefaultPickler
         /// FsPickler type name converter for use with other formats
         member __.TypeConverter = daemon.TypeNameConverter
-        /// Cache directory used by Vagrant
+        /// Cache directory used by Vagabond
         member __.CachePath = daemon.CacheDirectory
 
         /// Default load policy 

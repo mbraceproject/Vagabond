@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.SliceCompiler
+﻿module internal Nessos.Vagabond.SliceCompiler
 
     open System
     open System.IO
@@ -10,10 +10,10 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.SliceCompilerTypes
-    open Nessos.Vagrant.AssemblyParser
-    open Nessos.Vagrant.DependencyAnalysis
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.SliceCompilerTypes
+    open Nessos.Vagabond.AssemblyParser
+    open Nessos.Vagabond.DependencyAnalysis
 
     /// create an initial, empty compiler state
 

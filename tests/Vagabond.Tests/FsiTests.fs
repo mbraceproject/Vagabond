@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant.Tests
+﻿namespace Nessos.Vagabond.Tests
 
     open System
     open System.Reflection
@@ -9,7 +9,7 @@
     open Microsoft.FSharp.Compiler.Interactive.Shell
     open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
-    open Nessos.Vagrant
+    open Nessos.Vagabond
 
     [<TestFixture>]
     module FsiTests =
@@ -98,15 +98,15 @@
                 [
                     "FsPickler.dll"
                     "Mono.Cecil.dll"
-                    "Vagrant.dll"
+                    "Vagabond.dll"
                     "Thespian.dll"
                     "LinqOptimizer.Base.dll"
                     "LinqOptimizer.Core.dll"
                     "LinqOptimizer.FSharp.dll"
-                    "Vagrant.Tests.exe"
+                    "Vagabond.Tests.exe"
                 ]
 
-            fsi.EvalInteraction "open Nessos.Vagrant.Tests"
+            fsi.EvalInteraction "open Nessos.Vagabond.Tests"
             fsi.EvalInteraction <| "ThunkClient.Executable <- " + thisExe
             fsi.EvalInteraction "let client = ThunkClient.InitLocal()"
 

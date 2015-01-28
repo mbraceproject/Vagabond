@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant
+﻿namespace Nessos.Vagabond
 
     open System
     open System.Collections.Generic
@@ -88,7 +88,7 @@
                 | [||] -> None
                 | [|a|] -> Some a
                 | _ ->
-                    raise <| new VagrantException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." fullName)
+                    raise <| new VagabondException(sprintf "ran into duplicate assemblies of qualified name '%s'. This is not supported." fullName)
 
             tryConcurrentMemoize load
 
@@ -161,7 +161,7 @@
                         use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
                         hashAlgorithm.ComputeHash(fs)
                     else
-                        raise <| new VagrantException(sprintf "could not resolve location for '%O'." assembly)
+                        raise <| new VagabondException(sprintf "could not resolve location for '%O'." assembly)
 
                 { FullName = assembly.FullName ; ImageHash = hash }
 

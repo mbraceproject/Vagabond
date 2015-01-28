@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant
+﻿namespace Nessos.Vagabond
 
     open System
     open System.IO
@@ -6,22 +6,22 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.DependencyAnalysis
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.DependencyAnalysis
 
-    /// Collection of extensions and utilities for use with Vagrant
+    /// Collection of extensions and utilities for use with Vagabond
 
     [<AutoOpen>]
     module Extras =
 
-        /// Defines an abstract assembly load target; to be used by VagrantServer
+        /// Defines an abstract assembly load target; to be used by VagabondServer
         type IRemoteAssemblyReceiver =
             /// receives the assembly load state of the remote party for the given id's
             abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
             /// upload a set of assembly packages to the remote party
             abstract PushAssemblies : AssemblyPackage list -> Async<AssemblyLoadInfo list>
 
-        /// Defines an abstract assembly exporter; to be used by VagrantClient
+        /// Defines an abstract assembly exporter; to be used by VagabondClient
         type IRemoteAssemblyPublisher =
             /// receives a collection of dependencies required by remote publisher
             abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
@@ -93,7 +93,7 @@
                 assembly.AssemblyId
 
 
-        type Vagrant with
+        type Vagabond with
             
             /// <summary>
             ///     Apply a built-in assembly distribution protocol using a user-defined submit function.
@@ -110,9 +110,9 @@
                 // Step 2. detect dependencies that require posting
                 let tryGetAssemblyPackage (info : AssemblyLoadInfo) =
                     match info with
-                    | LoadFault(id, (:?VagrantException as e)) -> raise e
+                    | LoadFault(id, (:?VagabondException as e)) -> raise e
                     | LoadFault(id, e) -> 
-                        raise <| new VagrantException(sprintf "error on remote loading of assembly '%s'." id.FullName)
+                        raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName)
                     | NotLoaded id -> 
                         Some <| v.CreateAssemblyPackage(id, includeAssemblyImage = true)
                     | Loaded(id,_,Some si) when si.IsPartial ->
@@ -125,9 +125,9 @@
                 // Step 3. check load results; if client replies with fault, fail.
                 let gatherErrors (info : AssemblyLoadInfo) =
                     match info with
-                    | LoadFault(id, (:?VagrantException as e)) -> raise e
+                    | LoadFault(id, (:?VagabondException as e)) -> raise e
                     | LoadFault(id, _)
-                    | NotLoaded id -> raise <| new VagrantException(sprintf "could not load assembly '%s' on remote client." id.FullName)
+                    | NotLoaded id -> raise <| new VagabondException(sprintf "could not load assembly '%s' on remote client." id.FullName)
                     | Loaded(_,_,Some info) -> Some info.Errors
                     | Loaded _ -> None
 
@@ -175,9 +175,9 @@
 
                     let checkLoadResult (info : AssemblyLoadInfo) =
                         match info with
-                        | NotLoaded id -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName)
-                        | LoadFault(_, (:? VagrantException as e)) -> raise e
-                        | LoadFault(id, e) -> raise <| new VagrantException(sprintf "failed to load assembly '%s'" id.FullName, e)
+                        | NotLoaded id -> raise <| new VagabondException(sprintf "failed to load assembly '%s'" id.FullName)
+                        | LoadFault(_, (:? VagabondException as e)) -> raise e
+                        | LoadFault(id, e) -> raise <| new VagabondException(sprintf "failed to load assembly '%s'" id.FullName, e)
                         | Loaded _ -> ()
 
                     List.iter checkLoadResult loadResults

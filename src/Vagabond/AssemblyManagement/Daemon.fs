@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagrant.Daemon
+﻿module internal Nessos.Vagabond.Daemon
 
     open System
     open System.IO
@@ -8,21 +8,21 @@
 
     open Nessos.FsPickler
 
-    open Nessos.Vagrant
-    open Nessos.Vagrant.Utils
-    open Nessos.Vagrant.SliceCompiler
-    open Nessos.Vagrant.SliceCompilerTypes
-    open Nessos.Vagrant.Serialization
-    open Nessos.Vagrant.AssemblyCache
-    open Nessos.Vagrant.AssemblyManagement
+    open Nessos.Vagabond
+    open Nessos.Vagabond.Utils
+    open Nessos.Vagabond.SliceCompiler
+    open Nessos.Vagabond.SliceCompilerTypes
+    open Nessos.Vagabond.Serialization
+    open Nessos.Vagabond.AssemblyCache
+    open Nessos.Vagabond.AssemblyManagement
 
-    type VagrantMessage = 
+    type VagabondMessage = 
         | LoadAssembly of AssemblyLoadPolicy * AssemblyPackage * ReplyChannel<AssemblyLoadInfo>
         | GetAssemblyPackage of AssemblyLoadPolicy * includeImage:bool * AssemblyId * ReplyChannel<AssemblyPackage>
         | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
         | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
-    type VagrantDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+    type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
         do 
             if not <| Directory.Exists cacheDirectory then
@@ -48,7 +48,7 @@
                 RequireDependenciesLoadedInAppDomain = requireLoaded
             }
         
-        let processMessage (state : VagrantState) (message : VagrantMessage) = async {
+        let processMessage (state : VagabondState) (message : VagabondMessage) = async {
 
             match message with
             | CompileDynamicAssemblySlice (assemblies, rc) ->

@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagrant.Tests
+﻿namespace Nessos.Vagabond.Tests
 
 open System
 open System.IO
@@ -9,7 +9,7 @@ open System.Threading.Tasks
 open Nessos.Thespian
 open Nessos.Thespian.Remote
 
-open Nessos.Vagrant
+open Nessos.Vagabond
 
 type internal ServerMsg =
     | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
@@ -23,11 +23,11 @@ type ThunkServer private () =
 
         match msg with
         | GetAssemblyLoadState (ids, rc) ->
-            let replies = ids |> List.map VagrantConfig.Vagrant.GetAssemblyLoadInfo
+            let replies = ids |> List.map VagabondConfig.Vagabond.GetAssemblyLoadInfo
             do! rc.Reply replies
 
         | LoadAssemblies (pas, rc) ->
-            let replies = VagrantConfig.Vagrant.LoadAssemblyPackages pas
+            let replies = VagabondConfig.Vagabond.LoadAssemblyPackages pas
             do! rc.Reply replies
 
         | EvaluteThunk (ty, f, rc) ->
@@ -69,7 +69,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         }
 
     member __.UploadDependenciesAsync (obj : obj) = async {
-        let! errors = VagrantConfig.Vagrant.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
+        let! errors = VagabondConfig.Vagabond.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
         return ()
     }
 
@@ -104,7 +104,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         use receiver = Receiver.create<ActorRef<ServerMsg>> () |> Actor.Publish
         let! awaiter = receiver.ReceiveEvent |> Async.AwaitEvent |> Async.StartChild
 
-        let argument = VagrantConfig.Pickler.Pickle receiver.Ref |> System.Convert.ToBase64String
+        let argument = VagabondConfig.Pickler.Pickle receiver.Ref |> System.Convert.ToBase64String
         let proc = Process.Start(ThunkClient.Executable, argument)
 
         let! serverRef = awaiter

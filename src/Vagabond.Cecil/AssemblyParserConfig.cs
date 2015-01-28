@@ -3,7 +3,7 @@ using System.Reflection;
 
 using Mono.Cecil;
 
-namespace Nessos.Vagrant.Cecil
+namespace Nessos.Vagabond.Cecil
 {
     public enum TypeParseAction { Ignore, ParseNested, ParseAll };
 

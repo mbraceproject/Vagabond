@@ -5,8 +5,8 @@
     <version>@build.number@</version>
     <authors>@authors@</authors>
     <owners>@authors@</owners>
-    <licenseUrl>https://github.com/nessos/Vagrant/blob/master/License.md</licenseUrl>
-    <projectUrl>https://github.com/nessos/Vagrant</projectUrl>
+    <licenseUrl>https://github.com/nessos/Vagabond/blob/master/License.md</licenseUrl>
+    <projectUrl>https://github.com/nessos/Vagabond</projectUrl>
     <iconUrl>https://avatars1.githubusercontent.com/u/5538081</iconUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <summary>@summary@</summary>

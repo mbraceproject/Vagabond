@@ -75,8 +75,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Config.fs" />
+    <Compile Include="Utils.fs" />
     <Compile Include="ThunkServer.fs" />
     <Compile Include="FsiTests.fs" />
+    <Compile Include="AppDomainIsolationTests.fs" />
     <Compile Include="main.fs" />
     <None Include="thunkServer.fsx" />
     <None Include="packages.config" />

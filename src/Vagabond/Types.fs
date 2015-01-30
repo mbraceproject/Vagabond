@@ -103,3 +103,9 @@ type VagabondException =
     inherit Exception
     internal new (message : string, ?inner : exn) = { inherit Exception(message, defaultArg inner null) }
     private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }
+
+[<AutoSerializable(true)>] 
+type OutOfResourcesException =
+    inherit Exception
+    internal new (message : string) = { inherit Exception(message) }
+    private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }

@@ -29,8 +29,11 @@ module internal Utils =
             | Error e -> raise e
 
     module Exn =
-        let catch (f : unit -> 'T) =
+        let inline catch (f : unit -> 'T) =
             try f () |> Success with e -> Error e
+
+        let inline protect f t = try f t |> Success with e -> Error e
+        let inline protect2 f t s = try f t s |> Success with e -> Error e
 
         let map (f : 'T -> 'S) (x : Exn<'T>) =
             match x with
@@ -226,3 +229,17 @@ module internal Utils =
                 b.Append (encodingIndex.[int idx]) |> ignore
 
             b.ToString ()
+
+
+    module Map =
+        
+        /// <summary>
+        ///     add multiple key-value pairs to map.
+        /// </summary>
+        /// <param name="kvs">Input key-value pairs.</param>
+        /// <param name="map">Input map.</param>
+        let addMany (kvs : seq<'K * 'V>) (map : Map<'K, 'V>) =
+            let mutable map = map
+            for (k,v) in kvs do
+                map <- map.Add(k,v)
+            map

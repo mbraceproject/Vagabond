@@ -188,6 +188,16 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     member __.CreateAssemblyPackage(assembly : Assembly, includeAssemblyImage:bool) =
         __.CreateAssemblyPackage(assembly.AssemblyId, includeAssemblyImage)
 
+    /// <summary>
+    ///     Creates assembly packages out of given assemblies.
+    /// </summary>
+    /// <param name="assemblies">Inputs assemblies.</param>
+    /// <param name="includeAssemblyImage">Include raw assembly image in the bundle.</param>
+    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.CreateAssemblyPackages(assemblies : seq<Assembly>, includeAssemblyImage : bool, ?loadPolicy) =
+        Seq.toList assemblies
+        |> List.map (fun asm -> __.CreateAssemblyPackage(asm.AssemblyId, includeAssemblyImage, ?loadPolicy = loadPolicy))
+
 
     /// <summary>
     ///     Gets the local assembly load info for given assembly id.

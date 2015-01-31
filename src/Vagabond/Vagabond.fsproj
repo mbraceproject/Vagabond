@@ -65,8 +65,8 @@
     <Compile Include="AssemblyManagement\AssemblyManagement.fs" />
     <Compile Include="AssemblyManagement\Daemon.fs" />
     <Compile Include="Vagabond.fs" />
+    <Compile Include="Extras\AppDomainPool.fs" />
     <Compile Include="Extras\Extras.fs" />
-    <Compile Include="Extras\AppDomainIsolation.fs" />
     <None Include="packages.config" />
     <None Include="app.config" />
   </ItemGroup>

@@ -1,3 +1,4 @@
+* 0.3.1 - Implement AppDomainPool.
 * 0.3.0 - Rename to Vagabond, improve exception messages in topological sorting.
 * 0.2.9 - fix API issue.
 * 0.2.8 - add ignored assemblies functionality in Vagabond initialization API.

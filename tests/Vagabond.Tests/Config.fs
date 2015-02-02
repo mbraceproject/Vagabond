@@ -15,10 +15,17 @@ open Nessos.Vagabond
 /// Vagabond configuration container
 type VagabondConfig private () =
 
-    static let vagabond =
-        let cacheDir = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
-        let _ = Directory.CreateDirectory cacheDir
-        Vagabond.Initialize(cacheDirectory = cacheDir, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
+    static let mutable vagabond = Unchecked.defaultof<Vagabond>
+
+    static member Init(?cachePath : string) =
+        let cachePath =
+            match cachePath with
+            | Some cp -> cp
+            | None -> 
+                let cachePath = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
+                let _ = Directory.CreateDirectory cachePath in cachePath
+
+        vagabond <- Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
     static member Vagabond = vagabond
     static member Pickler = vagabond.Pickler
@@ -26,7 +33,7 @@ type VagabondConfig private () =
 /// Actor configuration tools
 type Actor private () =
 
-    static do
+    static member Init () =
         let _ = System.Threading.ThreadPool.SetMinThreads(100, 100) 
         defaultSerializer <- new FsPicklerMessageSerializer(VagabondConfig.Pickler)
         Nessos.Thespian.Default.ReplyReceiveTimeout <- Timeout.Infinite

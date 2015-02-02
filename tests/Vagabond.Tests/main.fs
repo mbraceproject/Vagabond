@@ -10,6 +10,9 @@ open Nessos.Thespian
 
 [<EntryPoint>]
 let main args =
+    VagabondConfig.Init()
+    Actor.Init()
+
     let receiver =
         if args.Length > 0 then 
             let bytes = args.[0] |> System.Convert.FromBase64String 

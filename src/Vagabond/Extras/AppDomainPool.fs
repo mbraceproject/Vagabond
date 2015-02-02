@@ -12,13 +12,19 @@ open Microsoft.FSharp.Control
 open Nessos.FsPickler
 open Nessos.Vagabond
 
+/// User-defined configuration object
+/// passed at AppDomain initialization
+/// Values are instantiated on the client appdomain
+/// and marshalled to the pooled domains
+type IAppDomainConfiguration = interface end
+
 /// Interface implemented by MarshalByRef types
 /// used for managing Application domains.
 /// Types implementing the interface must carry
 /// a parameterless constructor.
 type IAppDomainManager =
     /// AppDomain initializer method.
-    abstract Initialize : unit -> unit
+    abstract Initialize : IAppDomainConfiguration -> unit
     /// AppDomain finalization method.
     abstract Finalize : unit -> unit
     /// Gets the number of tasks currently active in the AppDomain. 
@@ -61,6 +67,10 @@ module private Impl =
         let evidence = new Security.Policy.Evidence(currentDomain.Evidence)
         AppDomain.CreateDomain(name, evidence, appDomainSetup)
 
+    let ctorFlags = BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance
+
+    let activate<'T> () = typeof<'T>.GetConstructor(ctorFlags, null, [||], [||]).Invoke([||]) :?> 'T
+
     /// initialize an object in the target Application domain
     let initAppDomainObject<'T when 'T :> MarshalByRefObject 
                                 and 'T : (new : unit -> 'T)> (targetDomain : AppDomain) =
@@ -68,8 +78,7 @@ module private Impl =
         let assemblyName = typeof<'T>.Assembly.FullName
         let typeName = typeof<'T>.FullName
         let culture = System.Globalization.CultureInfo.CurrentCulture
-        let flags = BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance
-        let handle = targetDomain.CreateInstance(assemblyName, typeName, false, flags, null, [||], culture, [||])
+        let handle = targetDomain.CreateInstance(assemblyName, typeName, false, ctorFlags, null, [||], culture, [||])
         handle.Unwrap() :?> 'T
 
     /// Application Domain load state
@@ -88,7 +97,7 @@ module private Impl =
         }
     with
         /// Initialize an AppDomain instance with given Vagabond dependencies
-        static member Init (?dependencies : seq<AssemblyId>) =
+        static member Init (config : IAppDomainConfiguration, ?dependencies : seq<AssemblyId>) =
             let id = Guid.NewGuid().ToString()
             let dependencies = 
                 match dependencies with
@@ -97,7 +106,7 @@ module private Impl =
 
             let appDomain = initAppDomain id
             let manager = initAppDomainObject<'Manager> appDomain
-            do manager.Initialize ()
+            do manager.Initialize config
 
             { Id = id; Manager = manager; AppDomain = appDomain; Dependencies = dependencies }
 
@@ -107,8 +116,8 @@ module private Impl =
 
     /// Globad AppDomain load state
     type AppDomainPoolInfo<'Manager when 'Manager :> IAppDomainManager 
-                                         and 'Manager :> MarshalByRefObject 
-                                         and 'Manager : (new : unit -> 'Manager)> =
+                                     and 'Manager :> MarshalByRefObject 
+                                     and 'Manager : (new : unit -> 'Manager)> =
         {
             /// Application domain pool
             DomainPool : Map<string, AppDomainLoadInfo<'Manager>>
@@ -118,13 +127,15 @@ module private Impl =
             MinConcurrentDomains : int
             /// Max tasks allowed per domain
             MaxTasksPerDomain : int option
+            /// User-specified configuration for the AppDomain
+            Configuration : IAppDomainConfiguration
             /// Unload threshold: minimum timespan needed for unloading unused domains
             UnloadThreshold : TimeSpan option
         }
     with
         /// Initialize a new AppDomain with provided dependencies and add to state
         member s.AddNew(?dependencies) =
-            let adli = AppDomainLoadInfo<'Manager>.Init (?dependencies = dependencies)
+            let adli = AppDomainLoadInfo<'Manager>.Init (s.Configuration, ?dependencies = dependencies)
             adli, s.AddDomain adli
 
         /// Add existing or updated AppDomain info to state
@@ -132,11 +143,12 @@ module private Impl =
             { s with DomainPool = s.DomainPool.Add(adli.Id, adli) }
 
         /// Initialize a new AppDomain pool state
-        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, threshold : TimeSpan option, maxTasks : int option) =
+        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option) =
             let mutable empty = {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
+                Configuration = config
                 MaxTasksPerDomain = maxTasks
                 UnloadThreshold = threshold
             }
@@ -278,10 +290,10 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
                              and 'Manager :> MarshalByRefObject 
                              and 'Manager : (new : unit -> 'Manager)>
 
-    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, threshold : TimeSpan option, maxTasks : int option) =
+    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration, threshold : TimeSpan option, maxTasks : int option) =
 
     let cts = new CancellationTokenSource()
-    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, threshold, maxTasks)
+    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks)
     let mbox = MailboxProcessor.Start(behaviour (Some state))
     let getState () = mbox.PostAndReply GetState
 
@@ -342,18 +354,38 @@ type AppDomainPool =
     /// <summary>
     ///     Creates a new AppDomain pool instance.
     /// </summary>
+    /// <param name="configuration">Configuration object passed to the pooled AppDomains.</param>
     /// <param name="minimumConcurrentDomains">Minimum allowed AppDomains. Defaults to 3.</param>
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
     static member Create<'Manager when 'Manager :> IAppDomainManager 
-                                 and 'Manager :> MarshalByRefObject 
-                                 and 'Manager : (new : unit -> 'Manager)>
-        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+                                   and 'Manager :> MarshalByRefObject 
+                                   and 'Manager : (new : unit -> 'Manager)>
+        (configuration : IAppDomainConfiguration, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
 
         let minimumConcurrentDomains = defaultArg minimumConcurrentDomains 3
         let maximumConcurrentDomains = defaultArg maximumConcurrentDomains 20
         if minimumConcurrentDomains < 0 then invalidArg "minimumConcurrentDomains" "Must be non-negative."
         if maximumConcurrentDomains < minimumConcurrentDomains then invalidArg "minimumConcurrentDomains" "should be greater or equal to 'minimumConcurrentDomains'."
         if maxTasksPerDomain |> Option.exists (fun mtpd -> mtpd <= 0) then invalidArg "maxTasksPerDomain" "should be positive."
-        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, threshold, maxTasksPerDomain)
+        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, configuration, threshold, maxTasksPerDomain)
+
+
+    /// <summary>
+    ///     Creates a new AppDomain pool instance.
+    /// </summary>
+    /// <param name="minimumConcurrentDomains">Minimum allowed AppDomains. Defaults to 3.</param>
+    /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
+    /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
+    /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
+    static member Create<'Manager, 'Config 
+                                when 'Manager :> IAppDomainManager 
+                                 and 'Manager :> MarshalByRefObject 
+                                 and 'Manager : (new : unit -> 'Manager)
+                                 and 'Config :> IAppDomainConfiguration
+                                 and 'Config : (new : unit -> 'Config)>
+        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+
+        AppDomainPool.Create<'Manager>(activate<'Config>(), ?minimumConcurrentDomains = minimumConcurrentDomains, 
+                                        ?maximumConcurrentDomains = maximumConcurrentDomains, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain)

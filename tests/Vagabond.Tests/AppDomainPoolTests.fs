@@ -37,17 +37,20 @@ module ``AppDomain Pool Tests`` =
             lastUsed <- DateTime.Now
 
         interface IAppDomainManager with
-            member __.Initialize () = isInitialized <- true
+            member __.Initialize (_ : _) = isInitialized <- true
             member __.Finalize () = isFinalized <- true
             member __.TaskCount = taskCount
             member __.LastUsed = lastUsed
 
         static member Init(?threshold, ?maxTasks) = 
-            AppDomainPool.Create<AppDomainPoolTester>(minDomains, maxDomains, ?threshold = threshold, ?maxTasksPerDomain = maxTasks)
+            AppDomainPool.Create<AppDomainPoolTester>(Unchecked.defaultof<_>, minDomains, maxDomains, ?threshold = threshold, ?maxTasksPerDomain = maxTasks)
 
     let (!) (client : AppDomainPoolTester) = client :> IAppDomainManager
 
     let idOf<'T> = Utilities.ComputeAssemblyId typeof<'T>.Assembly
+
+    [<TestFixtureSetUp>]
+    let init() = VagabondConfig.Init()
 
     [<Test>]
     let ``01. Domain count should be more than minimum count.`` () =
@@ -181,6 +184,11 @@ module ``AppDomain Pool Tests`` =
         |> shouldEqual maxDomains
 
 
+    type AppDomainConfiguration() =
+        let cachePath = VagabondConfig.Vagabond.CachePath
+        interface IAppDomainConfiguration
+        member __.CachePath = cachePath
+
     type AppDomainLambdaEvaluator () =
         inherit MarshalByRefObject()
         let mutable lastUsed = DateTime.Now
@@ -196,7 +204,11 @@ module ``AppDomain Pool Tests`` =
             VagabondConfig.Vagabond.Pickler.PickleTyped result         
         
         interface IAppDomainManager with
-            member __.Initialize () = ()
+            member __.Initialize (config : IAppDomainConfiguration) =
+                match config with
+                | :? AppDomainConfiguration as c -> VagabondConfig.Init(c.CachePath)
+                | _ -> ()
+
             member __.Finalize () = ()
             member __.LastUsed = lastUsed
             member __.TaskCount = taskCount
@@ -213,9 +225,11 @@ module ``AppDomain Pool Tests`` =
             | Choice1Of2 v -> v
             | Choice2Of2 e -> raise e
 
+        static member Init() = AppDomainPool.Create<AppDomainLambdaEvaluator, AppDomainConfiguration> ()
+
     [<Test>]
     let ``12. AppDomain Lambda Evaluator`` () =
-        use pool = AppDomainPool.Create<AppDomainLambdaEvaluator> ()
+        use pool = AppDomainLambdaEvaluator.Init()
         AppDomainLambdaEvaluator.Eval pool (fun () -> 1 + 1) |> shouldEqual 2
 
 
@@ -225,7 +239,7 @@ module ``AppDomain Pool Tests`` =
 
     [<Test>]
     let ``13. AppDomain Lambda Evaluator should always use the same domain`` () =
-        use pool = AppDomainPool.Create<AppDomainLambdaEvaluator> ()
+        use pool = AppDomainLambdaEvaluator.Init()
         Seq.init 10 (fun _ -> AppDomainLambdaEvaluator.Eval pool (fun () -> StaticValueContainer.Value))
         |> Seq.distinct
         |> Seq.length

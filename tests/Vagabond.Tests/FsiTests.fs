@@ -89,6 +89,9 @@ module FsiTests =
     [<TestFixtureSetUp>]
     let initFsiSession () =
             
+        VagabondConfig.Init()
+        Actor.Init()
+
         let fsi = FsiSession.Start()
         let thisExe = getPathLiteral <| Assembly.GetExecutingAssembly().GetName().Name + ".exe"
 

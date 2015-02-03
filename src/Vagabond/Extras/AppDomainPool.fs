@@ -263,6 +263,7 @@ module private Impl =
 
 /// Provides an AppDomain pooling mechanism for use by Vagabond.
 /// AppDomains are managed based what assembly dependencies are required for execution.
+[<AutoSerializable(false)>]
 type AppDomainPool<'Manager when 'Manager :> IAppDomainManager 
                              and 'Manager :> MarshalByRefObject 
                              and 'Manager : (new : unit -> 'Manager)>
@@ -484,6 +485,7 @@ module private EvaluatorImpl =
         
 
 /// Defines an app domain pool that evaluates code based on Vagabond dependency affinities
+[<AutoSerializable(false)>]
 type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorManager>) =
 
     /// <summary>

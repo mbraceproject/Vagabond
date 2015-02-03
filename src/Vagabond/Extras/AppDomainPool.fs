@@ -35,28 +35,6 @@ type IAppDomainManager =
     /// Used by the AppDomainPool to unload unused instances.
     abstract LastUsed : DateTime
 
-/// Marshalled task completion source for async computation over AppDomains
-type MarshalledTaskCompletionSource<'T> () =
-    inherit MarshalByRefObject ()
-    let tcs = new TaskCompletionSource<'T> ()
-    /// Set a value as task result
-    member __.SetResult(t : 'T) = tcs.SetResult t
-    /// Set an exception as task result
-    member __.SetException(e : exn) = tcs.SetException e
-    /// Cancels the task
-    member __.SetCanceled() = tcs.SetCanceled()
-    /// Gets the local task instance.
-    member __.Task = tcs.Task
-
-/// Marshalled cancellation token source for use over AppDomains
-type MarshalledCancellationTokenSource () =
-    inherit MarshalByRefObject ()
-    let cts = new CancellationTokenSource()
-    /// Cancel the cancellation token source
-    member __.Cancel() = cts.Cancel()
-    /// Gets the local cancellation token
-    member __.CancellationToken = cts.Token
-
 [<AutoOpen>]
 module private Impl =
 
@@ -283,7 +261,6 @@ module private Impl =
                 | Error e -> return! behaviour gstate self
     }
 
-
 /// Provides an AppDomain pooling mechanism for use by Vagabond.
 /// AppDomains are managed based what assembly dependencies are required for execution.
 type AppDomainPool<'Manager when 'Manager :> IAppDomainManager 
@@ -312,8 +289,8 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
             do Async.Start(collector (), cts.Token)
 
     /// <summary>
-    ///     Returns a marshalled Manager object attached to an AppDomain
-    ///     that is compatible with state assembly dependencies 
+    ///     Returns a marshalled Manager object attached to a pooled AppDomain instance.
+    ///     AppDomain will be selected based on dependency affinity.
     /// </summary>
     /// <param name="dependencies">Assembly dependencies required of AppDomain.</param>
     member __.RequestAppDomain(dependencies : seq<AssemblyId>) : 'Manager =
@@ -387,5 +364,166 @@ type AppDomainPool =
                                  and 'Config : (new : unit -> 'Config)>
         (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
 
-        AppDomainPool.Create<'Manager>(activate<'Config>(), ?minimumConcurrentDomains = minimumConcurrentDomains, 
-                                        ?maximumConcurrentDomains = maximumConcurrentDomains, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain)
+        AppDomainPool.Create<'Manager>(activate<'Config>(), 
+            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, 
+            ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain)
+
+
+//
+//  Lambda Evaluator AppDomain pool: application of the AppDomain pool that uses FsPickler for sending lambdas 
+//  or asynchronous workflows for execution in pooled AppDomains
+//
+
+[<AutoOpen>]
+module private EvaluatorImpl =
+
+    let pickler = lazy(FsPickler.CreateBinary())
+
+    type ResultPickle = Pickle<Exn<obj>>
+
+    /// Marshalled task completion source for async computation over AppDomains
+    type MarshalledTaskCompletionSource<'T> () =
+        inherit MarshalByRefObject ()
+        let tcs = new TaskCompletionSource<'T> ()
+        /// Set a value as task result
+        member __.SetResult(t : 'T) = tcs.SetResult t
+        /// Set an exception as task result
+        member __.SetException(e : exn) = tcs.SetException e
+        /// Cancels the task
+        member __.SetCanceled() = tcs.SetCanceled()
+        /// Gets the local task instance.
+        member __.Task = tcs.Task
+
+    /// Marshalled cancellation token source for use over AppDomains
+    type MarshalledCancellationTokenSource () =
+        inherit MarshalByRefObject ()
+        let cts = new CancellationTokenSource()
+        /// Cancel the cancellation token source
+        member __.Cancel() = cts.Cancel()
+        /// Gets the local cancellation token
+        member __.CancellationToken = cts.Token
+
+    /// AppDomain configuration that carries a pickled initializer
+    type AppDomainEvaluatorConfiguration(?initializer : unit -> unit) =
+        let pInitializer = initializer |> Option.map pickler.Value.PickleTyped 
+        member __.Initializer = pInitializer
+        interface IAppDomainConfiguration
+
+    /// AppDomain managing object
+    type AppDomainEvaluatorManager() =
+        inherit MarshalByRefObject()
+
+        let mutable taskCount = 0
+        let mutable lastUsed = DateTime.Now
+
+        let init () =
+            let _ = Interlocked.Increment &taskCount
+            lastUsed <- DateTime.Now
+
+        let fini () =
+            let _ = Interlocked.Decrement &taskCount
+            lastUsed <- DateTime.Now
+
+        /// Synchronously executes a computation in remote AppDomain
+        member e.EvaluateSync(pFunc : Pickle<unit -> obj>) : ResultPickle =
+            let func = pickler.Value.UnPickleTyped pFunc
+            init ()
+            try
+                let result = Exn.protect func ()
+                pickler.Value.PickleTyped result
+            finally fini ()
+
+        /// Asynchronously executes a computation in remote AppDomain
+        member e.EvaluateAsync(mtcs : MarshalledTaskCompletionSource<ResultPickle>, pWorkflow : Pickle<Async<obj>>) : MarshalledCancellationTokenSource =
+            let mcts = new MarshalledCancellationTokenSource()
+            let workflow = pickler.Value.UnPickleTyped pWorkflow
+            let setResult (result : Exn<obj>) =
+                try
+                    let presult = 
+                        try pickler.Value.PickleTyped result
+                        with ex -> pickler.Value.PickleTyped (Error ex)
+
+                    mtcs.SetResult presult
+                finally fini ()
+
+            let setCancelled _ = try mtcs.SetCanceled() finally fini ()
+
+            let exec () = Async.StartWithContinuations(workflow, Success >> setResult, Error >> setResult, setCancelled, mcts.CancellationToken)
+
+            init ()
+            Async.Start(async { exec () })
+            mcts
+
+        interface IAppDomainManager with
+            member e.Initialize(config : IAppDomainConfiguration) =
+                match config with
+                | :? AppDomainEvaluatorConfiguration as c ->
+                    c.Initializer |> Option.iter (fun init -> pickler.Value.UnPickleTyped(init)())
+                | _ -> ()
+
+            member e.Finalize () = ()
+            member e.TaskCount = taskCount
+            member e.LastUsed = lastUsed
+
+    let evalSync (mgr : AppDomainEvaluatorManager) (f : unit -> 'T) : 'T =
+        let result = (fun () -> f () :> obj) |> pickler.Value.PickleTyped |> mgr.EvaluateSync |> pickler.Value.UnPickleTyped
+        result.Value :?> 'T
+
+    let evalAsync (mgr : AppDomainEvaluatorManager) (f : Async<'T>) : Async<'T> = async {
+        let! ct = Async.CancellationToken
+        let pworkflow = pickler.Value.PickleTyped(async { let! r = f in return box r })
+        let mtcs = new MarshalledTaskCompletionSource<ResultPickle>()
+        let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
+        use d = ct.Register (fun () -> mcts.Cancel ())
+        let! presult = Async.AwaitTask(mtcs.Task)
+        let result = pickler.Value.UnPickleTyped presult
+        return result.Value :?> 'T
+    }
+        
+
+/// Defines an app domain pool that evaluates code based on Vagabond dependency affinities
+type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorManager>) =
+
+    /// <summary>
+    ///     Creates a new AppDomainEvaluator instance.
+    /// </summary>
+    /// <param name="appDomainInitializer">Initializer run on every AppDomain upon creation. Defaults to none.</param>
+    /// <param name="minimumConcurrentDomains">Minimum allowed AppDomains. Defaults to 3.</param>
+    /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
+    /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
+    /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
+    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+        let config = new AppDomainEvaluatorConfiguration(?initializer = appDomainInitializer)
+        let pool = AppDomainPool.Create<AppDomainEvaluatorManager>(config, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain,
+                            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains)
+
+        new AppDomainEvaluatorPool(pool)
+
+    /// Current AppDomain count
+    member __.DomainCount = pool.DomainCount
+    /// Maximum allowed AppDomain count
+    member __.MaxDomains = pool.MaxDomains
+    /// Minimum allowed AppDomain count
+    member __.MinDomains = pool.MinDomains
+    
+    /// <summary>
+    ///     Evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.
+    /// </summary>
+    /// <param name="dependencies">Dependencies for operation.</param>
+    /// <param name="f">Function to be executed.</param>
+    member __.Evaluate(dependencies : seq<AssemblyId>, f : unit -> 'T) : 'T =
+        let evaluator = pool.RequestAppDomain dependencies
+        evalSync evaluator f
+
+    /// <summary>
+    ///     Asynchronously evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.
+    /// </summary>
+    /// <param name="dependencies">Dependencies for operation.</param>
+    /// <param name="f">Asynchronous workflow to be executed.</param>
+    member __.EvaluateAsync(dependencies : seq<AssemblyId>, f : Async<'T>) : Async<'T> = async {
+        let evaluator = pool.RequestAppDomain dependencies
+        return! evalAsync evaluator f
+    }
+
+    interface IDisposable with
+        member __.Dispose () = (pool :> IDisposable).Dispose()

@@ -17,6 +17,25 @@ module internal Utils =
 
     let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
+    let private remoteStackTraceField : FieldInfo =
+        let bfs = BindingFlags.NonPublic ||| BindingFlags.Instance
+        match typeof<System.Exception>.GetField("remote_stack_trace", bfs) with
+        | null ->
+            match typeof<System.Exception>.GetField("_remoteStackTraceString", bfs) with
+            | null -> null
+            | f -> f
+        | f -> f
+
+    // bad implementation: would be safer using ExceptionDispatchInfo but would break compatibility with 4.0
+    let inline reraise' (e : #exn) =
+        match remoteStackTraceField with
+        | null -> ()
+        | f ->
+            let trace = e.StackTrace
+            if not <| String.IsNullOrEmpty trace then f.SetValue(e, trace + System.Environment.NewLine)
+            
+        raise e
+
     /// Value or exception
     type Exn<'T> =
         | Success of 'T
@@ -26,7 +45,7 @@ module internal Utils =
         member e.Value =
             match e with
             | Success t -> t
-            | Error e -> raise e
+            | Error e -> reraise' e
 
     module Exn =
         let inline catch (f : unit -> 'T) =

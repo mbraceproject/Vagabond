@@ -49,6 +49,8 @@ module ``AppDomain Pool Tests`` =
 
     let idOf<'T> = Utilities.ComputeAssemblyId typeof<'T>.Assembly
 
+    let getDomainId() = System.AppDomain.CurrentDomain.FriendlyName
+
     [<TestFixtureSetUp>]
     let init() = VagabondConfig.Init()
 
@@ -184,12 +186,30 @@ module ``AppDomain Pool Tests`` =
         |> shouldEqual maxDomains
 
 
-    type AppDomainConfiguration() =
+    [<Test>]
+    let ``12. AppDomainEvaluatorPool simple lambda`` () =
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
+        pool.Evaluate([], fun () -> 1 + 1) |> shouldEqual 2
+
+    [<Test>]
+    let ``13. AppDomainEvaluatorPool simple worfklow`` () =
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
+        pool.EvaluateAsync([], async { return getDomainId() }) 
+        |> Async.RunSynchronously 
+        |> shouldNotEqual (getDomainId())
+
+    [<Test; ExpectedException(typeof<System.InvalidOperationException>)>]
+    let ``14. AppDomainEvaluatorPool simple worfklow with exception`` () =
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
+        pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously |> ignore
+
+
+    type AppDomainVagabondLambdaLoaderConfiguration() =
         let cachePath = VagabondConfig.Vagabond.CachePath
         interface IAppDomainConfiguration
         member __.CachePath = cachePath
 
-    type AppDomainLambdaEvaluator () =
+    type AppDomainVagabondLambdaLoader () =
         inherit MarshalByRefObject()
         let mutable lastUsed = DateTime.Now
         let mutable taskCount = 0
@@ -206,7 +226,7 @@ module ``AppDomain Pool Tests`` =
         interface IAppDomainManager with
             member __.Initialize (config : IAppDomainConfiguration) =
                 match config with
-                | :? AppDomainConfiguration as c -> VagabondConfig.Init(c.CachePath)
+                | :? AppDomainVagabondLambdaLoaderConfiguration as c -> VagabondConfig.Init(c.CachePath)
                 | _ -> ()
 
             member __.Finalize () = ()
@@ -214,7 +234,7 @@ module ``AppDomain Pool Tests`` =
             member __.TaskCount = taskCount
 
 
-        static member Eval (vpm : AppDomainPool<AppDomainLambdaEvaluator>) (f : unit -> 'T) =
+        static member Eval (vpm : AppDomainPool<AppDomainVagabondLambdaLoader>) (f : unit -> 'T) =
             let vg = VagabondConfig.Vagabond
             let deps = vg.ComputeObjectDependencies(f, true)
             let pkgs = vg.CreateAssemblyPackages(deps, true) |> List.toArray
@@ -225,12 +245,12 @@ module ``AppDomain Pool Tests`` =
             | Choice1Of2 v -> v
             | Choice2Of2 e -> raise e
 
-        static member Init() = AppDomainPool.Create<AppDomainLambdaEvaluator, AppDomainConfiguration> ()
+        static member Init() = AppDomainPool.Create<AppDomainVagabondLambdaLoader, AppDomainVagabondLambdaLoaderConfiguration> ()
 
     [<Test>]
-    let ``12. AppDomain Lambda Evaluator`` () =
-        use pool = AppDomainLambdaEvaluator.Init()
-        AppDomainLambdaEvaluator.Eval pool (fun () -> 1 + 1) |> shouldEqual 2
+    let ``15. AppDomain Vagabond Lambda Evaluator`` () =
+        use pool = AppDomainVagabondLambdaLoader.Init()
+        AppDomainVagabondLambdaLoader.Eval pool (fun () -> 1 + 1) |> shouldEqual 2
 
 
     type StaticValueContainer private () =
@@ -238,9 +258,9 @@ module ``AppDomain Pool Tests`` =
         static member Value = id
 
     [<Test>]
-    let ``13. AppDomain Lambda Evaluator should always use the same domain`` () =
-        use pool = AppDomainLambdaEvaluator.Init()
-        Seq.init 10 (fun _ -> AppDomainLambdaEvaluator.Eval pool (fun () -> StaticValueContainer.Value))
+    let ``16. AppDomain Vagabond Lambda Evaluator should always use the same domain`` () =
+        use pool = AppDomainVagabondLambdaLoader.Init()
+        Seq.init 10 (fun _ -> AppDomainVagabondLambdaLoader.Eval pool (fun () -> StaticValueContainer.Value))
         |> Seq.distinct
         |> Seq.length
         |> shouldEqual 1

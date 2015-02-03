@@ -376,7 +376,9 @@ type AppDomainPool =
 
 [<AutoOpen>]
 module private EvaluatorImpl =
-
+    
+    // BinaryFormatter, the .NET default in remoting is not to be trusted when serializing closures
+    // use FsPickler instead and pass Pickle<'T> values to the marshalled objects
     let pickler = lazy(FsPickler.CreateBinary())
 
     type ResultPickle = Pickle<Exn<obj>>

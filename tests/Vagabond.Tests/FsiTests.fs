@@ -93,7 +93,7 @@ module FsiTests =
         Actor.Init()
 
         let fsi = FsiSession.Start()
-        let thisExe = getPathLiteral <| Assembly.GetExecutingAssembly().GetName().Name + ".exe"
+        let thunkServer = __SOURCE_DIRECTORY__ + "../../../bin/ThunkServer.exe"
 
         // add dependencies
 
@@ -106,11 +106,11 @@ module FsiTests =
                 "LinqOptimizer.Base.dll"
                 "LinqOptimizer.Core.dll"
                 "LinqOptimizer.FSharp.dll"
-                "Vagabond.Tests.exe"
+                "ThunkServer.exe"
             ]
 
-        fsi.EvalInteraction "open Nessos.Vagabond.Tests"
-        fsi.EvalInteraction <| "ThunkClient.Executable <- " + thisExe
+        fsi.EvalInteraction "open ThunkServer"
+        fsi.EvalInteraction <| "ThunkClient.Executable <- @\"" + thunkServer + "\""
         fsi.EvalInteraction "let client = ThunkClient.InitLocal()"
 
     [<TestFixtureTearDown>]

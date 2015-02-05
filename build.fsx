@@ -30,7 +30,7 @@ let gitName = "Vagabond"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
 
 
-let testAssemblies = [ "bin/Vagabond.Tests.exe" ]
+let testAssemblies = [ "bin/Vagabond.Tests.dll" ]
 
 //
 //// --------------------------------------------------------------------------------------

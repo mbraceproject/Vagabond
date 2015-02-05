@@ -14,12 +14,12 @@ Dependency resolution and exportation logic is handled transparently by Vagabond
 #I "../../bin/"
 
 #r "FsPickler.dll"
-#r "Vagabond.Tests.exe"
+#r "ThunkServer.exe"
 
-open Nessos.Vagabond.Tests
+open ThunkServer
 
 // initialize & test a local instance
-ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/Vagabond.Tests.exe"
+ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/ThunkServer.exe"
 let client = ThunkClient.InitLocal()
 
 (**
@@ -52,7 +52,7 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 Example 3: Type providers
 **)
 
-#r "../../packages/FSharp.Data.2.0.9/lib/net40/FSharp.Data.dll"
+#r "../../packages/FSharp.Data/lib/net40/FSharp.Data.dll"
 
 open FSharp.Data
 
@@ -143,7 +143,7 @@ ref <!= GetCount
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/LinqOptimizer.FSharp.0.6.3/lib/"
+#I "../../packages/LinqOptimizer.FSharp/lib/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"

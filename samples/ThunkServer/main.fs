@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.Tests.Main
+﻿module internal ThunkServer.Main
 
 open System
 open System.IO
@@ -10,8 +10,6 @@ open Nessos.Thespian
 
 [<EntryPoint>]
 let main args =
-    VagabondConfig.Init()
-    Actor.Init()
 
     let receiver =
         if args.Length > 0 then 

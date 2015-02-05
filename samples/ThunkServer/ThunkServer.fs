@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond.Tests
+﻿namespace ThunkServer
 
 open System
 open System.IO
@@ -58,7 +58,6 @@ type ThunkServer private () =
 
 
 type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
-
     static let mutable exe = None
 
     let assemblyUploader =

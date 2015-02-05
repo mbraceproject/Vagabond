@@ -25,9 +25,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A6E19-CB54-495B-8F63-6FF508D15949}"
-	ProjectSection(SolutionItems) = preProject
-		tests\Vagrant.Tests\thunkServer.fsx = tests\Vagrant.Tests\thunkServer.fsx
-	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond", "src\Vagabond\Vagabond.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
 EndProject
@@ -56,6 +53,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DA4963F6
 		docs\tools\templates\template.cshtml = docs\tools\templates\template.cshtml
 	EndProjectSection
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ThunkServer", "samples\ThunkServer\ThunkServer.fsproj", "{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +73,10 @@ Global
 		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -83,5 +86,6 @@ Global
 		{7024E5FE-9835-411F-9621-5E5CA6558C19} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
 		{3D29EE57-78B9-410A-BBCF-7F59C04F667D} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
 		{DA4963F6-E95D-4541-94BE-9468E172286C} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
+		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6} = {DC2A6E19-CB54-495B-8F63-6FF508D15949}
 	EndGlobalSection
 EndGlobal

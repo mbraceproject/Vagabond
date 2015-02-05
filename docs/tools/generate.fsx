@@ -23,13 +23,9 @@ let info =
 // --------------------------------------------------------------------------------------
 
 #I "../../packages/FSharp.Formatting/lib/net40"
-#I "../../packages/RazorEngine/lib/net40"
 #I "../../packages/FSharpVSPowerTools.Core/lib/net45"
-#I "../../packages/Microsoft.AspNet.Razor/lib/net40"
 #I "../../packages/FSharp.Compiler.Service/lib/net40"
 #r "../../packages/FAKE/tools/FakeLib.dll"
-#r "RazorEngine.dll"
-#r "System.Web.Razor.dll"
 #r "FSharpVSPowerTools.Core.dll"
 #r "FSharp.Markdown.dll"
 #r "FSharp.Literate.dll"

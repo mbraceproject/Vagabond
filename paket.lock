@@ -15,6 +15,7 @@ NUGET
     Mono.Cecil (0.9.5.4)
     NuGet.CommandLine (2.8.3)
     NUnit (2.6.3)
+    NUnit.Runners (2.6.4)
     Thespian.Core (0.1.1-alpha)
       FsPickler (>= 1.0.2)
     Zlib.Portable (1.10.0)

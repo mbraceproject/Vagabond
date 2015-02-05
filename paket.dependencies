@@ -11,3 +11,4 @@ nuget Thespian.Core 0.1.1-alpha
 nuget FAKE
 nuget FSharp.Formatting
 nuget FSharp.Compiler.Service
+nuget NUnit.Runners

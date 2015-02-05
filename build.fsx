@@ -40,14 +40,6 @@ let testAssemblies = [ "bin/Vagabond.Tests.exe" ]
 //// Read release notes & version info from RELEASE_NOTES.md
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
-//let isAppVeyorBuild = environVar "APPVEYOR" <> null
-//let nugetVersion = 
-//    if isAppVeyorBuild then sprintf "%s-a%s" release.NugetVersion (DateTime.UtcNow.ToString "yyMMddHHmm")
-//    else release.NugetVersion
-//
-//Target "BuildVersion" (fun _ ->
-//    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" nugetVersion) |> ignore
-//)
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
@@ -65,11 +57,6 @@ Target "AssemblyInfo" (fun _ ->
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
-
-Target "RestorePackages" (fun _ ->
-    !! "./**/packages.config"
-    |> Seq.iter (RestorePackage (fun p -> { p with ToolPath = "./.nuget/NuGet.exe" }))
-)
 
 Target "Clean" (fun _ ->
     CleanDirs [ "bin" ]
@@ -133,7 +120,7 @@ let addAssembly (target : string) assembly =
 Target "NuGet" (fun _ ->
     // Format the description to fit on a single line (remove \r\n and double-spaces)
     let description = description.Replace("\r", "").Replace("\n", "").Replace("  ", " ")
-    let nugetPath = ".nuget/NuGet.exe"
+    let nugetPath = "packages/NuGet.CommandLine/tools/NuGet.exe"
     NuGet (fun p -> 
         { p with   
             Authors = authors
@@ -171,11 +158,13 @@ Target "GenerateDocs" (fun _ ->
 
 Target "ReleaseDocs" (fun _ ->
     let tempDocsDir = "temp/gh-pages"
+    let outputDocsDir = "docs/output"
     CleanDir tempDocsDir
     Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
 
     fullclean tempDocsDir
-    CopyRecursive "docs/output" tempDocsDir true |> tracefn "%A"
+    ensureDirectory outputDocsDir
+    CopyRecursive outputDocsDir tempDocsDir true |> tracefn "%A"
     StageAll tempDocsDir
     Commit tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
     Branches.push tempDocsDir
@@ -192,7 +181,6 @@ Target "PrepareRelease" DoNothing
 Target "Default" DoNothing
 
 "Clean"
-  ==> "RestorePackages"
   ==> "AssemblyInfo"
   ==> "Prepare"
   ==> "Build"

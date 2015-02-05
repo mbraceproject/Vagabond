@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>IRemoteAssemblyPublisher - Vagabond</title>
+    <title>IAppDomainConfiguration - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,58 +35,13 @@
 
 
 
-<h1>IRemoteAssemblyPublisher</h1>
+<h1>IAppDomainConfiguration</h1>
 <div class="xmldoc">
-<p>Defines an abstract assembly exporter; to be used by VagabondClient</p>
+<p>User-defined configuration object
+passed at AppDomain initialization
+Values are instantiated on the client appdomain
+and marshalled to the pooled domains</p>
 </div>
-  <h3>Instance members</h3>
-  <table class="table table-bordered member-list">
-    <thead>
-      <tr><td>Instance member</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '4', 4)" onmouseover="showTip(event, '4', 4)">
-            GetRequiredAssemblyInfo()
-          </code>
-          <div class="tip" id="4">
-            <strong>Signature:</strong> unit -&gt; Async&lt;AssemblyId list&gt;<br />
-              <strong>Modifiers:</strong> abstract<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L27-27" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>receives a collection of dependencies required by remote publisher</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '5', 5)" onmouseover="showTip(event, '5', 5)">
-            PullAssemblies(arg1)
-          </code>
-          <div class="tip" id="5">
-            <strong>Signature:</strong> (AssemblyId list) -&gt; Async&lt;AssemblyPackage list&gt;<br />
-              <strong>Modifiers:</strong> abstract<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L29-29" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>request assembly packages from publisher</p>
-
-        </td>
-      </tr>
-    </tbody>
-  </table>
 
         </div>
         <div class="span3">

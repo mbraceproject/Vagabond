@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>AssemblyId - Vagabond</title>
+    <title>AppDomainEvaluatorPool - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,56 +35,10 @@
 
 
 
-<h1>AssemblyId</h1>
+<h1>AppDomainEvaluatorPool</h1>
 <div class="xmldoc">
-<p>unique identifier for assembly</p>
+<p>Defines an app domain pool that evaluates code based on Vagabond dependency affinities</p>
 </div>
-  <h3>Record Fields</h3>
-  <table class="table table-bordered member-list">
-    <thead>
-      <tr><td>Record Field</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '13', 13)" onmouseover="showTip(event, '13', 13)">
-            FullName
-          </code>
-          <div class="tip" id="13">
-            <strong>Signature:</strong> string<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L29-29" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>assembly qualified name</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '14', 14)" onmouseover="showTip(event, '14', 14)">
-            ImageHash
-          </code>
-          <div class="tip" id="14">
-            <strong>Signature:</strong> byte []<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L31-31" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>digest of the raw assembly image</p>
-
-        </td>
-      </tr>
-    </tbody>
-  </table>
   <h3>Instance members</h3>
   <table class="table table-bordered member-list">
     <thead>
@@ -94,37 +48,123 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '15', 15)" onmouseover="showTip(event, '15', 15)">
-            GetName()
+          <code onmouseout="hideTip(event, '70', 70)" onmouseover="showTip(event, '70', 70)">
+            DomainCount
           </code>
-          <div class="tip" id="15">
-            <strong>Signature:</strong> unit -&gt; AssemblyName<br />
+          <div class="tip" id="70">
+            <strong>Signature:</strong> int<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L34-34" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L507-507" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Current AppDomain count</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '16', 16)" onmouseover="showTip(event, '16', 16)">
-            IsStrongAssembly
+          <code onmouseout="hideTip(event, '71', 71)" onmouseover="showTip(event, '71', 71)">
+            Evaluate(dependencies, f)
           </code>
-          <div class="tip" id="16">
-            <strong>Signature:</strong> bool<br />
-                      </div>
+          <div class="tip" id="71">
+            <strong>Signature:</strong> (dependencies:seq&lt;AssemblyId&gt; * f:(unit -&gt; &#39;T)) -&gt; &#39;T<br />
+                          <strong>Type parameters:</strong> 'T          </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L35-35" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L518-518" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '72', 72)" onmouseover="showTip(event, '72', 72)">
+            EvaluateAsync(dependencies, f)
+          </code>
+          <div class="tip" id="72">
+            <strong>Signature:</strong> (dependencies:seq&lt;AssemblyId&gt; * f:Async&lt;&#39;T&gt;) -&gt; Async&lt;&#39;T&gt;<br />
+                          <strong>Type parameters:</strong> 'T          </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L527-527" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '73', 73)" onmouseover="showTip(event, '73', 73)">
+            MaxDomains
+          </code>
+          <div class="tip" id="73">
+            <strong>Signature:</strong> int<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L509-509" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Maximum allowed AppDomain count</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '74', 74)" onmouseover="showTip(event, '74', 74)">
+            MinDomains
+          </code>
+          <div class="tip" id="74">
+            <strong>Signature:</strong> int<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L511-511" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Minimum allowed AppDomain count</p>
+
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <h3>Static members</h3>
+  <table class="table table-bordered member-list">
+    <thead>
+      <tr><td>Static member</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '75', 75)" onmouseover="showTip(event, '75', 75)">
+            Create(...)
+          </code>
+          <div class="tip" id="75">
+            <strong>Signature:</strong> (appDomainInitializer:(unit -&gt; unit) option * minimumConcurrentDomains:int option * maximumConcurrentDomains:int option * threshold:TimeSpan option * maxTasksPerDomain:int option) -&gt; AppDomainEvaluatorPool<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AppDomainPool.fs#L499-499" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Creates a new AppDomainEvaluator instance.</p>
+
         </td>
       </tr>
     </tbody>

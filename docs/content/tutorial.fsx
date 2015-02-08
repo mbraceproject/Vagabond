@@ -15,7 +15,7 @@ let assembly = Unchecked.defaultof<Assembly>
 # API Overview
 
 The included implementation of
-[ThunkServer](https://github.com/nessos/Vagabond/blob/master/tests/Vagabond.Tests/ThunkServer.fs) 
+[ThunkServer](https://github.com/nessos/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx) 
 is a straightforward distributed implementation that makes use of Vagabond.
 What follows is a brief overview of the basic API.
 

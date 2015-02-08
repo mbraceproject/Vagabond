@@ -41,7 +41,7 @@ and [FsPickler](http://nessos.github.io/FsPickler) libraries and adapts code fro
 ## Example
 
 To see a demo of Vagabond, build the solution and execute the 
-[thunkServer.fsx](https://github.com/nessos/Vagabond/blob/master/tests/Vagabond.Tests/thunkServer.fsx) 
+[thunkServer.fsx](https://github.com/nessos/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx) 
 script found inside the samples folder. As the name suggests, 
 it allows for execution of arbitrary thunks in a remote server.
 

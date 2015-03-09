@@ -19,14 +19,14 @@ module Extras =
         /// receives the assembly load state of the remote party for the given id's
         abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
         /// upload a set of assembly packages to the remote party
-        abstract PushAssemblies : AssemblyPackage list -> Async<AssemblyLoadInfo list>
+        abstract PushAssemblies : VagabondAssembly list -> Async<AssemblyLoadInfo list>
 
     /// Defines an abstract assembly exporter; to be used by VagabondClient
     type IRemoteAssemblyPublisher =
         /// receives a collection of dependencies required by remote publisher
         abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
         /// request assembly packages from publisher
-        abstract PullAssemblies : AssemblyId list -> Async<AssemblyPackage list>
+        abstract PullAssemblies : AssemblyId list -> Async<VagabondAssembly list>
 
     /// <summary>
     ///     A collection of general purpose utilities on dependency traversal.

@@ -13,7 +13,7 @@ open Nessos.Vagabond
 
 type internal ServerMsg =
     | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
-    | LoadAssemblies of AssemblyPackage list * IReplyChannel<AssemblyLoadInfo list>
+    | LoadAssemblies of VagabondAssembly list * IReplyChannel<AssemblyLoadInfo list>
     | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
 
 type ThunkServer private () =
@@ -64,7 +64,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         {
             new IRemoteAssemblyReceiver with
                 member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
-                member __.PushAssemblies(pas : AssemblyPackage list) = server.PostWithReply(fun ch -> LoadAssemblies(pas,ch))
+                member __.PushAssemblies(pas : VagabondAssembly list) = server.PostWithReply(fun ch -> LoadAssemblies(pas,ch))
         }
 
     member __.UploadDependenciesAsync (obj : obj) = async {

@@ -214,7 +214,7 @@ module ``AppDomain Pool Tests`` =
         let mutable lastUsed = DateTime.Now
         let mutable taskCount = 0
 
-        member __.Evaluate(dependencies : AssemblyPackage [], plambda : Pickle<unit -> 'T>) : Pickle<Choice<'T, exn>> =
+        member __.Evaluate(dependencies : VagabondAssembly [], plambda : Pickle<unit -> 'T>) : Pickle<Choice<'T, exn>> =
             let _ = VagabondConfig.Vagabond.LoadAssemblyPackages dependencies
             let lambda = VagabondConfig.Vagabond.Pickler.UnPickleTyped plambda
             let _ = Interlocked.Increment &taskCount

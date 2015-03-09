@@ -115,13 +115,13 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             pickler.Serialize(fs, initializers)
             { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = Some(metadata, initFile) }
 
-    member __.TryReadStaticInitializers(pkg : AssemblyPackage) =
-        match pkg.Metadata with
-        | Some(_,initFile) ->
-            use fs = File.OpenRead initFile
-            let init = pickler.Deserialize<StaticInitializer []>(fs)
-            Some init
-        | None -> None
+    member __.ReadStaticInitializers(initFile : string) =
+//        match pkg.Metadata with
+//        | Some(_,initFile) ->
+        use fs = File.OpenRead initFile
+        pickler.Deserialize<StaticInitializer []>(fs)
+//            Some init
+//        | None -> None
 
     member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
         let cachePath = getCachedAssemblyPath id
@@ -130,26 +130,42 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             do! streamToFile imgReader cachePath
         }
 
-        let! symbolsReader = importer.TryGetSymbolReader id
-        match symbolsReader with
-        | None -> ()
-        | Some sReader -> use sReader = sReader in do! streamToFile sReader (getSymbolsPath cachePath)
+        
+        let! symbolsPath = async {
+            let! symbolsReader = importer.TryGetSymbolReader id
+            match symbolsReader with
+            | None -> return None
+            | Some sReader -> 
+                let symbolsPath = getSymbolsPath cachePath
+                use sReader = sReader in 
+                do! streamToFile sReader symbolsPath
+                return Some symbolsPath
+        }
 
-        let! metadata = importer.TryReadMetadata id
-        match metadata with
-        | None -> ()
-        | Some md ->
-            let metadataFile = getSymbolsPath cachePath
-            do! async {
-                use! dataReader = importer.GetDataReader id
-                do! streamToFile dataReader metadataFile
-            }
+        let! metadata = async {
+            let! metadata = importer.TryReadMetadata id
+            match metadata with
+            | None -> return None
+            | Some md ->
+                let metadataFile = getSymbolsPath cachePath
+                do! async {
+                    use! dataReader = importer.GetDataReader(id, md)
+                    do! streamToFile dataReader metadataFile
+                }
 
-            let _ = writeMetadata cachePath (md, metadataFile)
-            ()
+                let _ = writeMetadata cachePath (md, metadataFile)
+                return Some(md, metadataFile)
+        }
+
+        return {
+            Id = id
+            Image = cachePath
+            Symbols = symbolsPath
+            Metadata = metadata
+        }
     }
 
-    member __.Export(exporter : IAssemblyExporter, pkg : AssemblyPackage) = async {
+    member __.Export(exporter : IAssemblyExporter, pkg : VagabondAssembly) = async {
         do! async {
             use! writer = exporter.GetImageWriter(pkg.Id)
             do! fileToStream pkg.Image writer
@@ -164,12 +180,8 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         match pkg.Metadata with
         | None -> ()
         | Some (md, init) ->
-            do! async {
-                use! writer = exporter.GetDataWriter pkg.Id
-                do! fileToStream init writer
-            }
-
-            do! exporter.WriteMetadata(pkg.Id, md)
+            use! writer = exporter.WriteMetadata(pkg.Id, md)
+            do! fileToStream init writer
     }
 
 

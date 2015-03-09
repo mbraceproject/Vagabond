@@ -8,7 +8,7 @@ open Nessos.FsPickler
 
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.DependencyAnalysis
-open Nessos.Vagabond.Daemon
+open Nessos.Vagabond.Control
 
 /// Vagabond Object which instantiates a dynamic assembly compiler, loader and exporter state
 
@@ -167,7 +167,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
     member __.CreateAssemblyPackage(id : AssemblyId, includeAssemblyImage : bool, ?loadPolicy) =
         let loadPolicy = defaultArg loadPolicy _loadPolicy
-        daemon.PostAndReply(fun ch -> GetAssemblyPackage(loadPolicy, includeAssemblyImage, id, ch))
+        daemon.PostAndReply(fun ch -> GetVagabondAssembly(loadPolicy, id, ch))
 
     /// <summary>
     ///     Creates assembly packages out of given assembly ids.
@@ -222,7 +222,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="pa">Input assembly package.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadAssemblyPackage(pa : AssemblyPackage, ?loadPolicy) =
+    member __.LoadAssemblyPackage(pa : VagabondAssembly, ?loadPolicy) =
         let loadPolicy = defaultArg loadPolicy _loadPolicy
         daemon.PostAndReply(fun ch -> LoadAssembly(loadPolicy, pa, ch))
 
@@ -231,7 +231,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="pas">Input assembly packages.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadAssemblyPackages(pas : seq<AssemblyPackage>, ?loadPolicy) =
+    member __.LoadAssemblyPackages(pas : seq<VagabondAssembly>, ?loadPolicy) =
         Seq.toList pas
         |> List.map (fun pa -> __.LoadAssemblyPackage(pa, ?loadPolicy = loadPolicy))
 
@@ -241,13 +241,16 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
     member __.LoadCachedAssembly(id : AssemblyId, ?loadPolicy) =
-        __.LoadAssemblyPackage(AssemblyPackage.Empty id, ?loadPolicy = loadPolicy)
+        match daemon.AssemblyCache.TryGetCachedAssemblyInfo id with
+        | None -> NotLoaded(id)
+        | Some va -> __.LoadAssemblyPackage(va, ?loadPolicy = loadPolicy)
+//        __.LoadAssemblyPackage(VagabondAssembly.Empty id, ?loadPolicy = loadPolicy)
 
-    /// <summary>
-    ///     Loads assembly id's that are already cached in local machine.
-    /// </summary>
-    /// <param name="id">input assembly id.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadCachedAssemblies(ids : seq<AssemblyId>, ?loadPolicy) =
-        Seq.toList ids
-        |> List.map (fun id -> __.LoadAssemblyPackage(AssemblyPackage.Empty id, ?loadPolicy = loadPolicy))
+//    /// <summary>
+//    ///     Loads assembly id's that are already cached in local machine.
+//    /// </summary>
+//    /// <param name="id">input assembly id.</param>
+//    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+//    member __.LoadCachedAssemblies(ids : seq<AssemblyId>, ?loadPolicy) =
+//        Seq.toList ids
+//        |> List.map (fun id -> __.LoadAssemblyPackage(VagabondAssembly.Empty id, ?loadPolicy = loadPolicy))

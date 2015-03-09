@@ -53,7 +53,7 @@ type VagabondMetadata =
 
 /// Contains information necessary for the exportation of an assembly
 [<NoEquality; NoComparison>] 
-type AssemblyPackage =
+type VagabondAssembly =
     {
         /// Assembly Identifier
         Id : AssemblyId
@@ -72,19 +72,6 @@ with
     member pa.GetName() = pa.Id.GetName()
     override id.ToString() = id.FullName
 
-///// Static initialization metadata
-//[<NoEquality; NoComparison>] 
-//type StaticInitializationInfo =
-//    {
-//        /// Generation of given static initializer
-//        Generation : int
-//
-//        /// Is partial static initialization data
-//        IsPartial : bool
-//
-//        /// Static initialization errors
-//        Errors : Pickle<FieldInfo * exn> []
-//    }
 
 /// Assembly load information
 type AssemblyLoadInfo =
@@ -103,15 +90,15 @@ type IAssemblyExporter =
 //    abstract GetAssemblyLoadInfo : ids:seq<AssemblyId> -> AssemblyLoadInfo []
     abstract GetImageWriter : AssemblyId -> Async<Stream>
     abstract GetSymbolWriter : AssemblyId -> Async<Stream>
-    abstract WriteMetadata : AssemblyId * VagabondMetadata -> Async<unit>
-    abstract GetDataWriter : AssemblyId -> Async<Stream>
+    abstract WriteMetadata : AssemblyId * VagabondMetadata -> Async<Stream>
+//    abstract GetDataWriter : AssemblyId -> Async<Stream>
 
 type IAssemblyImporter =
 //    abstract GetRequiredAssemblies : unit -> Async<AssemblyId []>
     abstract GetImageReader : AssemblyId -> Async<Stream>
     abstract TryGetSymbolReader : AssemblyId -> Async<Stream option>
     abstract TryReadMetadata : AssemblyId -> Async<VagabondMetadata option>
-    abstract GetDataReader : AssemblyId -> Async<Stream>
+    abstract GetDataReader : AssemblyId * VagabondMetadata -> Async<Stream>
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 

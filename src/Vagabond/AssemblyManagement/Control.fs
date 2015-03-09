@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.Daemon
+﻿module internal Nessos.Vagabond.Control
 
 open System
 open System.IO
@@ -17,8 +17,9 @@ open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
 type VagabondMessage = 
-    | LoadAssembly of AssemblyLoadPolicy * AssemblyPackage * ReplyChannel<AssemblyLoadInfo>
-    | GetAssemblyPackage of AssemblyLoadPolicy * includeImage:bool * AssemblyId * ReplyChannel<AssemblyPackage>
+    | ImportAssemblies of IAssemblyImporter * AssemblyId list * ReplyChannel<VagabondAssembly list>
+    | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
+    | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
@@ -42,7 +43,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
 
-            Pickler = defaultPickler
+            Serializer = defaultPickler
             AssemblyCache = assemblyCache
             IsIgnoredAssembly = isIgnoredAssembly
             RequireDependenciesLoadedInAppDomain = requireLoaded
@@ -51,6 +52,20 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
     let processMessage (state : VagabondState) (message : VagabondMessage) = async {
 
         match message with
+        | ImportAssemblies(importer, ids, rc) ->
+            try
+                let ra = new ResizeArray<VagabondAssembly>()
+                for id in ids do
+                    let! va = state.AssemblyCache.Import(importer, id)
+                    ra.Add va
+
+                rc.Reply(Seq.toList ra)
+                return state
+
+            with e ->
+                rc.ReplyWithError e
+                return state
+
         | CompileDynamicAssemblySlice (assemblies, rc) ->
             try
                 let compState, result = compileDynamicAssemblySlices state.IsIgnoredAssembly state.RequireDependenciesLoadedInAppDomain state.CompilerState assemblies
@@ -66,9 +81,9 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
                 rc.ReplyWithError e
                 return state
 
-        | GetAssemblyPackage (policy, includeImage, id, rc) ->
+        | GetVagabondAssembly (policy, id, rc) ->
             try
-                let state', pa = exportAssembly state policy includeImage id
+                let state', pa = exportAssembly state policy id
 
                 rc.Reply pa
 
@@ -80,7 +95,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
         | LoadAssembly (policy, pa, rc) ->
             try
-                let state', result = importAssembly state policy pa
+                let state', result = loadAssembly state policy pa
 
                 rc.Reply result
 
@@ -92,7 +107,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
         | GetAssemblyLoadInfo (policy, id, rc) ->
             try
-                let state', result = importAssembly state policy <| AssemblyPackage.Empty id
+                let state', result = getAssemblyLoadInfo state policy id
 
                 rc.Reply result
 
@@ -111,6 +126,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
     member __.CompilerState = !compilerState
     member __.CacheDirectory = assemblyCache.CacheDirectory
+    member __.AssemblyCache = assemblyCache
 
     member __.DefaultPickler = defaultPickler
     member __.TypeNameConverter = typeNameConverter

@@ -62,7 +62,7 @@
     <Compile Include="SliceCompiler\SliceCompiler.fs" />
     <Compile Include="AssemblyManagement\AssemblyCache.fs" />
     <Compile Include="AssemblyManagement\AssemblyManagement.fs" />
-    <Compile Include="AssemblyManagement\Daemon.fs" />
+    <Compile Include="AssemblyManagement\Control.fs" />
     <Compile Include="Vagabond.fs" />
     <Compile Include="Extras\AppDomainPool.fs" />
     <Compile Include="Extras\Extras.fs" />

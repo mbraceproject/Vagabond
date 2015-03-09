@@ -87,14 +87,11 @@ with
 
 
 type IAssemblyExporter =
-//    abstract GetAssemblyLoadInfo : ids:seq<AssemblyId> -> AssemblyLoadInfo []
     abstract GetImageWriter : AssemblyId -> Async<Stream>
     abstract GetSymbolWriter : AssemblyId -> Async<Stream>
     abstract WriteMetadata : AssemblyId * VagabondMetadata -> Async<Stream>
-//    abstract GetDataWriter : AssemblyId -> Async<Stream>
 
 type IAssemblyImporter =
-//    abstract GetRequiredAssemblies : unit -> Async<AssemblyId []>
     abstract GetImageReader : AssemblyId -> Async<Stream>
     abstract TryGetSymbolReader : AssemblyId -> Async<Stream option>
     abstract TryReadMetadata : AssemblyId -> Async<VagabondMetadata option>

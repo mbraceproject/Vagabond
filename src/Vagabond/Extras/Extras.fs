@@ -112,11 +112,11 @@ module Extras =
                 match info with
                 | LoadFault(id, (:?VagabondException as e)) -> raise e
                 | LoadFault(id, e) -> 
-                    raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName)
+                    raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
                 | NotLoaded id -> 
-                    Some <| v.CreateAssemblyPackage(id, includeAssemblyImage = true)
+                    Some <| v.CreateAssemblyPackage(id)
                 | Loaded(id,_,Some si) when si.IsPartial ->
-                    Some <| v.CreateAssemblyPackage(id, includeAssemblyImage = false)
+                    Some <| v.CreateAssemblyPackage(id)
                 | Loaded _ -> None
 
             let assemblyPackages = info |> List.choose tryGetAssemblyPackage
@@ -126,7 +126,7 @@ module Extras =
             let gatherErrors (info : AssemblyLoadInfo) =
                 match info with
                 | LoadFault(id, (:?VagabondException as e)) -> raise e
-                | LoadFault(id, _)
+                | LoadFault(id, e) -> raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
                 | NotLoaded id -> raise <| new VagabondException(sprintf "could not load assembly '%s' on remote client." id.FullName)
                 | Loaded(_,_,Some info) -> Some info.Errors
                 | Loaded _ -> None

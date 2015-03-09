@@ -54,12 +54,13 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
         match message with
         | ImportAssemblies(importer, ids, rc) ->
             try
-                let ra = new ResizeArray<VagabondAssembly>()
-                for id in ids do
-                    let! va = state.AssemblyCache.Import(importer, id)
-                    ra.Add va
+                let! vas =
+                    ids
+                    |> Seq.distinct
+                    |> Seq.map(fun id -> state.AssemblyCache.Import(importer, id))
+                    |> Async.Parallel
 
-                rc.Reply(Seq.toList ra)
+                rc.Reply(Array.toList vas)
                 return state
 
             with e ->

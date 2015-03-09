@@ -251,14 +251,20 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
         |> List.map (fun id -> __.LoadVagabondAssembly(id, ?loadPolicy = loadPolicy))
 
 
-    member __.ExportAssemblies(exporter : IAssemblyExporter, vas : seq<VagabondAssembly>) = async {
-        return!
-            vas
-            |> Seq.map (fun va -> daemon.AssemblyCache.Export(exporter, va))
-            |> Async.Parallel
-            |> Async.Ignore
+    /// <summary>
+    ///     Export provided assemblies using provided exporter
+    /// </summary>
+    /// <param name="exporter">Assembly exporter implementation.</param>
+    /// <param name="assemblies">Assemblies to be exported.</param>
+    member __.ExportAssemblies(exporter : IAssemblyExporter, assemblies : seq<VagabondAssembly>) = async {
+        return! daemon.PostAndAsyncReply(fun ch -> ExportAssemblies(exporter, Seq.toList assemblies, ch))
     }
 
+    /// <summary>
+    ///     Import provided assemblies to cache using provided importer.
+    /// </summary>
+    /// <param name="importer">Assembly importer implementation.</param>
+    /// <param name="ids">Assembly id's to be imported.</param>
     member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) = async {
         return! daemon.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, Seq.toList ids, ch))
     }

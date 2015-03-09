@@ -18,6 +18,7 @@ open Nessos.Vagabond.AssemblyManagement
 
 type VagabondMessage =
     | ImportAssemblies of IAssemblyImporter * AssemblyId list * ReplyChannel<VagabondAssembly list>
+    | ExportAssemblies of IAssemblyExporter * VagabondAssembly list * ReplyChannel<unit>
     | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
     | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
@@ -59,6 +60,22 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
                     |> Async.Parallel
 
                 rc.Reply(Array.toList vas)
+                return state
+
+            with e ->
+                rc.ReplyWithError e
+                return state
+
+        | ExportAssemblies(exporter, assemblies, rc) ->
+            try
+                return!
+                    assemblies
+                    |> Seq.distinctBy(fun va -> va.Id)
+                    |> Seq.map (fun va -> state.AssemblyCache.Export(exporter, va))
+                    |> Async.Parallel
+                    |> Async.Ignore
+
+                rc.Reply (())
                 return state
 
             with e ->

@@ -9,22 +9,12 @@ open Nessos.FsPickler
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
 
-type CachedAssemblyInfo =
-    {
-        Id : AssemblyId
-        Location : string
-        Symbols : string option
-        StaticInitializer : (string * StaticInitializationInfo) option
-    }
+type StaticInitializer = FieldInfo * obj
 
 type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     do
         if not <| Directory.Exists cacheDirectory then
             raise <| new DirectoryNotFoundException(cacheDirectory)
-
-    static let metadataExt = ".vagabond"
-    static let staticInitExt = ".init"
-    static let symbolsExt = if runsOnMono.Value then ".mdb" else ".pdb"
 
     // gets a unique file name in cache directory that corresponds to assembly id.
     let getCachedAssemblyPath (id : AssemblyId) =
@@ -32,54 +22,68 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         let name = sprintf "%s-%s" (id.GetName().Name) hash
         Path.Combine(cacheDirectory, name + ".dll")
 
-    // write dynamic assembly metadata to cache
-    let writeMetadata path info =
-        use fs = new FileStream(Path.ChangeExtension(path, metadataExt), FileMode.Create)
-        pickler.Serialize<StaticInitializationInfo>(fs, info)
-        
-    // writes static initializatin data based on current state
-    let writeStaticInitializer path (previous : (string * StaticInitializationInfo) option) (init : StaticInitializer) =
-        match previous with
-        | Some (_,p) when p.Generation > init.Generation -> previous
-        | _ ->
-            let info = { Generation = init.Generation ; Errors = [||] ; IsPartial = init.IsPartial }
-            writeMetadata path info
-            let initFile = Path.ChangeExtension(path, staticInitExt)
-            File.WriteAllBytes(initFile, init.Data)
-            Some(initFile, info)
+    static let getMetadataPath path = Path.ChangeExtension(path, ".vagabond")
+    static let getSymbolsPath path = 
+        if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
+        else Path.ChangeExtension(path, ".pdb")
+
+    static let getStaticInitPath gen path = sprintf "%s-%d.init" (Path.GetFileNameWithoutExtension path) gen
+
+    static let streamToFile (source : Stream) (path : string) = async {
+        use fs = File.OpenWrite path
+        do! source.CopyToAsync(fs)
+    }
+
+    static let fileToStream (path : string) (target : Stream) = async {
+        use fs = File.OpenRead path
+        do! fs.CopyToAsync(target)
+    }
 
     // read dynamic assembly metadata from cache
     let tryReadMetadata path =
-        let mf = Path.ChangeExtension(path, metadataExt)
+        let mf = getMetadataPath path
         if File.Exists mf then
-            use fs = new FileStream(mf, FileMode.Open)
-            let metadata = pickler.Deserialize<StaticInitializationInfo>(fs)
-            let staticInitializer = Path.ChangeExtension(path, staticInitExt)
+            let metadata =
+                use fs = File.OpenRead mf
+                pickler.Deserialize<VagabondMetadata>(fs)
+
+            let staticInitializer = getStaticInitPath metadata.Generation path
             if File.Exists staticInitializer then
-                Some (staticInitializer, metadata)
+                Some (metadata, staticInitializer)
             else
-                None
+                raise <| new FileNotFoundException(staticInitializer)
         else
             None
+        
+    // writes static vagabond metadata based on current state
+    let writeMetadata path (input : VagabondMetadata, sourceInit : string) =
+        let current = tryReadMetadata path
+        match current with
+        // input metadata is stale, keep current
+        | Some (m, _) when m.Generation > input.Generation -> current
+        | _ ->
+            let initFile = getStaticInitPath input.Generation path
+            File.Copy(sourceInit, initFile, true)
+            do
+                use fs = File.OpenWrite (getMetadataPath path)
+                pickler.Serialize<VagabondMetadata>(fs, input)
+
+            Some(input, initFile)
 
     // resolve symbols file
     let tryFindSymbols path =
-        let s1 = Path.ChangeExtension(path, ".pdb")
-        if File.Exists s1 then Some s1
-        else
-            let s2 = Path.ChangeExtension(path, ".mdb")
-            if File.Exists s2 then Some s2
-            else None
+        let symbols = getSymbolsPath path
+        if File.Exists symbols then Some symbols
+        else None
 
     let getPersistedAssemblyInfo (path : string) (id : AssemblyId) =
         let symbols = tryFindSymbols path
         let metadata = tryReadMetadata path
-
         {
             Id = id
-            Location = path
+            Image = path
             Symbols = symbols
-            StaticInitializer = metadata
+            Metadata = metadata
         }
 
     member __.CacheDirectory = cacheDirectory
@@ -95,93 +99,141 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     member __.IsCachedAssembly(id : AssemblyId) =
         __.TryGetCachedAssemblyInfo(id).IsSome
 
-    member __.GetStaticAssemblyInfo(assembly : Assembly) =
+    member __.CreateAssemblyPackage(assembly : Assembly) =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
             invalidArg assembly.FullName "assembly is dynamic or not persistable."
         else
             getPersistedAssemblyInfo assembly.Location assembly.AssemblyId
 
-    member __.CreateAssemblyPackage(cai : CachedAssemblyInfo, includeImage : bool) =
+    member __.WriteStaticInitializers(assembly : Assembly, initializers : StaticInitializer [], metadata : VagabondMetadata) =
+        if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
+            invalidArg assembly.FullName "assembly is dynamic or not persistable."
+        else
+            let symbols = tryFindSymbols assembly.Location
+            let initFile = getStaticInitPath metadata.Generation assembly.Location
+            use fs = File.OpenWrite initFile
+            pickler.Serialize(fs, initializers)
+            { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = Some(metadata, initFile) }
 
-        let image =
-            if includeImage then Some <| File.ReadAllBytes cai.Location
-            else
-                None
+    member __.TryReadStaticInitializers(pkg : AssemblyPackage) =
+        match pkg.Metadata with
+        | Some(_,initFile) ->
+            use fs = File.OpenRead initFile
+            let init = pickler.Deserialize<StaticInitializer []>(fs)
+            Some init
+        | None -> None
 
-        let symbols = cai.Symbols |> Option.map File.ReadAllBytes
-
-        let staticInit =
-            match cai.StaticInitializer with
-            | None -> None
-            | Some(path, info) ->
-                let data = File.ReadAllBytes path
-                Some {
-                    Generation = info.Generation
-                    Data = data
-                    IsPartial = info.IsPartial
-                }
-
-        {
-            Id = cai.Id
-            Image = image
-            Symbols = symbols
-            StaticInitializer = staticInit
+    member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
+        let cachePath = getCachedAssemblyPath id
+        do! async {
+            use! imgReader = importer.GetImageReader id
+            do! streamToFile imgReader cachePath
         }
 
-    member __.CreateAssemblyPackage(assembly : Assembly, includeImage) =
-        let info = __.GetStaticAssemblyInfo assembly
-        __.CreateAssemblyPackage(info, includeImage)
+        let! symbolsReader = importer.TryGetSymbolReader id
+        match symbolsReader with
+        | None -> ()
+        | Some sReader -> use sReader = sReader in do! streamToFile sReader (getSymbolsPath cachePath)
 
-    member __.Cache(pa : AssemblyPackage) =
-        let cachePath = getCachedAssemblyPath pa.Id
-        if File.Exists cachePath then
-            let info = getPersistedAssemblyInfo cachePath pa.Id
-            let staticInit =
-                match pa.StaticInitializer with
-                | None -> info.StaticInitializer
-                | Some init -> writeStaticInitializer cachePath info.StaticInitializer init
+        let! metadata = importer.TryReadMetadata id
+        match metadata with
+        | None -> ()
+        | Some md ->
+            let metadataFile = getSymbolsPath cachePath
+            do! async {
+                use! dataReader = importer.GetDataReader id
+                do! streamToFile dataReader metadataFile
+            }
 
-            { info with StaticInitializer = staticInit }
+            let _ = writeMetadata cachePath (md, metadataFile)
+            ()
+    }
 
-        else
-            match pa.Image with
-            | None -> 
-                let msg = sprintf "Assembly package '%O' lacking image specification." pa.FullName
-                raise <| new VagabondException(msg)
+    member __.Export(exporter : IAssemblyExporter, pkg : AssemblyPackage) = async {
+        do! async {
+            use! writer = exporter.GetImageWriter(pkg.Id)
+            do! fileToStream pkg.Image writer
+        }
 
-            | Some img -> 
-                File.WriteAllBytes(cachePath, img)
+        match pkg.Symbols with
+        | None -> ()
+        | Some sf ->
+            use! writer = exporter.GetSymbolWriter pkg.Id
+            do! fileToStream sf writer
 
-                let symbols =
-                    match pa.Symbols with
-                    | None -> None
-                    | Some sym -> 
-                        let symFile = Path.ChangeExtension(cachePath, symbolsExt)
-                        File.WriteAllBytes(symFile, sym)
-                        Some symFile
+        match pkg.Metadata with
+        | None -> ()
+        | Some (md, init) ->
+            do! async {
+                use! writer = exporter.GetDataWriter pkg.Id
+                do! fileToStream init writer
+            }
 
-                let staticInit =
-                    match pa.StaticInitializer with
-                    | None -> None
-                    | Some init -> writeStaticInitializer cachePath None init
-
-                { Id = pa.Id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = staticInit }
+            do! exporter.WriteMetadata(pkg.Id, md)
+    }
 
 
-    member __.Cache(assembly : Assembly, ?asId : AssemblyId) =
-        let info = __.GetStaticAssemblyInfo assembly
-        let id = defaultArg asId info.Id
-        let cachePath = getCachedAssemblyPath id
-        if File.Exists cachePath then
-            getPersistedAssemblyInfo cachePath id
-        else
-            File.Copy(assembly.Location, cachePath)
-            let symbols =
-                match info.Symbols with
-                | None -> None
-                | Some s ->
-                    let symFile = Path.ChangeExtension(cachePath, symbolsExt)
-                    File.Copy(s, symFile)
-                    Some symFile
 
-            { Id = id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = None }
+
+
+
+//        do File.Copy(pa.Image, cachePath, true)
+//        match pa.Symbols with
+//        | None -> ()
+//        | Some sp -> File.Copy(sp, Path.ChangeExtension(cachePath, symbolsExt), true)
+//
+//        match pa.Metadata with
+//        | None -> ()
+//        | Some mp -> writeMetadata cachePath mp |> ignore
+//        let cachePath = getCachedAssemblyPath pa.Id
+//        if File.Exists cachePath then
+//            let info = getPersistedAssemblyInfo cachePath pa.Id
+//            let staticInit =
+//                match pa.StaticInitializer with
+//                | None -> info.StaticInitializer
+//                | Some init -> writeStaticInitializer cachePath info.StaticInitializer init
+//
+//            { info with StaticInitializer = staticInit }
+//
+//        else
+//            match pa.Image with
+//            | None -> 
+//                let msg = sprintf "Assembly package '%O' lacking image specification." pa.FullName
+//                raise <| new VagabondException(msg)
+//
+//            | Some img -> 
+//                File.WriteAllBytes(cachePath, img)
+//
+//                let symbols =
+//                    match pa.Symbols with
+//                    | None -> None
+//                    | Some sym -> 
+//                        let symFile = Path.ChangeExtension(cachePath, symbolsExt)
+//                        File.WriteAllBytes(symFile, sym)
+//                        Some symFile
+//
+//                let staticInit =
+//                    match pa.StaticInitializer with
+//                    | None -> None
+//                    | Some init -> writeStaticInitializer cachePath None init
+//
+//                { Id = pa.Id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = staticInit }
+
+
+//    member __.Cache(assembly : Assembly, ?asId : AssemblyId) =
+//        let info = __.GetStaticAssemblyInfo assembly
+//        let id = defaultArg asId info.Id
+//        let cachePath = getCachedAssemblyPath id
+//        if File.Exists cachePath then
+//            getPersistedAssemblyInfo cachePath id
+//        else
+//            File.Copy(assembly.Location, cachePath)
+//            let symbols =
+//                match info.Symbols with
+//                | None -> None
+//                | Some s ->
+//                    let symFile = Path.ChangeExtension(cachePath, symbolsExt)
+//                    File.Copy(s, symFile)
+//                    Some symFile
+//
+//            { Id = id ; Location = cachePath ; Symbols = symbols ; StaticInitializer = None }

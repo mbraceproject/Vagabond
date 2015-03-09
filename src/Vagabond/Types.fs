@@ -1,6 +1,7 @@
 ﻿namespace Nessos.Vagabond
 
 open System
+open System.IO
 open System.Reflection
 open System.Runtime.Serialization
 
@@ -36,44 +37,9 @@ with
 
     override id.ToString() = id.FullName
 
-/// static initialization data for assembly package
+/// Vagabond metadata for dynamic assembly slices
 [<NoEquality; NoComparison>]
-type StaticInitializer =
-    {
-        /// Generation of given static initializer
-        Generation : int
-
-        /// Static initialization data
-        Data : byte []
-
-        /// Is partial static initialization data
-        IsPartial : bool
-    }
-
-/// Contains information necessary for the exportation of an assembly
-[<NoEquality; NoComparison>] 
-type AssemblyPackage =
-    {
-        // Assembly Metadata
-        Id : AssemblyId
-
-        /// Raw image of the assembly
-        Image : byte [] option
-
-        /// Symbols file
-        Symbols : byte [] option
-
-        /// Static initialization data
-        StaticInitializer : StaticInitializer option
-    }
-with
-    member pa.FullName = pa.Id.FullName
-    member pa.GetName() = pa.Id.GetName()
-    override id.ToString() = id.FullName
-
-/// Static initialization metadata
-[<NoEquality; NoComparison>] 
-type StaticInitializationInfo =
+type VagabondMetadata =
     {
         /// Generation of given static initializer
         Generation : int
@@ -82,20 +48,70 @@ type StaticInitializationInfo =
         IsPartial : bool
 
         /// Static initialization errors
-        Errors : (FieldInfo * exn) []
+        Errors : Pickle<FieldInfo * exn> []
     }
+
+/// Contains information necessary for the exportation of an assembly
+[<NoEquality; NoComparison>] 
+type AssemblyPackage =
+    {
+        /// Assembly Identifier
+        Id : AssemblyId
+
+        /// Path to assembly
+        Image : string
+
+        /// Path to symbols file
+        Symbols : string option
+
+        /// Vagabond metadata and static initialization data path
+        Metadata : (VagabondMetadata * string) option
+    }
+with
+    member pa.FullName = pa.Id.FullName
+    member pa.GetName() = pa.Id.GetName()
+    override id.ToString() = id.FullName
+
+///// Static initialization metadata
+//[<NoEquality; NoComparison>] 
+//type StaticInitializationInfo =
+//    {
+//        /// Generation of given static initializer
+//        Generation : int
+//
+//        /// Is partial static initialization data
+//        IsPartial : bool
+//
+//        /// Static initialization errors
+//        Errors : Pickle<FieldInfo * exn> []
+//    }
 
 /// Assembly load information
 type AssemblyLoadInfo =
     | NotLoaded of AssemblyId
     | LoadFault of AssemblyId * exn
-    | Loaded of AssemblyId * isAppDomainLoaded:bool * staticInitialization:StaticInitializationInfo option
+    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata option
 with
     member info.Id = 
         match info with
         | NotLoaded id
         | LoadFault (id,_)
         | Loaded (id,_,_) -> id
+
+
+type IAssemblyExporter =
+//    abstract GetAssemblyLoadInfo : ids:seq<AssemblyId> -> AssemblyLoadInfo []
+    abstract GetImageWriter : AssemblyId -> Async<Stream>
+    abstract GetSymbolWriter : AssemblyId -> Async<Stream>
+    abstract WriteMetadata : AssemblyId * VagabondMetadata -> Async<unit>
+    abstract GetDataWriter : AssemblyId -> Async<Stream>
+
+type IAssemblyImporter =
+//    abstract GetRequiredAssemblies : unit -> Async<AssemblyId []>
+    abstract GetImageReader : AssemblyId -> Async<Stream>
+    abstract TryGetSymbolReader : AssemblyId -> Async<Stream option>
+    abstract TryReadMetadata : AssemblyId -> Async<VagabondMetadata option>
+    abstract GetDataReader : AssemblyId -> Async<Stream>
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 

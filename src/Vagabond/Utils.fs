@@ -6,6 +6,7 @@ open System.Collections.Concurrent
 open System.IO
 open System.Reflection
 open System.Runtime.Serialization
+open System.Threading.Tasks
 open System.Security.Cryptography
 
 open Microsoft.FSharp.Control
@@ -69,6 +70,16 @@ module internal Utils =
             match x with 
             | Some t when f t -> x
             | _ -> None
+
+    module Choice =
+        let split (inputs : Choice<'T,'S> []) =
+            let ts,ss = ResizeArray<'T> (), ResizeArray<'S> ()
+            for i = 0 to inputs.Length - 1 do
+                match inputs.[i] with
+                | Choice1Of2 t -> ts.Add t
+                | Choice2Of2 s -> ss.Add s
+
+            ts.ToArray(), ss.ToArray()
 
     let memoize f =
         let dict = new Dictionary<_,_>()
@@ -201,9 +212,9 @@ module internal Utils =
             else
                 false
 
-    type AssemblyPackage with
-        static member Empty (id : AssemblyId) =
-            { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
+//    type AssemblyPackage with
+//        static member Empty (id : AssemblyId) =
+//            { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
 
     [<RequireQualifiedAccess>]
     module Convert =
@@ -262,3 +273,7 @@ module internal Utils =
             for (k,v) in kvs do
                 map <- map.Add(k,v)
             map
+
+    type AsyncBuilder with
+        member ab.Bind(t : Task<'T>, g : 'T -> Async<'S>) = ab.Bind(Async.AwaitTask t, g)
+        member ab.Bind(t : Task, g : unit -> Async<'S>) = ab.Bind(t.ContinueWith ignore, g)

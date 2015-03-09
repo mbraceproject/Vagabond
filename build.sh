@@ -2,32 +2,32 @@
 if [ "X$OS" = "XWindows_NT" ] ; then
   # use .Net
 
-  .paket/paket.bootstrapper.exe
+  .vaket/vaket.bootstrapper.exe
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
 
-  .paket/paket.exe restore -v
+  .vaket/vaket.exe restore -v
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
 
-  packages/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
+  vackages/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
 else
 
   # use mono
-  mono .paket/paket.bootstrapper.exe
+  mono .vaket/vaket.bootstrapper.exe
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
 
-  mono .paket/paket.exe restore -v
+  mono .vaket/vaket.exe restore -v
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
-  mono packages/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
+  mono vackages/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
 fi

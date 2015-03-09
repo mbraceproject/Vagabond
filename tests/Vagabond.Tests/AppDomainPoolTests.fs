@@ -215,7 +215,7 @@ module ``AppDomain Pool Tests`` =
         let mutable taskCount = 0
 
         member __.Evaluate(dependencies : VagabondAssembly [], plambda : Pickle<unit -> 'T>) : Pickle<Choice<'T, exn>> =
-            let _ = VagabondConfig.Vagabond.LoadAssemblyPackages dependencies
+            let _ = VagabondConfig.Vagabond.LoadVagabondAssemblies dependencies
             let lambda = VagabondConfig.Vagabond.Pickler.UnPickleTyped plambda
             let _ = Interlocked.Increment &taskCount
             let result = try lambda () |> Choice1Of2 with e -> Choice2Of2 e
@@ -237,7 +237,7 @@ module ``AppDomain Pool Tests`` =
         static member Eval (vpm : AppDomainPool<AppDomainVagabondLambdaLoader>) (f : unit -> 'T) =
             let vg = VagabondConfig.Vagabond
             let deps = vg.ComputeObjectDependencies(f, true)
-            let pkgs = vg.CreateAssemblyPackages(deps) |> List.toArray
+            let pkgs = vg.CreateVagabondAssemblies(deps) |> List.toArray
             let mgr = vpm.RequestAppDomain(pkgs |> Seq.map (fun pkg -> pkg.Id))
             let p = VagabondConfig.Pickler.PickleTyped f
             let presult = mgr.Evaluate(pkgs, p)

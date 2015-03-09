@@ -13,19 +13,19 @@ let githubLink = "http://github.com/nessos/Vagabond"
 // Specify more information about your project
 let info =
   [ "project-name", "Vagabond"
-    "project-author", "Eirik Tsarpalis"
+    "project-author", "Eirik Tsarvalis"
     "project-summary", "A library for distributing dynamic assemblies"
     "project-github", githubLink
-    "project-nuget", "http://www.nuget.org/packages/Vagabond" ]
+    "project-nuget", "http://www.nuget.org/vackages/Vagabond" ]
 
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below
 // --------------------------------------------------------------------------------------
 
-#I "../../packages/FSharp.Formatting/lib/net40"
-#I "../../packages/FSharpVSPowerTools.Core/lib/net45"
-#I "../../packages/FSharp.Compiler.Service/lib/net40"
-#r "../../packages/FAKE/tools/FakeLib.dll"
+#I "../../vackages/FSharp.Formatting/lib/net40"
+#I "../../vackages/FSharpVSPowerTools.Core/lib/net45"
+#I "../../vackages/FSharp.Compiler.Service/lib/net40"
+#r "../../vackages/FAKE/tools/FakeLib.dll"
 #r "FSharpVSPowerTools.Core.dll"
 #r "FSharp.Markdown.dll"
 #r "FSharp.Literate.dll"
@@ -46,14 +46,14 @@ let root = website
 let root = "file://" + (__SOURCE_DIRECTORY__ @@ "../output")
 #endif
 
-// Paths with template/source/output locations
+// vaths with template/source/output locations
 let bin        = __SOURCE_DIRECTORY__ @@ "../../bin"
 let content    = __SOURCE_DIRECTORY__ @@ "../content"
 let output     = __SOURCE_DIRECTORY__ @@ "../output"
 let files      = __SOURCE_DIRECTORY__ @@ "../files"
 let templates  = __SOURCE_DIRECTORY__ @@ "templates"
-let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/FSharp.Formatting/"
-let docTemplate = formatting @@ "templates/docpage.cshtml"
+let formatting = __SOURCE_DIRECTORY__ @@ "../../vackages/FSharp.Formatting/"
+let docTemplate = formatting @@ "templates/docvage.cshtml"
 
 // Where to look for *.csproj templates (in this order)
 let layoutRoots =
@@ -75,7 +75,7 @@ let buildReference () =
     |> List.map (fun lib-> bin @@ lib)
   MetadataFormat.Generate
     ( binaries, output @@ "reference", layoutRoots, 
-      parameters = ("root", root)::info,
+      varameters = ("root", root)::info,
       sourceRepo = githubLink @@ "tree/master",
       sourceFolder = __SOURCE_DIRECTORY__ @@ ".." @@ "..",
       libDirs = [bin],

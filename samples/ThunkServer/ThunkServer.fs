@@ -26,8 +26,8 @@ type ThunkServer private () =
             let replies = ids |> List.map VagabondConfig.Vagabond.GetAssemblyLoadInfo
             do! rc.Reply replies
 
-        | LoadAssemblies (pas, rc) ->
-            let replies = VagabondConfig.Vagabond.LoadAssemblyPackages pas
+        | LoadAssemblies (vas, rc) ->
+            let replies = VagabondConfig.Vagabond.LoadVagabondAssemblies vas
             do! rc.Reply replies
 
         | EvaluteThunk (ty, f, rc) ->
@@ -64,7 +64,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         {
             new IRemoteAssemblyReceiver with
                 member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
-                member __.PushAssemblies(pas : VagabondAssembly list) = server.PostWithReply(fun ch -> LoadAssemblies(pas,ch))
+                member __.PushAssemblies(vas : VagabondAssembly list) = server.PostWithReply(fun ch -> LoadAssemblies(vas,ch))
         }
 
     member __.UploadDependenciesAsync (obj : obj) = async {

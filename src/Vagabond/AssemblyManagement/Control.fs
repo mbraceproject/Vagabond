@@ -16,7 +16,7 @@ open Nessos.Vagabond.Serialization
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
-type VagabondMessage = 
+type VagabondMessage =
     | ImportAssemblies of IAssemblyImporter * AssemblyId list * ReplyChannel<VagabondAssembly list>
     | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
     | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
@@ -45,8 +45,6 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
             Serializer = defaultPickler
             AssemblyCache = assemblyCache
-            IsIgnoredAssembly = isIgnoredAssembly
-            RequireDependenciesLoadedInAppDomain = requireLoaded
         }
         
     let processMessage (state : VagabondState) (message : VagabondMessage) = async {
@@ -69,7 +67,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
         | CompileDynamicAssemblySlice (assemblies, rc) ->
             try
-                let compState, result = compileDynamicAssemblySlices state.IsIgnoredAssembly state.RequireDependenciesLoadedInAppDomain state.CompilerState assemblies
+                let compState, result = compileDynamicAssemblySlices isIgnoredAssembly requireLoaded state.CompilerState assemblies
 
                 // note: it is essential that the compiler state ref cell is updated *before*
                 // a reply is given; this is to eliminate a certain class of race conditions.
@@ -84,9 +82,9 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
         | GetVagabondAssembly (policy, id, rc) ->
             try
-                let state', pa = exportAssembly state policy id
+                let state', va = exportAssembly state policy id
 
-                rc.Reply pa
+                rc.Reply va
 
                 return state'
 
@@ -94,9 +92,9 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
                 rc.ReplyWithError e
                 return state
 
-        | LoadAssembly (policy, pa, rc) ->
+        | LoadAssembly (policy, va, rc) ->
             try
-                let state', result = loadAssembly state policy pa
+                let state', result = loadAssembly state policy va
 
                 rc.Reply result
 

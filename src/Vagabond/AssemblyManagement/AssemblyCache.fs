@@ -9,8 +9,10 @@ open Nessos.FsPickler
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
 
+/// A static initializer comprises of a static field and its contained value
 type StaticInitializer = FieldInfo * obj
 
+/// Contains methods for caching assemblies and vagabond metadata to specified folder.
 type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     do
         if not <| Directory.Exists cacheDirectory then
@@ -22,18 +24,23 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         let name = sprintf "%s-%s" (id.GetName().Name) hash
         Path.Combine(cacheDirectory, name + ".dll")
 
+    /// gets metadata file path for given cached assembly
     static let getMetadataPath path = Path.ChangeExtension(path, ".vagabond")
+    /// gets symbols file path for given cached assembly
     static let getSymbolsPath path = 
         if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
         else Path.ChangeExtension(path, ".pdb")
 
+    /// gets vagabond static initialization file for given cached assembly
     static let getStaticInitPath gen path = sprintf "%s-%d.init" (Path.GetFileNameWithoutExtension path) gen
 
+    /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {
         use fs = File.OpenWrite path
         do! source.CopyToAsync(fs)
     }
 
+    /// asynchronously writes file data to given stream
     static let fileToStream (path : string) (target : Stream) = async {
         use fs = File.OpenRead path
         do! fs.CopyToAsync(target)
@@ -76,7 +83,8 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         if File.Exists symbols then Some symbols
         else None
 
-    let getPersistedAssemblyInfo (path : string) (id : AssemblyId) =
+    /// gets persisted Vagabond assembly from cache
+    let getPersistedAssembly (path : string) (id : AssemblyId) =
         let symbols = tryFindSymbols path
         let metadata = tryReadMetadata path
         {
@@ -86,25 +94,30 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             Metadata = metadata
         }
 
+    /// Current cache directory
     member __.CacheDirectory = cacheDirectory
 
+    /// Returns cached assembly of provided id, if it exists
     member __.TryGetCachedAssemblyInfo(id : AssemblyId) =
         let cachePath = getCachedAssemblyPath id
 
         if File.Exists cachePath then
-            Some <| getPersistedAssemblyInfo cachePath id
+            Some <| getPersistedAssembly cachePath id
         else
             None
 
+    /// Checks if assembly of provided id exists in cache
     member __.IsCachedAssembly(id : AssemblyId) =
         __.TryGetCachedAssemblyInfo(id).IsSome
 
-    member __.CreateAssemblyPackage(assembly : Assembly) =
+    /// Creates a Vagabond assembly record for given System.Reflection.Assembly.
+    member __.CreateVagabondAssembly(assembly : Assembly) =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
             invalidArg assembly.FullName "assembly is dynamic or not persistable."
         else
-            getPersistedAssemblyInfo assembly.Location assembly.AssemblyId
+            getPersistedAssembly assembly.Location assembly.AssemblyId
 
+    /// Creates a Vagabond assembly record for given Assembly and metadata.
     member __.WriteStaticInitializers(assembly : Assembly, initializers : StaticInitializer [], metadata : VagabondMetadata) =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
             invalidArg assembly.FullName "assembly is dynamic or not persistable."
@@ -115,10 +128,12 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             pickler.Serialize(fs, initializers)
             { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = Some(metadata, initFile) }
 
+    /// Reads static initialization data from provided file
     member __.ReadStaticInitializers(initFile : string) =
         use fs = File.OpenRead initFile
         pickler.Deserialize<StaticInitializer []>(fs)
 
+    /// Import assembly of given id to cache
     member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
         let cachePath = getCachedAssemblyPath id
         if not <| File.Exists cachePath then
@@ -166,6 +181,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         }
     }
 
+    /// Exports assembly of given id from cache
     member __.Export(exporter : IAssemblyExporter, pkg : VagabondAssembly) = async {
         do! async {
             use! writer = exporter.GetImageWriter(pkg.Id)

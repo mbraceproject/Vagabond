@@ -114,9 +114,9 @@ module Extras =
                 | LoadFault(id, e) -> 
                     raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
                 | NotLoaded id -> 
-                    Some <| v.CreateAssemblyPackage(id)
+                    Some <| v.CreateVagabondAssembly(id)
                 | Loaded(id,_,Some si) when si.IsPartial ->
-                    Some <| v.CreateAssemblyPackage(id)
+                    Some <| v.CreateVagabondAssembly(id)
                 | Loaded _ -> None
 
             let assemblyPackages = info |> List.choose tryGetAssemblyPackage
@@ -151,7 +151,7 @@ module Extras =
         /// </summary>
         /// <param name="publisher">The remote publisher</param>
         /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-        member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy) = async {
+        member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy : AssemblyLoadPolicy) = async {
 
             // step 1. download dependencies required by publisher
             let! dependencies = publisher.GetRequiredAssemblyInfo()
@@ -171,7 +171,7 @@ module Extras =
             if missing.Length > 0 then
                 // step 3. download assembly packages for missing dependencies
                 let! assemblies = publisher.PullAssemblies missing
-                let loadResults = v.LoadAssemblyPackages(assemblies, ?loadPolicy = loadPolicy)
+                let loadResults = v.LoadVagabondAssemblies(assemblies, ?loadPolicy = loadPolicy)
 
                 let checkLoadResult (info : AssemblyLoadInfo) =
                     match info with

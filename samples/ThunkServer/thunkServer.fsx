@@ -164,3 +164,20 @@ let query =
 query ()
 
 client.EvaluateThunk query
+
+
+#r "Mono.Cecil.dll"
+
+open Mono.Cecil
+
+let assemblyDef = AssemblyDefinition.ReadAssembly(typeof<ThunkServer>.Assembly.Location)
+
+let types = assemblyDef.MainModule.Types |> Seq.toArray
+
+let configT = types |> Seq.find (fun t -> t.Name.Contains "VagabondConfig")
+
+let configMs = configT.Methods |> Seq.toArray
+
+let ctor = configMs |> Seq.find (fun t -> t.Name.Contains ".cctor")
+
+ctor.ToString()

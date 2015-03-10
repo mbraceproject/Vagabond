@@ -1,13 +1,13 @@
 @echo off
 
-.vaket\vaket.bootstrapper.exe
+.paket\paket.bootstrapper.exe
 if errorlevel 1 (
   exit /b %errorlevel%
 )
 
-.vaket\vaket.exe restore -v
+.paket\paket.exe restore -v
 if errorlevel 1 (
   exit /b %errorlevel%
 )
 
-vackages\FAKE\tools\FAKE.exe build.fsx %*
+packages\FAKE\tools\FAKE.exe build.fsx %*

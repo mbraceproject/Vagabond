@@ -24,6 +24,8 @@ and DynamicAssemblySlice =
         Assembly : Assembly
         /// Static fields that are to be pickled by slice
         StaticFields : FieldInfo []
+//        /// Static fields referenced by slice members
+//        ReferenceIndex : Map<string, FieldInfo []>
     }
 with
     /// Returns true if slice requires static initialization of fields

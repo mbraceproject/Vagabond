@@ -2,37 +2,37 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <!-- Enable the restore command to run before builds -->
-    <Restorevackages Condition=" '$(Restorevackages)' == '' ">true</Restorevackages>
-    <!-- Download vaket.exe if it does not already exist -->
-    <Downloadvaket Condition=" '$(Downloadvaket)' == '' ">true</Downloadvaket>
-    <vaketToolsvath>$(MSBuildThisFileDirectory)</vaketToolsvath>
-    <vaketRootvath>$(MSBuildThisFileDirectory)..\</vaketRootvath>
+    <RestorePackages Condition=" '$(RestorePackages)' == '' ">true</RestorePackages>
+    <!-- Download Paket.exe if it does not already exist -->
+    <DownloadPaket Condition=" '$(DownloadPaket)' == '' ">true</DownloadPaket>
+    <PaketToolsPath>$(MSBuildThisFileDirectory)</PaketToolsPath>
+    <PaketRootPath>$(MSBuildThisFileDirectory)..\</PaketRootPath>
   </PropertyGroup>
   <PropertyGroup>
-    <!-- vaket command -->
-    <vaketExevath Condition=" '$(vaketExevath)' == '' ">$(vaketToolsvath)vaket.exe</vaketExevath>
-    <vaketBootStrapperExevath Condition=" '$(vaketBootStrapperExevath)' == '' ">$(vaketToolsvath)vaket.bootstrapper.exe</vaketBootStrapperExevath>
-    <vaketCommand Condition=" '$(OS)' == 'Windows_NT'">"$(vaketExevath)"</vaketCommand>
-    <vaketCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(vaketExevath)</vaketCommand>
-    <vaketBootStrapperCommand Condition=" '$(OS)' == 'Windows_NT'">"$(vaketBootStrapperExevath)"</vaketBootStrapperCommand>
-    <vaketBootStrapperCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(vaketBootStrapperExevath)</vaketBootStrapperCommand>
+    <!-- Paket command -->
+    <PaketExePath Condition=" '$(PaketExePath)' == '' ">$(PaketToolsPath)Paket.exe</PaketExePath>
+    <PaketBootStrapperExePath Condition=" '$(PaketBootStrapperExePath)' == '' ">$(PaketToolsPath)Paket.bootstrapper.exe</PaketBootStrapperExePath>
+    <PaketCommand Condition=" '$(OS)' == 'Windows_NT'">"$(PaketExePath)"</PaketCommand>
+    <PaketCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(PaketExePath)</PaketCommand>
+    <PaketBootStrapperCommand Condition=" '$(OS)' == 'Windows_NT'">"$(PaketBootStrapperExePath)"</PaketBootStrapperCommand>
+    <PaketBootStrapperCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(PaketBootStrapperExePath)</PaketBootStrapperCommand>
     <!-- Commands -->
-    <vaketReferences Condition="!Exists('$(MSBuildProjectFullvath).vaket.references')">$(MSBuildProjectDirectory)\vaket.references</vaketReferences>
-    <vaketReferences Condition="Exists('$(MSBuildProjectFullvath).vaket.references')">$(MSBuildProjectFullvath).vaket.references</vaketReferences>
-    <RestoreCommand>$(vaketCommand) restore --references-files "$(vaketReferences)"</RestoreCommand>
-    <DownloadvaketCommand>$(vaketBootStrapperCommand)</DownloadvaketCommand>
-    <!-- We need to ensure vackages are restored prior to assembly resolve -->
-    <BuildDependsOn Condition="$(Restorevackages) == 'true'">Restorevackages; $(BuildDependsOn);</BuildDependsOn>
+    <PaketReferences Condition="!Exists('$(MSBuildProjectFullPath).Paket.references')">$(MSBuildProjectDirectory)\Paket.references</PaketReferences>
+    <PaketReferences Condition="Exists('$(MSBuildProjectFullPath).Paket.references')">$(MSBuildProjectFullPath).Paket.references</PaketReferences>
+    <RestoreCommand>$(PaketCommand) restore --references-files "$(PaketReferences)"</RestoreCommand>
+    <DownloadPaketCommand>$(PaketBootStrapperCommand)</DownloadPaketCommand>
+    <!-- We need to ensure packages are restored prior to assembly resolve -->
+    <BuildDependsOn Condition="$(RestorePackages) == 'true'">RestorePackages; $(BuildDependsOn);</BuildDependsOn>
   </PropertyGroup>
   <Target Name="CheckPrerequisites">
-    <!-- Raise an error if we're unable to locate vaket.exe -->
-    <Error Condition="'$(Downloadvaket)' != 'true' AND !Exists('$(vaketExevath)')" Text="Unable to locate '$(vaketExevath)'" />
-    <MsBuild Targets="Downloadvaket" Projects="$(MSBuildThisFileFullvath)" Properties="Configuration=NOT_IMPORTANT;Downloadvaket=$(Downloadvaket)" />
+    <!-- Raise an error if we're unable to locate Paket.exe -->
+    <Error Condition="'$(DownloadPaket)' != 'true' AND !Exists('$(PaketExePath)')" Text="Unable to locate '$(PaketExePath)'" />
+    <MsBuild Targets="DownloadPaket" Projects="$(MSBuildThisFileFullPath)" Properties="Configuration=NOT_IMPORTANT;DownloadPaket=$(DownloadPaket)" />
   </Target>
-  <Target Name="Downloadvaket">
-    <Exec Command="$(DownloadvaketCommand)" Condition=" '$(Downloadvaket)' == 'true' AND !Exists('$(vaketExevath)')" />
+  <Target Name="DownloadPaket">
+    <Exec Command="$(DownloadPaketCommand)" Condition=" '$(DownloadPaket)' == 'true' AND !Exists('$(PaketExePath)')" />
   </Target>
-  <Target Name="Restorevackages" DependsOnTargets="CheckPrerequisites">
-    <Exec Command="$(RestoreCommand)" WorkingDirectory="$(vaketRootvath)" Condition="Exists('$(vaketReferences)')" />
+  <Target Name="RestorePackages" DependsOnTargets="CheckPrerequisites">
+    <Exec Command="$(RestoreCommand)" WorkingDirectory="$(PaketRootPath)" Condition="Exists('$(PaketReferences)')" />
   </Target>
 </Project>

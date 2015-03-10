@@ -7,7 +7,7 @@
 * 0.2.6 - bug fixes
 * 0.2.5 - update FsPickler
 * 0.2.4 - update dependency traversal logic
-* 0.2.3 - fix vackaging issues
+* 0.2.3 - fix packaging issues
 * 0.2.2 - update FsPickler
 * 0.2.1 - update FsPickler
 * 0.2.0 - update FsPickler, change dependency resolution method, simplify public API

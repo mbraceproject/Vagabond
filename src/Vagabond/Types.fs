@@ -46,7 +46,7 @@ type VagabondMetadata =
         /// Generation of given static initializer
         Generation : int
 
-        /// Is vartial static initialization data
+        /// Is partial static initialization data
         IsPartial : bool
 
         /// Static initialization errors

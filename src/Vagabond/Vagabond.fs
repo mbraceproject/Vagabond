@@ -34,7 +34,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
 
     let mutable _loadPolicy = defaultArg loadPolicy <| AssemblyLoadPolicy.ResolveStrongNames
 
-    let daemon = new VagabondDaemon(cacheDirectory, profiles, requireLoadedInAppDomain, isIgnoredAssembly, ?tyConv = typeConverter)
+    let daemon = new VagabondController(cacheDirectory, profiles, requireLoadedInAppDomain, isIgnoredAssembly, ?tyConv = typeConverter)
 
     do daemon.Start()
 
@@ -83,7 +83,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
                         ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy)
 
     /// Unique identifier for the slice compiler
-    member __.UUId = daemon.CompilerState.ServerId
+    member __.UUId = daemon.CompilerState.CompilerId
     /// Returns the pickler used by the slice compiler
     member __.Pickler = daemon.DefaultPickler
     /// FsPickler type name converter for use with other formats

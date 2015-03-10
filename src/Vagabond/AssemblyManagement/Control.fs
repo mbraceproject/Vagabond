@@ -24,7 +24,8 @@ type VagabondMessage =
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
-type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+/// A mailboxprocessor wrapper for handling vagabond state
+type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
     do 
         if not <| Directory.Exists cacheDirectory then

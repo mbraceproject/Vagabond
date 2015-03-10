@@ -212,10 +212,6 @@ module internal Utils =
             else
                 false
 
-//    type VagabondAssembly with
-//        static member Empty (id : AssemblyId) =
-//            { Id = id ; Image = None ; Symbols = None ; StaticInitializer = None }
-
     [<RequireQualifiedAccess>]
     module Convert =
         

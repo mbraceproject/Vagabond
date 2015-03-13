@@ -25,7 +25,7 @@ type VagabondMessage =
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
     do 
         if not <| Directory.Exists cacheDirectory then
@@ -37,7 +37,7 @@ type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyPro
 
     let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
-    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler)
+    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler, compressStaticData)
 
     let initState =
         {

@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.IO.Compression
 open System.Reflection
 
 open Nessos.FsPickler
@@ -13,7 +14,7 @@ open Nessos.Vagabond.Utils
 type StaticInitializer = FieldInfo * obj
 
 /// Contains methods for caching assemblies and vagabond metadata to specified folder.
-type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
+type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, compressStaticData : bool) =
     do
         if not <| Directory.Exists cacheDirectory then
             raise <| new DirectoryNotFoundException(cacheDirectory)
@@ -125,12 +126,18 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             let symbols = tryFindSymbols assembly.Location
             let initFile = getStaticInitPath metadata.Generation assembly.Location
             use fs = File.OpenWrite initFile
+            let stream =
+                if compressStaticData then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
+                else fs :> _
             pickler.Serialize(fs, initializers)
             { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = Some(metadata, initFile) }
 
     /// Reads static initialization data from provided file
     member __.ReadStaticInitializers(initFile : string) =
         use fs = File.OpenRead initFile
+        let stream =
+            if compressStaticData then new GZipStream(fs, CompressionMode.Decompress) :> Stream
+            else fs :> _
         pickler.Deserialize<StaticInitializer []>(fs)
 
     /// Import assembly of given id to cache

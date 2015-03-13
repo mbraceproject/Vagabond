@@ -66,7 +66,8 @@ let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : A
             {
                 Generation = generation
                 IsPartial = isPartiallyEvaluated
-                Errors = errors |> Array.map state.Serializer.PickleTyped
+                PickledFields = initializers |> Array.map (fun (f,_) -> f.ToString(), state.Serializer.PickleTyped f)
+                ErroredFields = errors |> Array.map (function (f,_) as err -> f.ToString(), state.Serializer.PickleTyped err)
             }
 
         let pkg = state.AssemblyCache.WriteStaticInitializers(sliceInfo.Assembly, initializers, metadata)

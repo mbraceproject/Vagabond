@@ -128,7 +128,7 @@ module Extras =
                 | LoadFault(id, (:?VagabondException as e)) -> raise e
                 | LoadFault(id, e) -> raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
                 | NotLoaded id -> raise <| new VagabondException(sprintf "could not load assembly '%s' on remote client." id.FullName)
-                | Loaded(_,_,Some info) -> Some info.Errors
+                | Loaded(_,_,Some info) -> Some info.ErroredFields
                 | Loaded _ -> None
 
             let staticInitializationErrors = loadResults |> List.choose gatherErrors |> Array.concat

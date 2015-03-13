@@ -49,8 +49,11 @@ type VagabondMetadata =
         /// Is partial static initialization data
         IsPartial : bool
 
-        /// Static initialization errors
-        Errors : Pickle<FieldInfo * exn> []
+        /// Static fields that have been pickled succesfully
+        PickledFields : (string * Pickle<FieldInfo>) []
+
+        /// Static fields that failed to be pickled
+        ErroredFields : (string * Pickle<FieldInfo * exn>) []
     }
 
 /// Exportable Vagabond assembly and metadata

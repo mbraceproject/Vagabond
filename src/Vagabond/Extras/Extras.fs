@@ -15,7 +15,7 @@ open Nessos.Vagabond.DependencyAnalysis
 module Extras =
 
     /// In-Memory vagabond package
-    type RawAssembly =
+    type RawVagabondAssembly =
         {
             /// Assembly Identifier
             Id : AssemblyId
@@ -225,14 +225,14 @@ module Extras =
         ///     Copies raw vagabond assembly data to in-memory records.
         /// </summary>
         /// <param name="vas">Input vagabond assemblies.</param>
-        member v.CreateRawAssemblies(vas : seq<VagabondAssembly>) : RawAssembly list =
+        member v.CreateRawAssemblies(vas : seq<VagabondAssembly>) : RawVagabondAssembly list =
             vas |> Seq.map v.CreateRawAssembly |> Seq.toList
 
         /// <summary>
         ///     Import a raw assembly to cache.
         /// </summary>
         /// <param name="raw">raw assembly input.</param>
-        member v.CacheRawAssembly(ra : RawAssembly) : VagabondAssembly =
+        member v.CacheRawAssembly(ra : RawVagabondAssembly) : VagabondAssembly =
             let importer =
                 {
                     new IAssemblyImporter with
@@ -248,5 +248,5 @@ module Extras =
         ///     Import raw assemblies to cache.
         /// </summary>
         /// <param name="ras">raw assembly inputs.</param>
-        member v.CacheRawAssemblies(ras : seq<RawAssembly>) : VagabondAssembly list =
+        member v.CacheRawAssemblies(ras : seq<RawVagabondAssembly>) : VagabondAssembly list =
             ras |> Seq.map (fun ra -> v.CacheRawAssembly ra) |> Seq.toList

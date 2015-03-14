@@ -43,7 +43,7 @@ let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let vagabondCS = "src/Vagabond.Cecil/Properties/AssemblyInfo.cs"
+  let vagabondCS = "src/Vagabond.AssemblyParser/Properties/AssemblyInfo.cs"
   CreateCSharpAssemblyInfo vagabondCS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
@@ -138,7 +138,7 @@ Target "NuGet" (fun _ ->
             Files =
                 [
                     yield! addAssembly @"lib\net45" @"..\bin\Mono.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.Cecil.dll"
+                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.AssemblyParser.dll"
                     yield! addAssembly @"lib\net45" @"..\bin\Vagabond.dll"
                 ]
             

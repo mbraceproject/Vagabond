@@ -3,7 +3,7 @@
 // it to define helpers that you do not want to show in the documentation.
 #I "../../bin"
 #r "FsPickler.dll"
-#r "Vagabond.Cecil.dll"
+#r "Vagabond.AssemblyParser.dll"
 #r "Vagabond.dll"
 
 open System

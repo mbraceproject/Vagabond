@@ -29,7 +29,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond", "src\Vagabond\Va
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond.Tests", "tests\Vagabond.Tests\Vagabond.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vagabond.Cecil", "src\Vagabond.Cecil\Vagabond.Cecil.csproj", "{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vagabond.AssemblyParser", "src\Vagabond.AssemblyParser\Vagabond.AssemblyParser.csproj", "{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{E2A7A569-92D7-4A47-86C0-B0B9C680D530}"
 EndProject

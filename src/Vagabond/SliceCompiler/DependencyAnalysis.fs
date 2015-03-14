@@ -60,7 +60,7 @@ let private isIgnoredAssembly =
     let vagabondAssemblies = 
         [| 
             typeof<Mono.Cecil.AssemblyDefinition>
-            typeof<Nessos.Vagabond.Cecil.IAssemblyParserConfig>
+            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>
             typeof<Nessos.Vagabond.AssemblyId>
         |] |> Array.map (fun t -> t.Assembly)
 

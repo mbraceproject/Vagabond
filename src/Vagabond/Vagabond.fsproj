@@ -7,7 +7,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>2e62b639-1560-46eb-8528-a604b5d194fb</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Vagabond.Cecil</RootNamespace>
+    <RootNamespace>Nessos.Vagabond</RootNamespace>
     <AssemblyName>Vagabond</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.3.1.0</TargetFSharpCoreVersion>
@@ -79,8 +79,8 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Vagabond.Cecil\Vagabond.Cecil.csproj">
-      <Name>Vagabond.Cecil</Name>
+    <ProjectReference Include="..\Vagabond.AssemblyParser\Vagabond.AssemblyParser.csproj">
+      <Name>Vagabond.AssemblyParser</Name>
       <Project>{63f1d1af-bac0-4a8d-8537-437ba4652f39}</Project>
       <Private>True</Private>
     </ProjectReference>

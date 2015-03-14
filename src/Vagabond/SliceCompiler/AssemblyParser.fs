@@ -8,7 +8,7 @@ open Mono.Cecil
 
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
-open Nessos.Vagabond.Cecil
+open Nessos.Vagabond.AssemblyParser
 open Nessos.Vagabond.SliceCompilerTypes
 
 type TypeParseInfo =

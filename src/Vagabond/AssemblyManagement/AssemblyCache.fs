@@ -33,7 +33,10 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
         else Path.ChangeExtension(path, ".pdb")
 
     /// gets vagabond static initialization file for given cached assembly
-    static let getStaticInitPath gen path = sprintf "%s-%d.init" (Path.GetFileNameWithoutExtension path) gen
+    static let getStaticInitPath gen path = 
+        let directory = Path.GetDirectoryName path
+        let fileName = Path.GetFileNameWithoutExtension path
+        Path.Combine(directory, sprintf "%s-%d.init" (Path.GetFileNameWithoutExtension path) gen)
 
     /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {

@@ -19,7 +19,7 @@ using Mono.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace Nessos.Vagabond.Cecil
+namespace Nessos.Vagabond.AssemblyParser
 {
     public class AssemblyParser
     {

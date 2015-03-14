@@ -127,9 +127,9 @@ module Extras =
                 | LoadFault(id, e) -> 
                     raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
                 | NotLoaded id -> 
-                    Some <| v.CreateVagabondAssembly(id)
+                    Some <| v.GetVagabondAssembly(id)
                 | Loaded(id,_,Some si) when si.IsPartial ->
-                    Some <| v.CreateVagabondAssembly(id)
+                    Some <| v.GetVagabondAssembly(id)
                 | Loaded _ -> None
 
             let assemblyPackages = info |> List.choose tryGetAssemblyPackage

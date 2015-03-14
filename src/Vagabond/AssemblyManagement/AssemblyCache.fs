@@ -71,7 +71,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
         | Some (m, _) when m.Generation > input.Generation -> current
         | _ ->
             let initFile = getStaticInitPath input.Generation path
-            File.Copy(sourceInit, initFile, true)
+            if not <| File.Exists initFile then File.Copy(sourceInit, initFile, true)
             do
                 use fs = File.OpenWrite (getMetadataPath path)
                 pickler.Serialize<VagabondMetadata>(fs, input)
@@ -125,12 +125,16 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
         else
             let symbols = tryFindSymbols assembly.Location
             let initFile = getStaticInitPath metadata.Generation assembly.Location
-            use fs = File.OpenWrite initFile
-            let stream =
-                if compressStaticData then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
-                else fs :> _
-            pickler.Serialize(fs, initializers)
-            { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = Some(metadata, initFile) }
+            let metadataFile = getMetadataPath assembly.Location
+            do
+                use fs = File.OpenWrite initFile
+                let stream =
+                    if compressStaticData then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
+                    else fs :> _
+                pickler.Serialize(fs, initializers)
+
+            let md = writeMetadata metadataFile (metadata, initFile)
+            { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = md }
 
     /// Reads static initialization data from provided file
     member __.ReadStaticInitializers(initFile : string) =
@@ -165,7 +169,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
             match metadata with
             | None -> return None
             | Some md ->
-                let metadataFile = getSymbolsPath cachePath
+                let metadataFile = getMetadataPath cachePath
                 let writeMetadata () = async {
                     let initFile = getStaticInitPath md.Generation cachePath
                     use! dataReader = importer.GetDataReader(id, md) in

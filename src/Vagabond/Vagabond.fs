@@ -146,7 +146,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
     member __.GetVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : VagabondAssembly list =
         ids
-        |> Seq.map (fun id ->  __.GetVagabondAssembly(id, ?loadPolicy = loadPolicy))
+        |> Seq.map (fun id -> __.GetVagabondAssembly(id, ?loadPolicy = loadPolicy))
         |> Seq.toList
             
 

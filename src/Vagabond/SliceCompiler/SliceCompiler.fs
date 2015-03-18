@@ -20,7 +20,7 @@ open Nessos.Vagabond.DependencyAnalysis
 let initCompilerState (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
     let uuid = Guid.NewGuid()
     let mkSliceName (name : string) (id : int) = sprintf "%s_%O_%d" name uuid id
-    let assemblyRegex = Regex(sprintf "^(.*)_%O_([0-9]+)" uuid)
+    let assemblyRegex = Regex(sprintf "^(.*)_%O_([0-9]+)" uuid, RegexOptions.Compiled)
     let tryExtractDynamicAssemblyId (assemblyName : string) =
         let m = assemblyRegex.Match(assemblyName)
         if m.Success then 
@@ -30,7 +30,7 @@ let initCompilerState (profiles : IDynamicAssemblyProfile list) (outDirectory : 
         else
             None
     {
-        ServerId = Guid.NewGuid()
+        CompilerId = Guid.NewGuid()
         Profiles = profiles
         OutputDirectory = outDirectory
 
@@ -68,7 +68,7 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
 
     let sliceInfo = 
         { 
-            SourceId = state.ServerId
+            SourceId = state.CompilerId
             Assembly = assembly 
             DynamicAssemblyQualifiedName = assemblyState.DynamicAssembly.FullName 
             SliceId = sliceId 

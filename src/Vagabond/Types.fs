@@ -1,6 +1,7 @@
 ﻿namespace Nessos.Vagabond
 
 open System
+open System.IO
 open System.Reflection
 open System.Runtime.Serialization
 
@@ -20,7 +21,7 @@ type AssemblyLoadPolicy =
     | CacheOnly = 8
             
 
-/// unique identifier for assembly
+/// Vagabond unique assembly identifier
 [<StructuralComparison>]
 [<StructuralEquality>]
 type AssemblyId =
@@ -31,71 +32,85 @@ type AssemblyId =
         ImageHash : byte []
     }
 with
+    /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
     member id.GetName() = new AssemblyName(id.FullName)
+    /// Is signed assembly
     member id.IsStrongAssembly = let pkt = id.GetName().GetPublicKeyToken() in pkt <> null && pkt <> [||]
 
     override id.ToString() = id.FullName
 
-/// static initialization data for assembly package
+/// Vagabond metadata for dynamic assembly slices
 [<NoEquality; NoComparison>]
-type StaticInitializer =
+type VagabondMetadata =
     {
         /// Generation of given static initializer
         Generation : int
 
-        /// Static initialization data
-        Data : byte []
-
         /// Is partial static initialization data
         IsPartial : bool
+
+        /// Static fields that have been pickled succesfully
+        PickledFields : (string * Pickle<FieldInfo>) []
+
+        /// Static fields that failed to be pickled
+        ErroredFields : (string * Pickle<FieldInfo * exn>) []
     }
 
-/// Contains information necessary for the exportation of an assembly
+/// Exportable Vagabond assembly and metadata
 [<NoEquality; NoComparison>] 
-type AssemblyPackage =
+type VagabondAssembly =
     {
-        // Assembly Metadata
+        /// Assembly Identifier
         Id : AssemblyId
 
-        /// Raw image of the assembly
-        Image : byte [] option
+        /// path to assembly
+        Image : string
 
-        /// Symbols file
-        Symbols : byte [] option
+        /// path to symbols file
+        Symbols : string option
 
-        /// Static initialization data
-        StaticInitializer : StaticInitializer option
+        /// Vagabond metadata and static initialization data path
+        Metadata : (VagabondMetadata * string) option
     }
 with
-    member pa.FullName = pa.Id.FullName
-    member pa.GetName() = pa.Id.GetName()
+    /// Assembly qualified name
+    member va.FullName = va.Id.FullName
+    /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
+    member va.GetName() = va.Id.GetName()
     override id.ToString() = id.FullName
 
-/// Static initialization metadata
-[<NoEquality; NoComparison>] 
-type StaticInitializationInfo =
-    {
-        /// Generation of given static initializer
-        Generation : int
-
-        /// Is partial static initialization data
-        IsPartial : bool
-
-        /// Static initialization errors
-        Errors : (FieldInfo * exn) []
-    }
 
 /// Assembly load information
 type AssemblyLoadInfo =
     | NotLoaded of AssemblyId
     | LoadFault of AssemblyId * exn
-    | Loaded of AssemblyId * isAppDomainLoaded:bool * staticInitialization:StaticInitializationInfo option
+    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata option
 with
     member info.Id = 
         match info with
         | NotLoaded id
         | LoadFault (id,_)
         | Loaded (id,_,_) -> id
+
+/// Abstract assembly image exporting API
+type IAssemblyExporter =
+    /// Asynchronously returns a write stream for assembly image of given id.
+    abstract GetImageWriter : id:AssemblyId -> Async<Stream>
+    /// Asynchronously returns a write stream for assembly debug symbols of given id.
+    abstract GetSymbolWriter : id:AssemblyId -> Async<Stream>
+    /// Asynchronously returns a write stream for Vagabond data of given id.
+    abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<Stream>
+
+/// Abstract assembly image importing API
+type IAssemblyImporter =
+    /// Asynchronously returns a read stream for assembly image of given id.
+    abstract GetImageReader : id:AssemblyId -> Async<Stream>
+    /// Asynchronously returns a read stream for assembly debug symbols of given id.
+    abstract TryGetSymbolReader : id:AssemblyId -> Async<Stream option>
+    /// Asynchronously reads Vagabond metadata information for assembly of given id.
+    abstract TryReadMetadata : id:AssemblyId -> Async<VagabondMetadata option>
+    /// Asynchronously returns a read stream for Vagabond data of given id.
+    abstract GetDataReader : id:AssemblyId * VagabondMetadata -> Async<Stream>
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 

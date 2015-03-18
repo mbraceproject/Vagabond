@@ -3,7 +3,7 @@
 * 0.3.0 - Rename to Vagabond, improve exception messages in topological sorting.
 * 0.2.9 - fix API issue.
 * 0.2.8 - add ignored assemblies functionality in Vagabond initialization API.
-* 0.2.7 - rename AssemblyPackage type, add support for user-defined assembly ignore rules
+* 0.2.7 - rename VagabondAssembly type, add support for user-defined assembly ignore rules
 * 0.2.6 - bug fixes
 * 0.2.5 - update FsPickler
 * 0.2.4 - update dependency traversal logic

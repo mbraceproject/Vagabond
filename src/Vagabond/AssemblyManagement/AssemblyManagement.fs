@@ -11,20 +11,19 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.AssemblyCache
 
-type StaticInitializers = (FieldInfo * Exn<byte []>) []
-
+/// Immutable Vagabond state object
 type VagabondState =
     {
+        /// Dynamic assembly compiler state
         CompilerState : DynamicAssemblyCompilerState
-        AssemblyExportState : Map<AssemblyId, int>
+        /// Locally compiled dynamic assembly export states
+        AssemblyExportState : Map<AssemblyId, VagabondAssembly>
+        /// Local assembly import state
         AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
-
-        Pickler : FsPicklerSerializer
+        /// Vagabond Serializer instance
+        Serializer : FsPicklerSerializer
+        /// Assembly Cache instance
         AssemblyCache : AssemblyCache
-        IsIgnoredAssembly : Assembly -> bool
-        /// result in failure if any of the listed transitive
-        /// cannot be loaded in the local AppDomain.
-        RequireDependenciesLoadedInAppDomain : bool
     }
 
 /// registers an assembly resolution handler based on AppDomain lookups;
@@ -34,187 +33,178 @@ let registerAssemblyResolutionHandler () =
         new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
 
 ///
-/// exports an assembly package
+/// creates an exportable assembly package for given Assembly Id
 ///
 
-let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy)
-                    (includeImage : bool) (id : AssemblyId) =
+let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
 
     match state.CompilerState.TryFindSliceInfo id.FullName with
+    // is dynamic assembly slice which requires static initialization
     | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
+        match state.AssemblyExportState.TryFind id with
+        // assembly has already been exported as completed slice, so just return the previous static initialization
+        | Some va when not (va.Metadata |> Option.get |> fst).IsPartial -> state, va
+        | info -> 
 
-        let generation = 1 + defaultArg (state.AssemblyExportState.TryFind id) -1
-                
-        let tryPickle (fI : FieldInfo) =
-            try
-                let value = fI.GetValue(null)
-                let pickle = state.Pickler.Pickle<obj>(value)
-                fI, Success pickle
-            with e -> 
-                fI, Error e
+        // need to create a new static initialization package
 
-        let staticInitializers = Array.map tryPickle sliceInfo.StaticFields
-        let data = state.Pickler.Pickle<StaticInitializers>(staticInitializers)
+        let generation =
+            match info with
+            | None -> 0
+            | Some va -> let md,_ = Option.get va.Metadata in md.Generation + 1
 
         let isPartiallyEvaluated = 
             dynAssembly.Profile.IsPartiallyEvaluatedSlice
                 (dynAssembly.TryGetSlice >> Option.map (fun s -> s.Assembly)) 
                     sliceInfo.Assembly
+                
+        let tryPickle (fI : FieldInfo) =
+            try
+                let value = fI.GetValue(null)
+                let size = state.Serializer.ComputeSize value
+                Choice1Of2 (fI, value)
+            with e -> 
+                Choice2Of2 (fI, e)
 
-        let staticInitializer =
+        let initializers, errors = Array.map tryPickle sliceInfo.StaticFields |> Choice.split
+
+        let metadata =
             {
                 Generation = generation
                 IsPartial = isPartiallyEvaluated
-                Data = data
+                PickledFields = initializers |> Array.map (fun (f,_) -> f.ToString(), state.Serializer.PickleTyped f)
+                ErroredFields = errors |> Array.map (function (f,_) as err -> f.ToString(), state.Serializer.PickleTyped err)
             }
 
-        let generationIndex = state.AssemblyExportState.Add(id, generation)
-        let pa = state.AssemblyCache.CreateAssemblyPackage(sliceInfo.Assembly, includeImage = includeImage)
+        let va = state.AssemblyCache.WriteStaticInitializers(sliceInfo.Assembly, initializers, metadata)
+        let exportState = state.AssemblyExportState.Add(id, va)
+        { state with AssemblyExportState = exportState }, va
 
-        { state with AssemblyExportState = generationIndex }, 
-            { pa with StaticInitializer = Some staticInitializer }
-
-    | Some(_, sliceInfo) -> 
-        let pa = state.AssemblyCache.CreateAssemblyPackage(sliceInfo.Assembly, includeImage = includeImage)
-        state, pa
+    | Some(_, sliceInfo) ->
+        match state.AssemblyExportState.TryFind id with
+        | Some va -> state, va
+        | None ->
+            // does not require static initialization, return as is
+            let va = state.AssemblyCache.CreateVagabondAssembly sliceInfo.Assembly
+            let exportState = state.AssemblyExportState.Add(id, va)
+            { state with AssemblyExportState = exportState }, va
 
     | None ->
-        // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain
-        // in that order; this is because cache contains vagabond metadata while AppDomain does not.
-        match state.AssemblyCache.TryGetCachedAssemblyInfo id with
-        | Some info -> 
-            let pa = state.AssemblyCache.CreateAssemblyPackage(info, includeImage = includeImage)
-            state, pa
-
+        // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain in that order; 
+        // this is because cache contains vagabond metadata while AppDomain does not.
+        match state.AssemblyExportState.TryFind id with
+        | Some va -> state, va
         | None ->
-
-            // finally, attempt to resolve from AppDomain
-
-            let localAssembly =
-                if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
-                else tryGetLoadedAssembly id.FullName
-
-            match localAssembly with
-            | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
-                let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
-                raise <| VagabondException(msg)
-
-            | Some a -> 
-                let pa = state.AssemblyCache.CreateAssemblyPackage(a, includeImage = includeImage)
-                state, pa
-
+            match state.AssemblyCache.TryGetCachedAssemblyInfo id with
+            | Some pkg -> state, pkg
             | None ->
-                let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
-                raise <| VagabondException(msg)
+                // finally, attempt to resolve from AppDomain
+                let localAssembly =
+                    if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
+                    else tryGetLoadedAssembly id.FullName
+
+                match localAssembly with
+                | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
+                    let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
+                    raise <| VagabondException(msg)
+
+                | Some asmb -> 
+                    let va = state.AssemblyCache.CreateVagabondAssembly asmb
+                    let exportState = state.AssemblyExportState.Add(id, va)
+                    { state with AssemblyExportState = exportState }, va
+
+                | None ->
+                    let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
+                    raise <| VagabondException(msg)
+
+
+///
+/// assembly load status implementation
+///
+
+let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
+
+    match state.AssemblyImportState.TryFind id with
+    | Some loadState -> state, loadState
+    // dynamic assembly slice generated in local process
+    | None when state.CompilerState.IsLocalDynamicAssemblySlice id -> state, Loaded (id, true, None)
+    | None ->
+        // look up assembly cache
+        match state.AssemblyCache.TryGetCachedAssemblyInfo id with
+        | Some va -> state, Loaded(id, false, va.Metadata |> Option.map fst)
+        | None ->
+            // Attempt resolving locally
+            let localAssembly =
+                if id.CanBeResolvedLocally policy then
+                    tryLoadAssembly id.FullName
+                else
+                    tryGetLoadedAssembly id.FullName
+
+            let info =
+                match localAssembly with
+                // if specified, check if loaded assembly has identical image hash
+                | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
+                    let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
+                    LoadFault(id, VagabondException(msg))
+
+                | Some a -> Loaded(id, true, None)
+                | None -> NotLoaded id
+
+            let state = { state with AssemblyImportState = state.AssemblyImportState.Add(id, info) }
+
+            state, info
 
 
 //
 // assembly import protocol implementation
 //
 
-let importAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (pa : AssemblyPackage) =
+let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : VagabondAssembly) =
 
     // update state with success
     let success info = 
-        let state = { state with AssemblyImportState = state.AssemblyImportState.Add(pa.Id, info) }
+        let state = { state with AssemblyImportState = state.AssemblyImportState.Add(va.Id, info) }
         state, info
 
-    let loadInAppDomain = not <| policy.HasFlag AssemblyLoadPolicy.CacheOnly
-
-    // loads the static initializer for given assembly package
+    // loads the static initializers for given assembly package
     // requires the assembly to be already loaded in the current AppDomain
-    let tryLoadStaticInitializer (previous : StaticInitializationInfo option) (cacheInfo : CachedAssemblyInfo) =
-        let tryLoad (fI : FieldInfo, data : Exn<byte []>) =
-            match data with
-            | Success bytes ->
-                try
-                    let value = state.Pickler.UnPickle<obj> bytes
-                    fI.SetValue(null, value) ; None
-                with e -> Some(fI, e)
-            | Error e -> Some(fI, e)
-
-        match previous, cacheInfo.StaticInitializer with
-        | None, None -> Loaded (cacheInfo.Id, true, None)
+    let tryLoadStaticInitializers (previous : VagabondMetadata option) (pkg : VagabondAssembly) =
+        match previous, pkg.Metadata with
+        | None, None -> Loaded (pkg.Id, true, None)
         // keep the previous static initializer if PA has none
-        | Some previous, None -> Loaded(cacheInfo.Id, true, Some previous)
+        | Some _, None -> Loaded(pkg.Id, true, previous)
         // silently discard if loaded generation larger than current
-        | Some info, Some (_,init) when info.Generation > init.Generation ->  Loaded(cacheInfo.Id, true, Some info)
+        | Some info, Some (md,_) when info.Generation > md.Generation -> Loaded(pkg.Id, true, Some info)
 
         // perform the static initialization
-        | _, Some (path, init) ->
-            let data = File.ReadAllBytes path
-            let initializers = state.Pickler.UnPickle<StaticInitializers>(data)
-            let errors = Array.choose tryLoad initializers
-            let info = { Generation = init.Generation ; Errors = errors ; IsPartial = init.IsPartial }
-            Loaded(cacheInfo.Id, true, Some info)
+        | _, Some (md, init) ->
+            let initializers = state.AssemblyCache.ReadStaticInitializers init
+            for fI, value in initializers do fI.SetValue(null, value)
+            Loaded(pkg.Id, true, Some md)
 
+    let loadAssembly (va : VagabondAssembly) =
+        let assembly = System.Reflection.Assembly.LoadFrom va.Image
 
-    let loadAssembly (pa : AssemblyPackage) =
-
-        // Attempt resolving locally
-        let localAssembly =
-            if pa.Id.CanBeResolvedLocally policy then
-                tryLoadAssembly pa.FullName
-            else
-                tryGetLoadedAssembly pa.FullName
-
-        match localAssembly with
-        // if specified, check if loaded assembly has identical image hash
-        | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> pa.Id ->
-            let msg = sprintf "an incompatible version of '%s' has been loaded." pa.FullName
+        if assembly.FullName <> va.FullName then
+            let msg = sprintf "Expected assembly '%s', but was '%s'." va.FullName assembly.FullName
             raise <| VagabondException(msg)
 
-        // if GAC, do not cache, just report as loaded
-        | Some a when a.GlobalAssemblyCache -> success <| Loaded (pa.Id, true, None)
-            
-        // local assemblies not in GAC are to be cached
-        | Some a ->
-            let cacheInfo =
-                if pa.Image.IsSome then
-                    state.AssemblyCache.Cache pa
-                else
-                    state.AssemblyCache.Cache(a, asId = pa.Id)
-                    
-            success <| Loaded(pa.Id, true, cacheInfo.StaticInitializer |> Option.map snd)
+        elif policy.HasFlag AssemblyLoadPolicy.RequireIdentical && assembly.AssemblyId <> va.Id then
+            let msg = sprintf "an incompatible version of '%s' has been loaded." va.FullName
+            raise <| VagabondException(msg)
 
-        | None when pa.Image.IsSome || state.AssemblyCache.IsCachedAssembly pa.Id ->
-            // cache assembly and load from cache location
-            let cacheInfo = state.AssemblyCache.Cache pa
-            if loadInAppDomain then
-                let assembly = System.Reflection.Assembly.LoadFrom cacheInfo.Location
-
-                if assembly.FullName <> pa.FullName then
-                    let msg = sprintf "Expected assembly '%s', received '%s'." pa.FullName assembly.FullName
-                    raise <| VagabondException(msg)
-
-                elif policy.HasFlag AssemblyLoadPolicy.RequireIdentical && assembly.AssemblyId <> pa.Id then
-                    let msg = sprintf "an incompatible version of '%s' has been loaded." pa.FullName
-                    raise <| VagabondException(msg)
-
-                else
-                    success <| tryLoadStaticInitializer None cacheInfo
-            else
-                success <| Loaded(pa.Id, false, cacheInfo.StaticInitializer |> Option.map snd)
-                
-        | None -> state, NotLoaded pa.Id
+        else
+            success <| tryLoadStaticInitializers None va
 
     try
-        match state.AssemblyImportState.TryFind pa.Id with
+        match state.AssemblyImportState.TryFind va.Id with
         // dynamic assembly slice generated in local process
-        | None when state.CompilerState.IsLocalDynamicAssemblySlice pa.Id -> success <| Loaded (pa.Id, true, None)
+        | None when state.CompilerState.IsLocalDynamicAssemblySlice va.Id -> success <| Loaded (va.Id, true, None)
         // assembly not registered in state, attempt to load now
-        | None -> loadAssembly pa
-        // assembly loaded with static initializers, attempt to update
-        | Some (Loaded(id, isLoadedLocal, Some info) as l) ->
-            if not isLoadedLocal && loadInAppDomain then loadAssembly pa
-            else
-                let cacheInfo = state.AssemblyCache.Cache pa
-                        
-                if loadInAppDomain || isLoadedLocal then
-                    success <| tryLoadStaticInitializer (Some info) cacheInfo
-                else
-                    success <| Loaded(id, false, cacheInfo.StaticInitializer |> Option.map snd)
+        | None 
+        | Some (NotLoaded _) 
+        | Some (LoadFault _) -> loadAssembly va
+        | Some (Loaded(id, true, Some info)) -> success <| tryLoadStaticInitializers (Some info) va
+        | Some (Loaded _ as result) -> state, result
 
-        | Some result -> state, result
-
-    with e -> state, LoadFault(pa.Id, e)
+    with e -> state, LoadFault(va.Id, e)

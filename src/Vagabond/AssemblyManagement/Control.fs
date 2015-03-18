@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.Daemon
+﻿module internal Nessos.Vagabond.Control
 
 open System
 open System.IO
@@ -16,13 +16,16 @@ open Nessos.Vagabond.Serialization
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
-type VagabondMessage = 
-    | LoadAssembly of AssemblyLoadPolicy * AssemblyPackage * ReplyChannel<AssemblyLoadInfo>
-    | GetAssemblyPackage of AssemblyLoadPolicy * includeImage:bool * AssemblyId * ReplyChannel<AssemblyPackage>
+type VagabondMessage =
+    | ImportAssemblies of IAssemblyImporter * AssemblyId list * ReplyChannel<VagabondAssembly list>
+    | ExportAssemblies of IAssemblyExporter * VagabondAssembly list * ReplyChannel<unit>
+    | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
+    | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
 
-type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+/// A mailboxprocessor wrapper for handling vagabond state
+type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
     do 
         if not <| Directory.Exists cacheDirectory then
@@ -34,7 +37,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
     let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
-    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler)
+    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler, compressStaticData)
 
     let initState =
         {
@@ -42,18 +45,47 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
 
-            Pickler = defaultPickler
+            Serializer = defaultPickler
             AssemblyCache = assemblyCache
-            IsIgnoredAssembly = isIgnoredAssembly
-            RequireDependenciesLoadedInAppDomain = requireLoaded
         }
         
     let processMessage (state : VagabondState) (message : VagabondMessage) = async {
 
         match message with
+        | ImportAssemblies(importer, ids, rc) ->
+            try
+                let! vas =
+                    ids
+                    |> Seq.distinct
+                    |> Seq.map(fun id -> state.AssemblyCache.Import(importer, id))
+                    |> Async.Parallel
+
+                rc.Reply(Array.toList vas)
+                return state
+
+            with e ->
+                rc.ReplyWithError e
+                return state
+
+        | ExportAssemblies(exporter, assemblies, rc) ->
+            try
+                return!
+                    assemblies
+                    |> Seq.distinctBy(fun va -> va.Id)
+                    |> Seq.map (fun va -> state.AssemblyCache.Export(exporter, va))
+                    |> Async.Parallel
+                    |> Async.Ignore
+
+                rc.Reply (())
+                return state
+
+            with e ->
+                rc.ReplyWithError e
+                return state
+
         | CompileDynamicAssemblySlice (assemblies, rc) ->
             try
-                let compState, result = compileDynamicAssemblySlices state.IsIgnoredAssembly state.RequireDependenciesLoadedInAppDomain state.CompilerState assemblies
+                let compState, result = compileDynamicAssemblySlices isIgnoredAssembly requireLoaded state.CompilerState assemblies
 
                 // note: it is essential that the compiler state ref cell is updated *before*
                 // a reply is given; this is to eliminate a certain class of race conditions.
@@ -66,11 +98,11 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
                 rc.ReplyWithError e
                 return state
 
-        | GetAssemblyPackage (policy, includeImage, id, rc) ->
+        | GetVagabondAssembly (policy, id, rc) ->
             try
-                let state', pa = exportAssembly state policy includeImage id
+                let state', va = exportAssembly state policy id
 
-                rc.Reply pa
+                rc.Reply va
 
                 return state'
 
@@ -78,9 +110,9 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
                 rc.ReplyWithError e
                 return state
 
-        | LoadAssembly (policy, pa, rc) ->
+        | LoadAssembly (policy, va, rc) ->
             try
-                let state', result = importAssembly state policy pa
+                let state', result = loadAssembly state policy va
 
                 rc.Reply result
 
@@ -92,7 +124,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
         | GetAssemblyLoadInfo (policy, id, rc) ->
             try
-                let state', result = importAssembly state policy <| AssemblyPackage.Empty id
+                let state', result = getAssemblyLoadInfo state policy id
 
                 rc.Reply result
 
@@ -111,6 +143,7 @@ type VagabondDaemon (cacheDirectory : string, profiles : IDynamicAssemblyProfile
 
     member __.CompilerState = !compilerState
     member __.CacheDirectory = assemblyCache.CacheDirectory
+    member __.AssemblyCache = assemblyCache
 
     member __.DefaultPickler = defaultPickler
     member __.TypeNameConverter = typeNameConverter

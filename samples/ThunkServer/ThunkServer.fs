@@ -10,10 +10,12 @@ open Nessos.Thespian
 open Nessos.Thespian.Remote
 
 open Nessos.Vagabond
+open Nessos.Vagabond.AssemblyProtocols
+open Nessos.Vagabond.ExportableAssembly
 
 type internal ServerMsg =
     | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
-    | LoadAssemblies of AssemblyPackage list * IReplyChannel<AssemblyLoadInfo list>
+    | LoadAssemblies of ExportableAssembly list * IReplyChannel<AssemblyLoadInfo list>
     | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
 
 type ThunkServer private () =
@@ -23,11 +25,12 @@ type ThunkServer private () =
 
         match msg with
         | GetAssemblyLoadState (ids, rc) ->
-            let replies = ids |> List.map VagabondConfig.Vagabond.GetAssemblyLoadInfo
+            let replies = ids |> List.map VagabondConfig.Instance.GetAssemblyLoadInfo
             do! rc.Reply replies
 
-        | LoadAssemblies (pas, rc) ->
-            let replies = VagabondConfig.Vagabond.LoadAssemblyPackages pas
+        | LoadAssemblies (rvas, rc) ->
+            let vas = VagabondConfig.Instance.CacheRawAssemblies rvas
+            let replies = VagabondConfig.Instance.LoadVagabondAssemblies(vas)
             do! rc.Reply replies
 
         | EvaluteThunk (ty, f, rc) ->
@@ -64,11 +67,14 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         {
             new IRemoteAssemblyReceiver with
                 member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
-                member __.PushAssemblies(pas : AssemblyPackage list) = server.PostWithReply(fun ch -> LoadAssemblies(pas,ch))
+                member __.PushAssemblies(vas : VagabondAssembly list) = async {
+                    let rvas = VagabondConfig.Instance.CreateRawAssemblies(vas)
+                    return! server.PostWithReply(fun ch -> LoadAssemblies(rvas,ch))
+                }
         }
 
     member __.UploadDependenciesAsync (obj : obj) = async {
-        let! errors = VagabondConfig.Vagabond.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
+        let! errors = VagabondConfig.Instance.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
         return ()
     }
 

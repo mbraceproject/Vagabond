@@ -43,7 +43,7 @@ let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
 
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
-  let vagabondCS = "src/Vagabond.Cecil/Properties/AssemblyInfo.cs"
+  let vagabondCS = "src/Vagabond.AssemblyParser/Properties/AssemblyInfo.cs"
   CreateCSharpAssemblyInfo vagabondCS
       [ Attribute.Version release.AssemblyVersion
         Attribute.FileVersion release.AssemblyVersion] 
@@ -99,7 +99,7 @@ FinalTarget "CloseTestRunner" (fun _ ->
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
-let addAssembly (target : string) assembly =
+let addAssembly reqXml (target : string) assembly =
     let includeFile force file =
         let file = file
         if File.Exists (Path.Combine("nuget", file)) then [(file, Some target, None)]
@@ -108,15 +108,15 @@ let addAssembly (target : string) assembly =
 
     seq {
         yield! includeFile true assembly
+        yield! includeFile reqXml <| Path.ChangeExtension(assembly, "xml")
         yield! includeFile false <| Path.ChangeExtension(assembly, "pdb")
-        yield! includeFile false <| Path.ChangeExtension(assembly, "xml")
         yield! includeFile false <| assembly + ".config"
     }
 
 Target "NuGet" (fun _ ->
-    // Format the description to fit on a single line (remove \r\n and double-spaces)
+    // Format the description to fit on a single line (remove \r\n and double-svaces)
     let description = description.Replace("\r", "").Replace("\n", "").Replace("  ", " ")
-    let nugetPath = "packages/NuGet.CommandLine/tools/NuGet.exe"
+    let nugetvath = "packages/NuGet.CommandLine/tools/NuGet.exe"
     NuGet (fun p -> 
         { p with   
             Authors = authors
@@ -127,19 +127,19 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
+                    "Mono.Cecil", "0.9.5.4"
                     "FsPickler", "1.0.8"
                 ]
             Tags = tags
             OutputPath = "bin"
-            ToolPath = nugetPath
+            ToolPath = nugetvath
             AccessKey = getBuildParamOrDefault "nugetkey" ""
             Publish = hasBuildParam "nugetkey"
             References = [ "Vagabond.dll" ]
             Files =
                 [
-                    yield! addAssembly @"lib\net45" @"..\bin\Mono.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.dll"
+                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.AssemblyParser.dll"
+                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.dll"
                 ]
             
             })

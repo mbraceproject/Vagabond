@@ -1,11 +1,11 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (3.14.9)
-    FSharp.Compiler.Service (0.0.82)
+    FAKE (3.23.0)
+    FSharp.Compiler.Service (0.0.86)
     FSharp.Data (2.0.9)
-      Zlib.Portable (>= 1.9.2)
-    FSharp.Formatting (2.7.4)
+      Zlib.Portable (>= 1.9.2) - framework: portable-net40+sl50+wp80+win80
+    FSharp.Formatting (2.7.5)
       FSharp.Compiler.Service (>= 0.0.82)
       FSharpVSPowerTools.Core (>= 1.7.0)
     FSharpVSPowerTools.Core (1.7.0)
@@ -18,4 +18,4 @@ NUGET
     NUnit.Runners (2.6.4)
     Thespian.Core (0.1.1-alpha)
       FsPickler (>= 1.0.2)
-    Zlib.Portable (1.10.0)
+    Zlib.Portable (1.10.0) - framework: portable-net40+sl50+wp80+win80

@@ -3,7 +3,7 @@
 // it to define helpers that you do not want to show in the documentation.
 #I "../../bin"
 #r "FsPickler.dll"
-#r "Vagabond.Cecil.dll"
+#r "Vagabond.AssemblyParser.dll"
 #r "Vagabond.dll"
 
 open System
@@ -25,17 +25,17 @@ A Vagabond environment can be initialized as follows:
 
 open Nessos.Vagabond
 
-let vagabond = Vagabond.Initialize(cacheDirectory = "/tmp/vagabond")
+let vmanager = Vagabond.Initialize(cacheDirectory = "/tmp/vagabond")
 
 (** Given an arbitrary object, dependencies are resolved like so: *)
 
 let value = [ Some(fun x -> printfn "%d" x; x + 1) ; None ; Some id ]
 
-let assemblies = vagabond.ComputeObjectDependencies(value, permitCompilation = true)
+let assemblies = vmanager.ComputeObjectDependencies(value, permitCompilation = true)
 
-(** An assembly can be exported by writing *)
+(** An assembly can be exported by generating Vagabond metadata *)
 
-let assemblyPackage = vagabond.CreateAssemblyPackage(assembly, includeAssemblyImage = true)
+let vagabondAssembly = vmanager.GetVagabondAssembly assembly
 
 (** 
 
@@ -45,7 +45,7 @@ Assemblies can be loaded in a remote process like so:
 
 *)
 
-let response : AssemblyLoadInfo = vagabond.LoadAssemblyPackage assemblyPackage
+let response = vmanager.LoadVagabondAssembly vagabondAssembly
 
 (**
 
@@ -58,6 +58,6 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 
 *)
 
-let pickler = vagabond.Pickler
+let pickler = vmanager.Pickler
 
 let bytes = pickler.Pickle(value)

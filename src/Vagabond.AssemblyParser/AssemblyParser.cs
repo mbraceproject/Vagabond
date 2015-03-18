@@ -19,18 +19,32 @@ using Mono.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace Nessos.Vagabond.Cecil
+namespace Nessos.Vagabond.AssemblyParser
 {
+    /// <summary>
+    /// Dynamic assembly to Cecil tree parser implementation.
+    /// </summary>
     public class AssemblyParser
     {
         private const BindingFlags AllDeclared = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.Instance | BindingFlags.DeclaredOnly;
 
+        /// <summary>
+        /// Parse assembly using specified Assembly.
+        /// </summary>
+        /// <param name="assembly">Assembly to be parsed.</param>
+        /// <param name="options">Parsing options configuration object.</param>
+        /// <returns>Cecil Assembly tree.</returns>
         public static AssemblyDefinition Parse(Assembly assembly, IAssemblyParserConfig options)
         {
             var mapper = new AssemblyParser(assembly, options);
             return mapper.Map();
         }
 
+        /// <summary>
+        /// Parse assembly using specified Assembly.
+        /// </summary>
+        /// <param name="assembly">Assembly to be parsed.</param>
+        /// <returns>Cecil Assembly tree.</returns>
         public static AssemblyDefinition Parse(Assembly assembly)
         {
             var options = new DefaultAssemblyParserConfig();

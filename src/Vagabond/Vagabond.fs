@@ -10,12 +10,11 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.DependencyAnalysis
 open Nessos.Vagabond.Control
 
-/// Vagabond Object which instantiates a dynamic assembly compiler, loader and exporter state
-
+/// Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states
 [<AutoSerializable(false)>]
-type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
-                        ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy,
-                        ?compressStaticData : bool) =
+type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
+                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy,
+                                ?compressStaticData : bool) =
 
     static do AssemblyManagement.registerAssemblyResolutionHandler ()
 
@@ -45,45 +44,6 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
 
     let compile (assemblies : Assembly list) = 
         controller.PostAndReply(fun ch -> CompileDynamicAssemblySlice(assemblies, ch))
-
-    /// <summary>
-    ///     Initializes a new Vagabond instance.
-    /// </summary>
-    /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
-    /// <param name="profiles">Dynamic assembly configuration profiles.</param>
-    /// <param name="typeConverter">FsPickler type name converter.</param>
-    /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
-    /// <param name="loadPolicy">Default assembly load policy.</param>
-    /// <param name="compressStaticData">Compress static data initializers for dynamic assemblies. Defaults to true.</param>
-    static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy, ?compressStaticData : bool) =
-        new Vagabond(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
-                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, ?compressStaticData = compressStaticData)
-
-
-    /// <summary>
-    ///     Initializes a new Vagabond instance.
-    /// </summary>
-    /// <param name="ignoredAssemblies">Ignore assemblies and their dependencies.</param>
-    /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
-    /// <param name="profiles">Dynamic assembly configuration profiles.</param>
-    /// <param name="typeConverter">FsPickler type name converter.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
-    /// <param name="loadPolicy">Default assembly load policy.</param>
-    /// <param name="compressStaticData">Compress static data initializers for dynamic assemblies. Defaults to true.</param>
-    static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list,
-                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy, ?compressStaticData : bool) =
-        let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
-        let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
-        new Vagabond(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
-                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, ?compressStaticData = compressStaticData)
 
     /// Unique identifier for the slice compiler
     member __.UUId = controller.CompilerState.CompilerId
@@ -186,7 +146,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     ///     Returns vagabond assembly for given static assembly.
     /// </summary>
     /// <param name="assembly">Given assembly.</param>
-    member __.GetVagabondAssembly(assembly : Assembly) =
+    member __.GetVagabondAssembly(assembly : Assembly) : VagabondAssembly =
         __.GetVagabondAssembly(assembly.AssemblyId)
 
     /// <summary>
@@ -194,7 +154,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="assemblies">Inputs assemblies.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetVagabondAssemblies(assemblies : seq<Assembly>, ?loadPolicy : AssemblyLoadPolicy) =
+    member __.GetVagabondAssemblies(assemblies : seq<Assembly>, ?loadPolicy : AssemblyLoadPolicy) : VagabondAssembly list =
         assemblies
         |> Seq.map (fun asm -> __.GetVagabondAssembly(asm.AssemblyId, ?loadPolicy = loadPolicy))
         |> Seq.toList
@@ -214,7 +174,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="ids">Given assembly ids.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) =
+    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo list =
         ids
         |> Seq.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
         |> Seq.toList
@@ -224,7 +184,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="va">Input assembly package.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssembly(va : VagabondAssembly, ?loadPolicy : AssemblyLoadPolicy) =
+    member __.LoadVagabondAssembly(va : VagabondAssembly, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
         let loadPolicy = defaultArg loadPolicy _loadPolicy
         controller.PostAndReply(fun ch -> LoadAssembly(loadPolicy, va, ch))
 
@@ -233,16 +193,17 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="vas">Input assembly packages.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?loadPolicy : AssemblyLoadPolicy) =
-        Seq.toList vas
-        |> List.map (fun va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy))
+    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo list =
+        vas
+        |> Seq.map (fun va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy))
+        |> Seq.toList
 
     /// <summary>
     ///     Loads an assembly that is already cached in local machine.
     /// </summary>
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) =
+    member __.LoadVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
         match controller.AssemblyCache.TryGetCachedAssemblyInfo id with
         | None -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy)
         | Some va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy)
@@ -252,9 +213,10 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) =
-        Seq.toList ids
-        |> List.map (fun id -> __.LoadVagabondAssembly(id, ?loadPolicy = loadPolicy))
+    member __.LoadVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo list =
+        ids
+        |> Seq.map (fun id -> __.LoadVagabondAssembly(id, ?loadPolicy = loadPolicy))
+        |> Seq.toList
 
 
     /// <summary>
@@ -262,7 +224,7 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="exporter">Assembly exporter implementation.</param>
     /// <param name="assemblies">Assemblies to be exported.</param>
-    member __.ExportAssemblies(exporter : IAssemblyExporter, assemblies : seq<VagabondAssembly>) = async {
+    member __.ExportAssemblies(exporter : IAssemblyExporter, assemblies : seq<VagabondAssembly>) : Async<unit> = async {
         return! controller.PostAndAsyncReply(fun ch -> ExportAssemblies(exporter, Seq.toList assemblies, ch))
     }
 
@@ -271,6 +233,110 @@ type Vagabond private (?cacheDirectory : string, ?profiles : IDynamicAssemblyPro
     /// </summary>
     /// <param name="importer">Assembly importer implementation.</param>
     /// <param name="ids">Assembly id's to be imported.</param>
-    member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) = async {
+    member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) : Async<VagabondAssembly list> = async {
         return! controller.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, Seq.toList ids, ch))
     }
+
+
+/// <summary>
+///     A collection of general purpose utilities on dependency traversal.
+/// </summary>
+type Vagabond =
+
+    /// <summary>
+    ///     Initializes a new Vagabond instance.
+    /// </summary>
+    /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
+    /// <param name="profiles">Dynamic assembly configuration profiles.</param>
+    /// <param name="typeConverter">FsPickler type name converter.</param>
+    /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+    /// <param name="requireLoadedInAppDomain">
+    ///     Demand all transitive dependencies be loadable in current AppDomain.
+    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+    /// </param>
+    /// <param name="loadPolicy">Default assembly load policy.</param>
+    /// <param name="compressStaticData">Compress static data initializers for dynamic assemblies. Defaults to true.</param>
+    static member Initialize(?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list, ?typeConverter : ITypeNameConverter, 
+                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy, ?compressStaticData : bool) : VagabondManager =
+        new VagabondManager(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
+                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, ?compressStaticData = compressStaticData)
+
+
+    /// <summary>
+    ///     Initializes a new Vagabond instance.
+    /// </summary>
+    /// <param name="ignoredAssemblies">Ignore assemblies and their dependencies.</param>
+    /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
+    /// <param name="profiles">Dynamic assembly configuration profiles.</param>
+    /// <param name="typeConverter">FsPickler type name converter.</param>
+    /// <param name="requireLoadedInAppDomain">
+    ///     Demand all transitive dependencies be loadable in current AppDomain.
+    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+    /// </param>
+    /// <param name="loadPolicy">Default assembly load policy.</param>
+    /// <param name="compressStaticData">Compress static data initializers for dynamic assemblies. Defaults to true.</param>
+    static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : IDynamicAssemblyProfile list,
+                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy, ?compressStaticData : bool) : VagabondManager =
+        let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
+        let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
+        new VagabondManager(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
+                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, ?compressStaticData = compressStaticData)
+
+    /// <summary>
+    ///     Returns all type instances that appear in given object graph.
+    /// </summary>
+    /// <param name="obj">object graph to be traversed</param>
+    static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj |> fst
+
+    /// <summary>
+    ///     Resolves all assembly dependencies of given object graph.
+    /// </summary>
+    /// <param name="obj">object graph to be traversed</param>
+    /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+    /// <param name="requireLoadedInAppDomain">
+    ///     Demand all transitive dependencies be loadable in current AppDomain.
+    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+    /// </param>
+    static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?requireLoadedInAppDomain) : Assembly list =
+        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+        let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        computeDependencies obj 
+        |> Seq.map fst
+        |> traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None
+
+    /// <summary>
+    ///     Resolves all assembly dependencies of given assembly.
+    /// </summary>
+    /// <param name="assembly">assembly to be traversed</param>
+    /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+    /// <param name="requireLoadedInAppDomain">
+    ///     Demand all transitive dependencies be loadable in current AppDomain.
+    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+    /// </param>
+    static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool) : Assembly list = 
+        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+        let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None [assembly]
+
+    /// <summary>
+    ///     Resolves all assembly dependencies of given assemblies.
+    /// </summary>
+    /// <param name="assemblies"></param>
+    /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
+    /// <param name="requireLoadedInAppDomain">
+    ///     Demand all transitive dependencies be loadable in current AppDomain.
+    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
+    /// </param>
+    static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool) : Assembly list = 
+        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+        let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None assemblies
+
+
+    /// <summary>
+    ///     Computes a unique id for given static assembly.
+    /// </summary>
+    /// <param name="assembly">a static assembly.</param>
+    static member ComputeAssemblyId (assembly : Assembly) : AssemblyId = 
+        let _ = assembly.Location // force exception in case of dynamic assembly
+        assembly.AssemblyId

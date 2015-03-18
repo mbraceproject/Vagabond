@@ -15,7 +15,7 @@ open Nessos.Vagabond
 /// Vagabond configuration container
 type VagabondConfig private () =
 
-    static let mutable vagabond = Unchecked.defaultof<Vagabond>
+    static let mutable manager = Unchecked.defaultof<VagabondManager>
 
     static member Init(?cachePath : string) =
         let cachePath =
@@ -25,10 +25,10 @@ type VagabondConfig private () =
                 let cachePath = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
                 let _ = Directory.CreateDirectory cachePath in cachePath
 
-        vagabond <- Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
+        manager <- Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
-    static member Vagabond = vagabond
-    static member Pickler = vagabond.Pickler
+    static member Instance = manager
+    static member Pickler = manager.Pickler
 
 /// Actor configuration tools
 type Actor private () =

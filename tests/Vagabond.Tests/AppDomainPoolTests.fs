@@ -47,7 +47,7 @@ module ``AppDomain Pool Tests`` =
 
     let (!) (client : AppDomainPoolTester) = client :> IAppDomainManager
 
-    let idOf<'T> = Utilities.ComputeAssemblyId typeof<'T>.Assembly
+    let idOf<'T> = Vagabond.ComputeAssemblyId typeof<'T>.Assembly
 
     let getDomainId() = System.AppDomain.CurrentDomain.FriendlyName
 
@@ -205,7 +205,7 @@ module ``AppDomain Pool Tests`` =
 
 
     type AppDomainVagabondLambdaLoaderConfiguration() =
-        let cachePath = VagabondConfig.Vagabond.CachePath
+        let cachePath = VagabondConfig.Instance.CachePath
         interface IAppDomainConfiguration
         member __.CachePath = cachePath
 
@@ -215,13 +215,13 @@ module ``AppDomain Pool Tests`` =
         let mutable taskCount = 0
 
         member __.Evaluate(dependencies : VagabondAssembly [], plambda : Pickle<unit -> 'T>) : Pickle<Choice<'T, exn>> =
-            let _ = VagabondConfig.Vagabond.LoadVagabondAssemblies dependencies
-            let lambda = VagabondConfig.Vagabond.Pickler.UnPickleTyped plambda
+            let _ = VagabondConfig.Instance.LoadVagabondAssemblies dependencies
+            let lambda = VagabondConfig.Instance.Pickler.UnPickleTyped plambda
             let _ = Interlocked.Increment &taskCount
             let result = try lambda () |> Choice1Of2 with e -> Choice2Of2 e
             let _ = Interlocked.Decrement &taskCount
             lastUsed <- DateTime.Now
-            VagabondConfig.Vagabond.Pickler.PickleTyped result         
+            VagabondConfig.Instance.Pickler.PickleTyped result         
         
         interface IAppDomainManager with
             member __.Initialize (config : IAppDomainConfiguration) =
@@ -235,7 +235,7 @@ module ``AppDomain Pool Tests`` =
 
 
         static member Eval (vpm : AppDomainPool<AppDomainVagabondLambdaLoader>) (f : unit -> 'T) =
-            let vg = VagabondConfig.Vagabond
+            let vg = VagabondConfig.Instance
             let deps = vg.ComputeObjectDependencies(f, true)
             let pkgs = vg.GetVagabondAssemblies(deps) |> List.toArray
             let mgr = vpm.RequestAppDomain(pkgs |> Seq.map (fun pkg -> pkg.Id))

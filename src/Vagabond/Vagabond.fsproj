@@ -65,7 +65,8 @@
     <Compile Include="AssemblyManagement\Control.fs" />
     <Compile Include="Vagabond.fs" />
     <Compile Include="Extras\AppDomainPool.fs" />
-    <Compile Include="Extras\Extras.fs" />
+    <Compile Include="Extras\AssemblyProtocols.fs" />
+    <Compile Include="Extras\ExportableAssembly.fs" />
     <None Include="paket.references" />
     <None Include="app.config" />
   </ItemGroup>

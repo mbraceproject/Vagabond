@@ -6,6 +6,7 @@ open System.Collections.Concurrent
 open System.IO
 open System.Reflection
 open System.Runtime.Serialization
+open System.Threading
 open System.Threading.Tasks
 open System.Security.Cryptography
 
@@ -43,7 +44,7 @@ module internal Utils =
         | Error of exn
     with
         /// evaluate, re-raising the exception if failed
-        member e.Value =
+        member inline e.Value =
             match e with
             | Success t -> t
             | Error e -> reraise' e
@@ -80,6 +81,28 @@ module internal Utils =
                 | Choice2Of2 s -> ss.Add s
 
             ts.ToArray(), ss.ToArray()
+
+    type Async =
+
+        /// <summary>
+        ///     Runs the asynchronous computation and awaits its result.
+        ///     Preserves original stacktrace for any exception raised.
+        /// </summary>
+        /// <param name="workflow">Workflow to be run.</param>
+        /// <param name="cancellationToken">Optioncal cancellation token.</param>
+        static member RunSync(workflow : Async<'T>, ?cancellationToken) =
+            let tcs = new TaskCompletionSource<Choice<'T,exn,OperationCanceledException>>()
+            let inline commit f r = tcs.SetResult(f r)
+            let _ = 
+                ThreadPool.QueueUserWorkItem(fun _ ->
+                    Async.StartWithContinuations(workflow, 
+                        commit Choice1Of3, commit Choice2Of3, commit Choice3Of3, 
+                        ?cancellationToken = cancellationToken))
+
+            match tcs.Task.Result with
+            | Choice1Of3 t -> t
+            | Choice2Of3 e -> reraise' e
+            | Choice3Of3 e -> raise e
 
     let memoize f =
         let dict = new Dictionary<_,_>()
@@ -158,14 +181,13 @@ module internal Utils =
         member __.ReplyWithError (e : exn) = rc.Reply <| Error e
 
     and MailboxProcessor<'T> with
-        member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) =
-            m.PostAndReply(fun ch -> msgB (new ReplyChannel<_>(ch))).Value
-
         member m.PostAndAsyncReply (msgB : ReplyChannel<'R> -> 'T) = async {
             let! result = m.PostAndAsyncReply(fun ch -> msgB(new ReplyChannel<_>(ch)))
             return result.Value
         }
 
+        member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) =
+            m.PostAndAsyncReply msgB |> Async.RunSync
 
     and MailboxProxessor =
         static member Stateful (init, processF : 'State -> 'Message -> Async<'State>, ?ct) =

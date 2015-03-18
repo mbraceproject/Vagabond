@@ -36,7 +36,7 @@ type VagabondManager with
                     member __.WriteMetadata (_,_) = async { return initializers |> Option.get |> snd :> _ }
             }
 
-        v.ExportAssemblies(exporter, [|va|]) |> Async.RunSynchronously
+        v.ExportAssemblies(exporter, [|va|]) |> Async.RunSync
 
         {
             Id = va.Id
@@ -66,7 +66,7 @@ type VagabondManager with
                     member __.GetDataReader (_,_) = async { return let _,d = ra.MetadataRaw |> Option.get in new MemoryStream(d) :> _ }
             }
 
-        v.ImportAssemblies(importer, [ra.Id]) |> Async.RunSynchronously |> List.head
+        v.ImportAssemblies(importer, [ra.Id]) |> Async.RunSync |> List.head
 
     /// <summary>
     ///     Import raw assemblies to cache.

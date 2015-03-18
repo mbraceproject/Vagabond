@@ -20,7 +20,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
 
     let cacheDirectory = 
         match cacheDirectory with 
-        | Some d when Directory.Exists d -> d
+        | Some d when Directory.Exists d ->  d
         | Some d -> raise <| new DirectoryNotFoundException(d)
         | None -> Path.GetTempPath()
 

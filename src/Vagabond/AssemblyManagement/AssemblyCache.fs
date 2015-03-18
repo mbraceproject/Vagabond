@@ -134,7 +134,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
                 let stream =
                     if compressStaticData then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
                     else fs :> _
-                pickler.Serialize(fs, initializers)
+                pickler.Serialize<StaticInitializer []>(fs, initializers)
 
             let md = writeMetadata metadataFile (metadata, initFile)
             { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = md }

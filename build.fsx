@@ -99,7 +99,7 @@ FinalTarget "CloseTestRunner" (fun _ ->
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
-let addAssembly (target : string) assembly =
+let addAssembly reqXml (target : string) assembly =
     let includeFile force file =
         let file = file
         if File.Exists (Path.Combine("nuget", file)) then [(file, Some target, None)]
@@ -108,8 +108,8 @@ let addAssembly (target : string) assembly =
 
     seq {
         yield! includeFile true assembly
+        yield! includeFile reqXml <| Path.ChangeExtension(assembly, "xml")
         yield! includeFile false <| Path.ChangeExtension(assembly, "pdb")
-        yield! includeFile false <| Path.ChangeExtension(assembly, "xml")
         yield! includeFile false <| assembly + ".config"
     }
 
@@ -127,6 +127,7 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
+                    "Mono.Cecil", "0.9.5.4"
                     "FsPickler", "1.0.8"
                 ]
             Tags = tags
@@ -137,9 +138,8 @@ Target "NuGet" (fun _ ->
             References = [ "Vagabond.dll" ]
             Files =
                 [
-                    yield! addAssembly @"lib\net45" @"..\bin\Mono.Cecil.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.AssemblyParser.dll"
-                    yield! addAssembly @"lib\net45" @"..\bin\Vagabond.dll"
+                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.AssemblyParser.dll"
+                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.dll"
                 ]
             
             })

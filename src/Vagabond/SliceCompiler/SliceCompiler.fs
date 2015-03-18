@@ -15,6 +15,23 @@ open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.AssemblyParser
 open Nessos.Vagabond.DependencyAnalysis
 
+/// creates a path for provided assembly name so that
+/// invalid characters are stripped and overwrites are avoided.
+let getAssemblyPath =
+    let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape
+    let regex = new Regex(sprintf "[%s]" invalidChars, RegexOptions.Compiled)
+    fun (path : string) (name : string) ->
+        let stripped = regex.Replace(name, "")
+        let rec getSuffix i =
+            let path = 
+                if i = 0 then Path.Combine(path, stripped + ".dll")
+                else Path.Combine(path, sprintf "%s-%d.dll" name i)
+
+            if File.Exists path then getSuffix (i+1)
+            else path
+
+        getSuffix 0 
+
 /// create an initial, empty compiler state
 
 let initCompilerState (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
@@ -51,7 +68,7 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
     // prepare slice info
     let sliceId = assemblyState.GeneratedSlices.Count + 1
     let name = state.CreateAssemblySliceName assemblyState.Name.Name sliceId
-    let target = System.IO.Path.Combine(state.OutputDirectory, name + ".dll")
+    let target = getAssemblyPath state.OutputDirectory name
 
     // update assembly name & write to disk
     do slice.Name.Name <- name

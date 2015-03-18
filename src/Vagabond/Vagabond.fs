@@ -59,6 +59,10 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         with get () = _loadPolicy
         and set p = _loadPolicy <- p
 
+    //
+    //  #region Assembly compilation
+    //
+
     /// <summary>
     ///     Compiles slices for given dynamic assembly, if required.
     /// </summary>
@@ -123,7 +127,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
 
         
     /// <summary>
-    ///     Returns vagabond assembly for given assembly id.
+    ///     Gets vagabond assembly metadata for given assembly id.
     /// </summary>
     /// <param name="id">assembly id</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
@@ -131,8 +135,12 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         let loadPolicy = defaultArg loadPolicy _loadPolicy
         controller.PostAndReply(fun ch -> GetVagabondAssembly(loadPolicy, id, ch))
 
+    //
+    //  #region Vagabond Assemblies
+    //
+
     /// <summary>
-    ///     Returns vagabond assemblies for given assembly ids.
+    ///    Gets vagabond assembly metadata for given assembly ids.
     /// </summary>
     /// <param name="ids">assembly ids.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
@@ -143,14 +151,14 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
             
 
     /// <summary>
-    ///     Returns vagabond assembly for given static assembly.
+    ///     Gets vagabond assembly metadata for given static assembly.
     /// </summary>
     /// <param name="assembly">Given assembly.</param>
     member __.GetVagabondAssembly(assembly : Assembly) : VagabondAssembly =
         __.GetVagabondAssembly(assembly.AssemblyId)
 
     /// <summary>
-    ///     Returns vagabond assemblies for given static assemblies.
+    ///     Gets vagabond assembly metadata for given static assemblies.
     /// </summary>
     /// <param name="assemblies">Inputs assemblies.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
@@ -178,6 +186,10 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         ids
         |> Seq.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
         |> Seq.toList
+
+    //
+    //  #region Asssembly loading API
+    //
 
     /// <summary>
     ///     Loads assembly package to the local machine.
@@ -218,6 +230,9 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         |> Seq.map (fun id -> __.LoadVagabondAssembly(id, ?loadPolicy = loadPolicy))
         |> Seq.toList
 
+    //
+    // #region Assembly import/export API
+    //
 
     /// <summary>
     ///     Export provided assemblies using provided exporter

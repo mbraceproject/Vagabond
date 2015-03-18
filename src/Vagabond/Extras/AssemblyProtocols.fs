@@ -3,18 +3,18 @@ module Nessos.Vagabond.AssemblyProtocols
 
 open System.Reflection
 
-/// Defines an abstract assembly load target; to be used by VagabondServer
+/// Defines an abstract assembly load target; to be used by VagabondServer.
 type IRemoteAssemblyReceiver =
-    /// receives the assembly load state of the remote party for the given id's
+    /// receives the assembly load state of the remote party for the given id's.
     abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
-    /// upload a set of assembly packages to the remote party
+    /// upload a set of assembly packages to the remote party.
     abstract PushAssemblies : VagabondAssembly list -> Async<AssemblyLoadInfo list>
 
-/// Defines an abstract assembly exporter; to be used by VagabondClient
+/// Defines an abstract assembly exporter; to be used by VagabondClient.
 type IRemoteAssemblyPublisher =
-    /// receives a collection of dependencies required by remote publisher
+    /// receives a collection of dependencies required by remote publisher.
     abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
-    /// request assembly packages from publisher
+    /// request assembly packages from publisher.
     abstract PullAssemblies : AssemblyId list -> Async<VagabondAssembly list>
 
 type VagabondManager with
@@ -65,13 +65,13 @@ type VagabondManager with
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
     /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
-    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation) =
+    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool) =
         let assemblies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
         v.SubmitAssemblies(receiver, assemblies)
 
 
     /// <summary>
-    ///     Receive dependencies as supplied by the remote assembly publisher
+    ///     Receive dependencies as supplied by the remote assembly publisher.
     /// </summary>
     /// <param name="publisher">The remote publisher</param>
     /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>

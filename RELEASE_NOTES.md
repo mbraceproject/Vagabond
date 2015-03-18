@@ -1,3 +1,4 @@
+* 0.5.0 - Refactor API, pickle vagabond data to files, add compression, bug fixes.
 * 0.3.2 - Update AppDomainPool, add examples and tests.
 * 0.3.1 - Implement AppDomainPool.
 * 0.3.0 - Rename to Vagabond, improve exception messages in topological sorting.

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>AssemblyPackage - Vagabond</title>
+    <title>IAssemblyImporter - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,93 +35,10 @@
 
 
 
-<h1>AssemblyPackage</h1>
+<h1>IAssemblyImporter</h1>
 <div class="xmldoc">
-<p>Contains information necessary for the exportation of an assembly</p>
+<p>Abstract assembly image importing API</p>
 </div>
-  <h3>Record Fields</h3>
-  <table class="table table-bordered member-list">
-    <thead>
-      <tr><td>Record Field</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '26', 26)" onmouseover="showTip(event, '26', 26)">
-            Id
-          </code>
-          <div class="tip" id="26">
-            <strong>Signature:</strong> AssemblyId<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L58-58" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '27', 27)" onmouseover="showTip(event, '27', 27)">
-            Image
-          </code>
-          <div class="tip" id="27">
-            <strong>Signature:</strong> byte [] option<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L61-61" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Raw image of the assembly</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '28', 28)" onmouseover="showTip(event, '28', 28)">
-            StaticInitializer
-          </code>
-          <div class="tip" id="28">
-            <strong>Signature:</strong> StaticInitializer option<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L67-67" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Static initialization data</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '29', 29)" onmouseover="showTip(event, '29', 29)">
-            Symbols
-          </code>
-          <div class="tip" id="29">
-            <strong>Signature:</strong> byte [] option<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L64-64" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Symbols file</p>
-
-        </td>
-      </tr>
-    </tbody>
-  </table>
   <h3>Instance members</h3>
   <table class="table table-bordered member-list">
     <thead>
@@ -131,37 +48,81 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '30', 30)" onmouseover="showTip(event, '30', 30)">
-            FullName
+          <code onmouseout="hideTip(event, '33', 33)" onmouseover="showTip(event, '33', 33)">
+            GetDataReader(id, arg2)
           </code>
-          <div class="tip" id="30">
-            <strong>Signature:</strong> string<br />
+          <div class="tip" id="33">
+            <strong>Signature:</strong> (id:AssemblyId * VagabondMetadata) -&gt; Async&lt;Stream&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L70-70" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L113-113" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Asynchronously returns a read stream for Vagabond data of given id.</p>
+
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '31', 31)" onmouseover="showTip(event, '31', 31)">
-            GetName()
+          <code onmouseout="hideTip(event, '34', 34)" onmouseover="showTip(event, '34', 34)">
+            GetImageReader(id)
           </code>
-          <div class="tip" id="31">
-            <strong>Signature:</strong> unit -&gt; AssemblyName<br />
+          <div class="tip" id="34">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L71-71" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L107-107" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Asynchronously returns a read stream for assembly image of given id.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '35', 35)" onmouseover="showTip(event, '35', 35)">
+            TryGetSymbolReader(id)
+          </code>
+          <div class="tip" id="35">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream option&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L109-109" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously returns a read stream for assembly debug symbols of given id.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '36', 36)" onmouseover="showTip(event, '36', 36)">
+            TryReadMetadata(id)
+          </code>
+          <div class="tip" id="36">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;VagabondMetadata option&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L111-111" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously reads Vagabond metadata information for assembly of given id.</p>
+
         </td>
       </tr>
     </tbody>
@@ -174,7 +135,7 @@
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

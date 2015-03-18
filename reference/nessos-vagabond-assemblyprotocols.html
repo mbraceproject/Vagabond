@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>StaticInitializer - Vagabond</title>
+    <title>AssemblyProtocols - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,70 +35,98 @@
 
 
 
-<h1>StaticInitializer</h1>
+<h1>AssemblyProtocols</h1>
 <div class="xmldoc">
-<p>static initialization data for assembly package</p>
+<p>Vagabond assembly publish/receive protocol implementations</p>
 </div>
-  <h3>Record Fields</h3>
+
+<!-- Render nested types and modules, if there are any -->
+  <h2>Nested types and modules</h2>
+  <div>
+      <table class="table table-bordered type-list">
+    <thead>
+      <tr><td>Type</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-assemblyprotocols-iremoteassemblypublisher.html">IRemoteAssemblyPublisher</a>
+          </td>
+          <td class="xmldoc"><p>Defines an abstract assembly exporter; to be used by VagabondClient.</p>
+</td>
+        </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-assemblyprotocols-iremoteassemblyreceiver.html">IRemoteAssemblyReceiver</a>
+          </td>
+          <td class="xmldoc"><p>Defines an abstract assembly load target; to be used by VagabondServer.</p>
+</td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+  <h3>Type extensions</h3>
   <table class="table table-bordered member-list">
     <thead>
-      <tr><td>Record Field</td><td>Description</td></tr>
+      <tr><td>Type extension</td><td>Description</td></tr>
     </thead>
     <tbody>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '43', 43)" onmouseover="showTip(event, '43', 43)">
-            Data
+          <code onmouseout="hideTip(event, '1', 1)" onmouseover="showTip(event, '1', 1)">
+            ReceiveDependencies(...)
           </code>
-          <div class="tip" id="43">
-            <strong>Signature:</strong> byte []<br />
+          <div class="tip" id="1">
+            <strong>Signature:</strong> (publisher:IRemoteAssemblyPublisher * loadPolicy:AssemblyLoadPolicy option) -&gt; Async&lt;unit&gt;<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L47-47" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L78-78" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Static initialization data</p>
+          <p>Receive dependencies as supplied by the remote assembly publisher.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '44', 44)" onmouseover="showTip(event, '44', 44)">
-            Generation
+          <code onmouseout="hideTip(event, '2', 2)" onmouseover="showTip(event, '2', 2)">
+            SubmitAssemblies(receiver, assemblies)
           </code>
-          <div class="tip" id="44">
-            <strong>Signature:</strong> int<br />
+          <div class="tip" id="2">
+            <strong>Signature:</strong> (receiver:IRemoteAssemblyReceiver * assemblies:seq&lt;Assembly&gt;) -&gt; Async&lt;(string * Pickle&lt;FieldInfo * exn&gt;) []&gt;<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L44-44" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L27-27" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Generation of given static initializer</p>
+          <p>Apply a built-in assembly distribution protocol using a user-defined submit function.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '45', 45)" onmouseover="showTip(event, '45', 45)">
-            IsPartial
+          <code onmouseout="hideTip(event, '3', 3)" onmouseover="showTip(event, '3', 3)">
+            SubmitObjectDependencies(...)
           </code>
-          <div class="tip" id="45">
-            <strong>Signature:</strong> bool<br />
+          <div class="tip" id="3">
+            <strong>Signature:</strong> (receiver:IRemoteAssemblyReceiver * obj:obj * permitCompilation:bool option) -&gt; Async&lt;(string * Pickle&lt;FieldInfo * exn&gt;) []&gt;<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L50-50" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L68-68" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Is partial static initialization data</p>
+          <p>Apply the built-in assembly distribution protocol using user-defined function.</p>
 
         </td>
       </tr>
@@ -112,7 +140,7 @@
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>AssemblyLoadInfo - Vagabond</title>
+    <title>ExportableAssembly - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,94 +35,112 @@
 
 
 
-<h1>AssemblyLoadInfo</h1>
+<h1>ExportableAssembly</h1>
 <div class="xmldoc">
-<p>Assembly load information</p>
+<p>Raw in-memory assembly export/load implementations</p>
 </div>
-  <h3>Union Cases</h3>
-  <table class="table table-bordered member-list">
+
+<!-- Render nested types and modules, if there are any -->
+  <h2>Nested types and modules</h2>
+  <div>
+      <table class="table table-bordered type-list">
     <thead>
-      <tr><td>Union Case</td><td>Description</td></tr>
+      <tr><td>Type</td><td>Description</td></tr>
     </thead>
     <tbody>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '20', 20)" onmouseover="showTip(event, '20', 20)">
-            Loaded(...)
-          </code>
-          <div class="tip" id="20">
-            <strong>Signature:</strong> AssemblyId * bool * VagabondMetadata option<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L87-87" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '21', 21)" onmouseover="showTip(event, '21', 21)">
-            LoadFault(AssemblyId,exn)
-          </code>
-          <div class="tip" id="21">
-            <strong>Signature:</strong> AssemblyId * exn<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L86-86" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '22', 22)" onmouseover="showTip(event, '22', 22)">
-            NotLoaded(AssemblyId)
-          </code>
-          <div class="tip" id="22">
-            <strong>Signature:</strong> AssemblyId<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L85-85" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          
-        </td>
-      </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-exportableassembly-exportableassembly.html">ExportableAssembly</a>
+          </td>
+          <td class="xmldoc"><p>A Vagabond assembly with all data loaded in-memory 
+for instant exportation.</p>
+</td>
+        </tr>
     </tbody>
   </table>
-  <h3>Instance members</h3>
+
+  </div>
+
+  <h3>Type extensions</h3>
   <table class="table table-bordered member-list">
     <thead>
-      <tr><td>Instance member</td><td>Description</td></tr>
+      <tr><td>Type extension</td><td>Description</td></tr>
     </thead>
     <tbody>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '23', 23)" onmouseover="showTip(event, '23', 23)">
-            Id
+          <code onmouseout="hideTip(event, '4', 4)" onmouseover="showTip(event, '4', 4)">
+            CacheRawAssemblies(ras)
           </code>
-          <div class="tip" id="23">
-            <strong>Signature:</strong> AssemblyId<br />
+          <div class="tip" id="4">
+            <strong>Signature:</strong> ras:seq&lt;ExportableAssembly&gt; -&gt; VagabondAssembly list<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L89-89" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L75-75" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Import raw assemblies to cache.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '5', 5)" onmouseover="showTip(event, '5', 5)">
+            CacheRawAssembly(ra)
+          </code>
+          <div class="tip" id="5">
+            <strong>Signature:</strong> ra:ExportableAssembly -&gt; VagabondAssembly<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L59-59" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Import a raw assembly to cache.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '6', 6)" onmouseover="showTip(event, '6', 6)">
+            CreateRawAssemblies(vas)
+          </code>
+          <div class="tip" id="6">
+            <strong>Signature:</strong> vas:seq&lt;VagabondAssembly&gt; -&gt; ExportableAssembly list<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L52-52" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Copies raw vagabond assembly data to in-memory records.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '7', 7)" onmouseover="showTip(event, '7', 7)">
+            CreateRawAssembly(va)
+          </code>
+          <div class="tip" id="7">
+            <strong>Signature:</strong> va:VagabondAssembly -&gt; ExportableAssembly<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L27-27" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Copies raw vagabond assembly data to an in-memory record.</p>
+
         </td>
       </tr>
     </tbody>

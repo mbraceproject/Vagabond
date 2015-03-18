@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>Utilities - Vagabond</title>
+    <title>ExportableAssembly - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,108 +35,90 @@
 
 
 
-<h1>Utilities</h1>
+<h1>ExportableAssembly</h1>
 <div class="xmldoc">
-<p>A collection of general purpose utilities on dependency traversal.</p>
+<p>A Vagabond assembly with all data loaded in-memory 
+for instant exportation.</p>
 </div>
-  <h3>Static members</h3>
+  <h3>Record Fields</h3>
   <table class="table table-bordered member-list">
     <thead>
-      <tr><td>Static member</td><td>Description</td></tr>
+      <tr><td>Record Field</td><td>Description</td></tr>
     </thead>
     <tbody>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '8', 8)" onmouseover="showTip(event, '8', 8)">
-            ComputeAssemblyDependencies(...)
-          </code>
-          <div class="tip" id="8">
-            <strong>Signature:</strong> (assemblies:seq&lt;Assembly&gt; * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L81-81" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Resolves all assembly dependencies of given assemblies.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '9', 9)" onmouseover="showTip(event, '9', 9)">
-            ComputeAssemblyDependencies(...)
-          </code>
-          <div class="tip" id="9">
-            <strong>Signature:</strong> (assembly:Assembly * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L67-67" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Resolves all assembly dependencies of given assembly.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '10', 10)" onmouseover="showTip(event, '10', 10)">
-            ComputeAssemblyDependencies(...)
-          </code>
-          <div class="tip" id="10">
-            <strong>Signature:</strong> (obj:obj * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L51-51" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Resolves all assembly dependencies of given object graph.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '11', 11)" onmouseover="showTip(event, '11', 11)">
-            ComputeAssemblyId(assembly)
-          </code>
-          <div class="tip" id="11">
-            <strong>Signature:</strong> assembly:Assembly -&gt; AssemblyId<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L91-91" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Computes a unique id for given static assembly.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
           <code onmouseout="hideTip(event, '12', 12)" onmouseover="showTip(event, '12', 12)">
-            ComputeTypeDependencies(obj)
+            Id
           </code>
           <div class="tip" id="12">
-            <strong>Signature:</strong> obj:obj -&gt; Type []<br />
+            <strong>Signature:</strong> AssemblyId<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L40-40" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L12-12" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Returns all type instances that appear in given object graph.</p>
+          <p>Assembly Identifier</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '13', 13)" onmouseover="showTip(event, '13', 13)">
+            ImageRaw
+          </code>
+          <div class="tip" id="13">
+            <strong>Signature:</strong> byte []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L14-14" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Assembly binary image</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '14', 14)" onmouseover="showTip(event, '14', 14)">
+            MetadataRaw
+          </code>
+          <div class="tip" id="14">
+            <strong>Signature:</strong> (VagabondMetadata * byte []) option<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L18-18" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Vagabond metadata * static initializers</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '15', 15)" onmouseover="showTip(event, '15', 15)">
+            SymbolsRaw
+          </code>
+          <div class="tip" id="15">
+            <strong>Signature:</strong> byte [] option<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/ExportableAssembly.fs#L16-16" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Assembly symbols</p>
 
         </td>
       </tr>
@@ -150,7 +132,7 @@
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

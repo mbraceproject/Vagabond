@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>IRemoteAssemblyPublisher - Vagabond</title>
+    <title>VagabondMetadata - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,53 +35,89 @@
 
 
 
-<h1>IRemoteAssemblyPublisher</h1>
+<h1>VagabondMetadata</h1>
 <div class="xmldoc">
-<p>Defines an abstract assembly exporter; to be used by VagabondClient</p>
+<p>Vagabond metadata for dynamic assembly slices</p>
 </div>
-  <h3>Instance members</h3>
+  <h3>Record Fields</h3>
   <table class="table table-bordered member-list">
     <thead>
-      <tr><td>Instance member</td><td>Description</td></tr>
+      <tr><td>Record Field</td><td>Description</td></tr>
     </thead>
     <tbody>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '4', 4)" onmouseover="showTip(event, '4', 4)">
-            GetRequiredAssemblyInfo()
+          <code onmouseout="hideTip(event, '81', 81)" onmouseover="showTip(event, '81', 81)">
+            ErroredFields
           </code>
-          <div class="tip" id="4">
-            <strong>Signature:</strong> unit -&gt; Async&lt;AssemblyId list&gt;<br />
-              <strong>Modifiers:</strong> abstract<br />
+          <div class="tip" id="81">
+            <strong>Signature:</strong> (string * Pickle&lt;FieldInfo * exn&gt;) []<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L27-27" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L56-56" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>receives a collection of dependencies required by remote publisher</p>
+          <p>Static fields that failed to be pickled</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '5', 5)" onmouseover="showTip(event, '5', 5)">
-            PullAssemblies(arg1)
+          <code onmouseout="hideTip(event, '82', 82)" onmouseover="showTip(event, '82', 82)">
+            Generation
           </code>
-          <div class="tip" id="5">
-            <strong>Signature:</strong> (AssemblyId list) -&gt; Async&lt;AssemblyPackage list&gt;<br />
-              <strong>Modifiers:</strong> abstract<br />
+          <div class="tip" id="82">
+            <strong>Signature:</strong> int<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Extras/Extras.fs#L29-29" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L47-47" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>request assembly packages from publisher</p>
+          <p>Generation of given static initializer</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '83', 83)" onmouseover="showTip(event, '83', 83)">
+            IsPartial
+          </code>
+          <div class="tip" id="83">
+            <strong>Signature:</strong> bool<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L50-50" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Is partial static initialization data</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '84', 84)" onmouseover="showTip(event, '84', 84)">
+            PickledFields
+          </code>
+          <div class="tip" id="84">
+            <strong>Signature:</strong> (string * Pickle&lt;FieldInfo&gt;) []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L53-53" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Static fields that have been pickled succesfully</p>
 
         </td>
       </tr>
@@ -95,7 +131,7 @@
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

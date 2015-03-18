@@ -37,436 +37,8 @@
 
 <h1>Vagabond</h1>
 <div class="xmldoc">
-<p>Vagabond Object which instantiates a dynamic assembly compiler, loader and exporter state</p>
+<p>A collection of general purpose utilities on dependency traversal.</p>
 </div>
-  <h3>Instance members</h3>
-  <table class="table table-bordered member-list">
-    <thead>
-      <tr><td>Instance member</td><td>Description</td></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '46', 46)" onmouseover="showTip(event, '46', 46)">
-            CachePath
-          </code>
-          <div class="tip" id="46">
-            <strong>Signature:</strong> string<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L92-92" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Cache directory used by Vagabond</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '47', 47)" onmouseover="showTip(event, '47', 47)">
-            CompileDynamicAssemblySlice(assembly)
-          </code>
-          <div class="tip" id="47">
-            <strong>Signature:</strong> assembly:Assembly -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L103-103" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Compiles slices for given dynamic assembly, if required.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '48', 48)" onmouseover="showTip(event, '48', 48)">
-            ComputeObjectDependencies(...)
-          </code>
-          <div class="tip" id="48">
-            <strong>Signature:</strong> (obj:obj * permitCompilation:bool option) -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L133-133" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Returns a collection of all assemblies that the given object depends on.
-Dynamic assemblies are substituted for their corresponding static slices.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
-            CreateAssemblyPackage(...)
-          </code>
-          <div class="tip" id="49">
-            <strong>Signature:</strong> (assembly:Assembly * includeAssemblyImage:bool) -&gt; AssemblyPackage<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L188-188" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Builds an assembly package bundle for given input.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
-            CreateAssemblyPackage(...)
-          </code>
-          <div class="tip" id="50">
-            <strong>Signature:</strong> (id:AssemblyId * includeAssemblyImage:bool * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyPackage<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L168-168" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Creates an assembly package out of a given assembly id.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '51', 51)" onmouseover="showTip(event, '51', 51)">
-            CreateAssemblyPackages(...)
-          </code>
-          <div class="tip" id="51">
-            <strong>Signature:</strong> (assemblies:seq&lt;Assembly&gt; * includeAssemblyImage:bool * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyPackage list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L197-197" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Creates assembly packages out of given assemblies.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
-            CreateAssemblyPackages(...)
-          </code>
-          <div class="tip" id="52">
-            <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * includeAssemblyImage:bool * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyPackage list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L178-178" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Creates assembly packages out of given assembly ids.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '53', 53)" onmouseover="showTip(event, '53', 53)">
-            DefaultLoadPolicy()
-          </code>
-          <div class="tip" id="53">
-            <strong>Signature:</strong> unit -&gt; AssemblyLoadPolicy<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L97-97" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Default load policy</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '54', 54)" onmouseover="showTip(event, '54', 54)">
-            DefaultLoadPolicy()
-          </code>
-          <div class="tip" id="54">
-            <strong>Signature:</strong> unit -&gt; unit<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L96-96" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Default load policy</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '55', 55)" onmouseover="showTip(event, '55', 55)">
-            GetAssemblyLoadInfo(ids, loadPolicy)
-          </code>
-          <div class="tip" id="55">
-            <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L216-216" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Gets the local assembly load info for given assembly ids.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '56', 56)" onmouseover="showTip(event, '56', 56)">
-            GetAssemblyLoadInfo(id, loadPolicy)
-          </code>
-          <div class="tip" id="56">
-            <strong>Signature:</strong> (id:AssemblyId * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L207-207" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Gets the local assembly load info for given assembly id.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '57', 57)" onmouseover="showTip(event, '57', 57)">
-            GetDynamicAssemblySlices(assembly)
-          </code>
-          <div class="tip" id="57">
-            <strong>Signature:</strong> assembly:Assembly -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L120-120" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Returns <em>all</em> assembly slices of given dynamic assembly.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '58', 58)" onmouseover="showTip(event, '58', 58)">
-            IsLocalDynamicAssemblySlice(id)
-          </code>
-          <div class="tip" id="58">
-            <strong>Signature:</strong> id:AssemblyId -&gt; bool<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L148-148" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Checks if assembly id is a locally generated dynamic assembly slice.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '59', 59)" onmouseover="showTip(event, '59', 59)">
-            LoadAssemblyPackage(pa, loadPolicy)
-          </code>
-          <div class="tip" id="59">
-            <strong>Signature:</strong> (pa:AssemblyPackage * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L225-225" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Loads assembly package to the local machine.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '60', 60)" onmouseover="showTip(event, '60', 60)">
-            LoadAssemblyPackages(pas, loadPolicy)
-          </code>
-          <div class="tip" id="60">
-            <strong>Signature:</strong> (pas:seq&lt;AssemblyPackage&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L234-234" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Loads assembly packages to the local machine.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '61', 61)" onmouseover="showTip(event, '61', 61)">
-            LoadCachedAssemblies(ids, loadPolicy)
-          </code>
-          <div class="tip" id="61">
-            <strong>Signature:</strong> (ids:seq&lt;AssemblyId&gt; * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L251-251" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Loads assembly id's that are already cached in local machine.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '62', 62)" onmouseover="showTip(event, '62', 62)">
-            LoadCachedAssembly(id, loadPolicy)
-          </code>
-          <div class="tip" id="62">
-            <strong>Signature:</strong> (id:AssemblyId * loadPolicy:AssemblyLoadPolicy option) -&gt; AssemblyLoadInfo<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L243-243" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Loads an assembly that is already cached in local machine.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '63', 63)" onmouseover="showTip(event, '63', 63)">
-            Pickler
-          </code>
-          <div class="tip" id="63">
-            <strong>Signature:</strong> BinarySerializer<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L88-88" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Returns the pickler used by the slice compiler</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '64', 64)" onmouseover="showTip(event, '64', 64)">
-            ResolveDynamicDependenciesRequiringCompilation(...)
-          </code>
-          <div class="tip" id="64">
-            <strong>Signature:</strong> obj:obj -&gt; Assembly list<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L112-112" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Returns a list of dynamic assemblies that require slice compilation
-for the given object graph to be exportable.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '65', 65)" onmouseover="showTip(event, '65', 65)">
-            TryGetSliceOfType(t)
-          </code>
-          <div class="tip" id="65">
-            <strong>Signature:</strong> t:Type -&gt; Assembly option<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L155-155" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Returns the dynamic assembly slice corresponding to the given type, if exists.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '66', 66)" onmouseover="showTip(event, '66', 66)">
-            TypeConverter
-          </code>
-          <div class="tip" id="66">
-            <strong>Signature:</strong> ITypeNameConverter<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L90-90" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>FsPickler type name converter for use with other formats</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '67', 67)" onmouseover="showTip(event, '67', 67)">
-            UUId
-          </code>
-          <div class="tip" id="67">
-            <strong>Signature:</strong> Guid<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L86-86" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Unique identifier for the slice compiler</p>
-
-        </td>
-      </tr>
-    </tbody>
-  </table>
   <h3>Static members</h3>
   <table class="table table-bordered member-list">
     <thead>
@@ -476,15 +48,110 @@ for the given object graph to be exportable.</p>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '68', 68)" onmouseover="showTip(event, '68', 68)">
-            Initialize(...)
+          <code onmouseout="hideTip(event, '44', 44)" onmouseover="showTip(event, '44', 44)">
+            ComputeAssemblyDependencies(...)
           </code>
-          <div class="tip" id="68">
-            <strong>Signature:</strong> (ignoredAssemblies:seq&lt;Assembly&gt; * cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option) -&gt; Vagabond<br />
+          <div class="tip" id="44">
+            <strong>Signature:</strong> (assemblies:seq&lt;Assembly&gt; * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L78-78" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L345-345" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given assemblies.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '45', 45)" onmouseover="showTip(event, '45', 45)">
+            ComputeAssemblyDependencies(...)
+          </code>
+          <div class="tip" id="45">
+            <strong>Signature:</strong> (assembly:Assembly * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L331-331" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given assembly.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '46', 46)" onmouseover="showTip(event, '46', 46)">
+            ComputeAssemblyDependencies(...)
+          </code>
+          <div class="tip" id="46">
+            <strong>Signature:</strong> (obj:obj * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option) -&gt; Assembly list<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L315-315" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given object graph.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '47', 47)" onmouseover="showTip(event, '47', 47)">
+            ComputeAssemblyId(assembly)
+          </code>
+          <div class="tip" id="47">
+            <strong>Signature:</strong> assembly:Assembly -&gt; AssemblyId<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L355-355" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Computes a unique id for given static assembly.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '48', 48)" onmouseover="showTip(event, '48', 48)">
+            ComputeTypeDependencies(obj)
+          </code>
+          <div class="tip" id="48">
+            <strong>Signature:</strong> obj:obj -&gt; Type []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L304-304" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Returns all type instances that appear in given object graph.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
+            Initialize(...)
+          </code>
+          <div class="tip" id="49">
+            <strong>Signature:</strong> (ignoredAssemblies:seq&lt;Assembly&gt; * cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option * compressStaticData:bool option) -&gt; VagabondManager<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L293-293" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -495,15 +162,15 @@ for the given object graph to be exportable.</p>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '69', 69)" onmouseover="showTip(event, '69', 69)">
+          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
             Initialize(...)
           </code>
-          <div class="tip" id="69">
-            <strong>Signature:</strong> (cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option) -&gt; Vagabond<br />
+          <div class="tip" id="50">
+            <strong>Signature:</strong> (cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option * compressStaticData:bool option) -&gt; VagabondManager<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L60-60" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L274-274" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -521,7 +188,7 @@ for the given object graph to be exportable.</p>
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

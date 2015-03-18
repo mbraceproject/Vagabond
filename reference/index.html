@@ -47,7 +47,7 @@
           <td class="type-name">
             <a href="nessos-vagabond-assemblyid.html">AssemblyId</a>
           </td>
-          <td class="xmldoc"><p>unique identifier for assembly</p>
+          <td class="xmldoc"><p>Vagabond unique assembly identifier</p>
 </td>
         </tr>
         <tr>
@@ -67,16 +67,23 @@ locally by the runtime if possible.</p>
         </tr>
         <tr>
           <td class="type-name">
-            <a href="nessos-vagabond-assemblypackage.html">AssemblyPackage</a>
+            <a href="nessos-vagabond-fsidynamicassemblyprofile.html">FsiDynamicAssemblyProfile</a>
           </td>
-          <td class="xmldoc"><p>Contains information necessary for the exportation of an assembly</p>
+          <td class="xmldoc"><p>Dynamic Assembly profile for F# Interactive</p>
 </td>
         </tr>
         <tr>
           <td class="type-name">
-            <a href="nessos-vagabond-fsidynamicassemblyprofile.html">FsiDynamicAssemblyProfile</a>
+            <a href="nessos-vagabond-iassemblyexporter.html">IAssemblyExporter</a>
           </td>
-          <td class="xmldoc"><p>Dynamic Assembly profile for F# Interactive</p>
+          <td class="xmldoc"><p>Abstract assembly image exporting API</p>
+</td>
+        </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-iassemblyimporter.html">IAssemblyImporter</a>
+          </td>
+          <td class="xmldoc"><p>Abstract assembly image importing API</p>
 </td>
         </tr>
         <tr>
@@ -94,23 +101,16 @@ locally by the runtime if possible.</p>
         </tr>
         <tr>
           <td class="type-name">
-            <a href="nessos-vagabond-staticinitializationinfo.html">StaticInitializationInfo</a>
-          </td>
-          <td class="xmldoc"><p>Static initialization metadata</p>
-</td>
-        </tr>
-        <tr>
-          <td class="type-name">
-            <a href="nessos-vagabond-staticinitializer.html">StaticInitializer</a>
-          </td>
-          <td class="xmldoc"><p>static initialization data for assembly package</p>
-</td>
-        </tr>
-        <tr>
-          <td class="type-name">
             <a href="nessos-vagabond-vagabond.html">Vagabond</a>
           </td>
-          <td class="xmldoc"><p>Vagabond Object which instantiates a dynamic assembly compiler, loader and exporter state</p>
+          <td class="xmldoc"><p>A collection of general purpose utilities on dependency traversal.</p>
+</td>
+        </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-vagabondassembly.html">VagabondAssembly</a>
+          </td>
+          <td class="xmldoc"><p>Exportable Vagabond assembly and metadata</p>
 </td>
         </tr>
         <tr>
@@ -118,6 +118,20 @@ locally by the runtime if possible.</p>
             <a href="nessos-vagabond-vagabondexception.html">VagabondException</a>
           </td>
           <td class="xmldoc"><p>Exception raised by Vagabond</p>
+</td>
+        </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-vagabondmanager.html">VagabondManager</a>
+          </td>
+          <td class="xmldoc"><p>Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states</p>
+</td>
+        </tr>
+        <tr>
+          <td class="type-name">
+            <a href="nessos-vagabond-vagabondmetadata.html">VagabondMetadata</a>
+          </td>
+          <td class="xmldoc"><p>Vagabond metadata for dynamic assembly slices</p>
 </td>
         </tr>
     </tbody>
@@ -129,9 +143,16 @@ locally by the runtime if possible.</p>
     <tbody>
         <tr>
           <td class="module-name">
-            <a href="nessos-vagabond-extras.html">Extras</a>
+            <a href="nessos-vagabond-assemblyprotocols.html">AssemblyProtocols</a>
           </td>
-          <td class="xmldoc"><p>Collection of extensions and utilities for use with Vagabond</p>
+          <td class="xmldoc"><p>Vagabond assembly publish/receive protocol implementations</p>
+</td>
+        </tr>
+        <tr>
+          <td class="module-name">
+            <a href="nessos-vagabond-exportableassembly.html">ExportableAssembly</a>
+          </td>
+          <td class="xmldoc"><p>Raw in-memory assembly export/load implementations</p>
 </td>
         </tr>
     </tbody>
@@ -200,7 +221,7 @@ a parameterless constructor.</p>
 		  </a>
           <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
             <li class="nav-header">Vagabond</li>
-            <li><a href="/Vagabond/index.html">Home page</a></li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
             <li class="divider"></li>
             <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
             <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>

@@ -34,8 +34,7 @@ let getAssemblyPath =
 
 /// create an initial, empty compiler state
 
-let initCompilerState (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
-    let uuid = Guid.NewGuid()
+let initCompilerState uuid (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
     let mkSliceName (name : string) (id : int) = sprintf "%s_%O_%d" name uuid id
     let assemblyRegex = Regex(sprintf "^(.*)_%O_([0-9]+)" uuid, RegexOptions.Compiled)
     let tryExtractDynamicAssemblyId (assemblyName : string) =
@@ -47,7 +46,7 @@ let initCompilerState (profiles : IDynamicAssemblyProfile list) (outDirectory : 
         else
             None
     {
-        CompilerId = Guid.NewGuid()
+        CompilerId = uuid
         Profiles = profiles
         OutputDirectory = outDirectory
 

@@ -30,6 +30,8 @@ type AssemblyId =
         FullName : string
         /// digest of the raw assembly image
         ImageHash : byte []
+        /// Is managed CIL assembly
+        IsManaged : bool
     }
 with
     /// Returns a System.Reflection.AssemblyName corresponding to Assembly id

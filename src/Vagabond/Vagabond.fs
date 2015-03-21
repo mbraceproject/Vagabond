@@ -18,11 +18,19 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
 
     static do AssemblyManagement.registerAssemblyResolutionHandler ()
 
+    let uuid = Guid.NewGuid()
     let cacheDirectory = 
         match cacheDirectory with 
         | Some d when Directory.Exists d -> d
         | Some d -> raise <| new DirectoryNotFoundException(d)
-        | None -> Path.GetTempPath()
+        | None -> 
+            let subdir = sprintf "vagabond-%O" uuid
+            let path = Path.Combine(Path.GetTempPath(), subdir)
+            let _ = Directory.CreateDirectory(path)
+            path
+
+    // add cache path to environment for loading unmanaged assemblies
+    do addPathtoEnvironment cacheDirectory
 
     let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
     let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
@@ -35,7 +43,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
 
     let mutable _loadPolicy = defaultArg loadPolicy <| AssemblyLoadPolicy.ResolveStrongNames
 
-    let controller = new VagabondController(cacheDirectory, profiles, requireLoadedInAppDomain, compressStaticData, isIgnoredAssembly, ?tyConv = typeConverter)
+    let controller = new VagabondController(uuid, cacheDirectory, profiles, requireLoadedInAppDomain, compressStaticData, isIgnoredAssembly, ?tyConv = typeConverter)
     do controller.Start()
 
     static let checkIsDynamic(a : Assembly) = 
@@ -54,10 +62,24 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     /// Cache directory used by Vagabond
     member __.CachePath = controller.CacheDirectory
 
-    /// Default load policy 
+    /// Gets or sets the default load policy for the instance
     member __.DefaultLoadPolicy
         with get () = _loadPolicy
         and set p = _loadPolicy <- p
+
+
+    /// <summary>
+    ///     Includes an unmanaged assembly dependency to the vagabond instance.
+    /// </summary>
+    /// <param name="path">Path to the unmanaged assembly.</param>
+    /// <param name="name">Identifier for unmanaged assembly. Defaults to the assembly file name.</param>
+    member __.IncludeUnmanagedAssembly(path : string, ?name : string) =
+        let va = UnManagedAssembly.Define(path, ?name = name)
+        controller.PostAndReply(fun ch -> IncludeUnmanagedAssemblyDependencies([va], ch))
+        va
+
+    /// Returns all unmanaged dependencies for vagabond instance.
+    member __.UnManagedDependencies = controller.UnmanagedAssemblies
 
     //
     //  #region Assembly compilation
@@ -88,8 +110,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         do checkIsDynamic assembly
         match controller.CompilerState.DynamicAssemblies.TryFind assembly.FullName with
         | None -> []
-        | Some info ->
-            info.GeneratedSlices |> Seq.map (function KeyValue(_,s) -> s.Assembly) |> Seq.toList
+        | Some info -> info.GeneratedSlices |> Seq.map (function KeyValue(_,s) -> s.Assembly) |> Seq.toList
 
     /// <summary>
     ///     Returns a collection of all assemblies that the given object depends on.
@@ -192,7 +213,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     //
 
     /// <summary>
-    ///     Loads assembly package to the local machine.
+    ///     Loads vagabond assembly to the local AppDomain.
     /// </summary>
     /// <param name="va">Input assembly package.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
@@ -201,7 +222,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         controller.PostAndReply(fun ch -> LoadAssembly(loadPolicy, va, ch))
 
     /// <summary>
-    ///     Loads assembly packages to the local machine.
+    ///     Loads vagabond assemblies to the local AppDomain.
     /// </summary>
     /// <param name="vas">Input assembly packages.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
@@ -211,7 +232,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         |> Seq.toList
 
     /// <summary>
-    ///     Loads an assembly that is already cached in local machine.
+    ///     Attempt loading vagabond assembly of given id to the local AppDomain.
     /// </summary>
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
@@ -221,7 +242,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         | Some va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy)
 
     /// <summary>
-    ///     Loads assembly id's that are already cached in local machine.
+    ///     Attempt loading vagabond assemblies of given id's to the local AppDomain.
     /// </summary>
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>

@@ -23,15 +23,17 @@ type VagabondMessage =
     | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
+    | IncludeUnmanagedAssemblyDependencies of VagabondAssembly list * ReplyChannel<unit>
+    | GetUnmanagedAssemblyDependencies of ReplyChannel<Map<AssemblyId, VagabondAssembly>>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
 
     do 
         if not <| Directory.Exists cacheDirectory then
             raise <| new DirectoryNotFoundException(cacheDirectory)
 
-    let compilerState = ref <| initCompilerState profiles cacheDirectory
+    let compilerState = ref <| initCompilerState uuid profiles cacheDirectory
 
     let typeNameConverter = mkTypeNameConverter tyConv (fun () -> compilerState.Value)
 
@@ -44,6 +46,7 @@ type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyPro
             CompilerState = !compilerState
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
+            UnmanagedAssemblies = Map.empty
 
             Serializer = defaultPickler
             AssemblyCache = assemblyCache
@@ -133,6 +136,15 @@ type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyPro
             with e ->
                 rc.ReplyWithError e
                 return state
+
+        | IncludeUnmanagedAssemblyDependencies(dependencies, rc) ->
+            let state' = { state with UnmanagedAssemblies = dependencies |> Seq.map (fun d -> d.Id, d) |> Map.addMany state.UnmanagedAssemblies }
+            rc.Reply (())
+            return state'
+
+        | GetUnmanagedAssemblyDependencies rc ->
+            rc.Reply state.UnmanagedAssemblies
+            return state
     }
 
     let cts = new System.Threading.CancellationTokenSource()
@@ -150,3 +162,8 @@ type VagabondController (cacheDirectory : string, profiles : IDynamicAssemblyPro
 
     member __.PostAndAsyncReply msgB = actor.PostAndAsyncReply msgB
     member __.PostAndReply msgB = actor.PostAndReply msgB
+    member __.UnmanagedAssemblies = 
+        actor.PostAndReply GetUnmanagedAssemblyDependencies 
+        |> Map.toSeq 
+        |> Seq.map snd 
+        |> Seq.toList

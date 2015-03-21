@@ -43,6 +43,7 @@
   <ItemGroup>
     <Compile Include="Config.fs" />
     <Compile Include="Utils.fs" />
+    <Compile Include="VagabondTests.fs" />
     <Compile Include="FsiTests.fs" />
     <Compile Include="AppDomainPoolTests.fs" />
     <None Include="paket.references" />

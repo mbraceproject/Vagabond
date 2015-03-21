@@ -199,32 +199,37 @@ module internal Utils =
 
             new MailboxProcessor<_>(loop init, ?cancellationToken = ct)
 
+    /// Add path to 'PATH' environment variable
+    let addPathtoEnvironment (path : string) =
+        let envPath = Environment.GetEnvironmentVariable("PATH")
+        if envPath.Contains (";" + path) then ()
+        else Environment.SetEnvironmentVariable("PATH", envPath + ";" + path)
 
     /// computes a unique assembly identifier
 
     type AssemblyIdGenerator private () =
-        static let idCache = new ConcurrentDictionary<Assembly, AssemblyId> ()
+        static let hashCache = new ConcurrentDictionary<string, byte []> ()
         static let hashAlgorithm = SHA256Managed.Create()
         static let hostId = Guid.NewGuid().ToByteArray()
 
-        static let computeHash (assembly : Assembly) =
+        static let getImageHash(path : string) =
+            hashCache.GetOrAdd(path, fun path -> use fs = File.OpenRead path in hashAlgorithm.ComputeHash(fs))
+
+        static member GetManagedAssemblyId(assembly : Assembly) =
             let hash =
                 if assembly.IsDynamic then
-                    let this = BitConverter.GetBytes(assembly.GetHashCode())
+                    let this = System.Text.Encoding.Default.GetBytes assembly.FullName
                     Array.append hostId this
-                elif File.Exists(assembly.Location) then
-                    use fs = new FileStream(assembly.Location, FileMode.Open, FileAccess.Read)
-                    hashAlgorithm.ComputeHash(fs)
                 else
-                    raise <| new VagabondException(sprintf "could not resolve location for '%O'." assembly)
+                    getImageHash assembly.Location
 
-            { FullName = assembly.FullName ; ImageHash = hash }
+            { FullName = assembly.FullName ; ImageHash = hash ; IsManaged = true }
 
-        static member GetAssemblyId (assembly : Assembly) = idCache.GetOrAdd(assembly, computeHash)
-
+        static member GetUnManagedAssemblyId(name : string, path : string) =
+            { FullName = name ; ImageHash = getImageHash path ; IsManaged = false }
 
     type Assembly with 
-        member a.AssemblyId = AssemblyIdGenerator.GetAssemblyId a
+        member a.AssemblyId = AssemblyIdGenerator.GetManagedAssemblyId a
 
     type AssemblyId with
         member id.CanBeResolvedLocally (policy : AssemblyLoadPolicy) =
@@ -233,6 +238,12 @@ module internal Utils =
                 id.IsStrongAssembly
             else
                 false
+
+    type UnManagedAssembly =
+        static member Define(path : string, ?name : string) =
+            let name = match name with Some n -> n | None -> Path.GetFileNameWithoutExtension path
+            let id = AssemblyIdGenerator.GetUnManagedAssemblyId(name, path)
+            { Id = id ; Image = path ; Symbols = None ; Metadata = None }
 
     [<RequireQualifiedAccess>]
     module Convert =
@@ -286,7 +297,7 @@ module internal Utils =
         /// </summary>
         /// <param name="kvs">Input key-value pairs.</param>
         /// <param name="map">Input map.</param>
-        let addMany (kvs : seq<'K * 'V>) (map : Map<'K, 'V>) =
+        let addMany (map : Map<'K, 'V>) (kvs : seq<'K * 'V>) =
             let mutable map = map
             for (k,v) in kvs do
                 map <- map.Add(k,v)

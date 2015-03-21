@@ -125,7 +125,7 @@ module ``AppDomain Pool Tests`` =
     let ``06. Should create new AppDomains when conflicting dependencies.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
-        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] }]
+        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; IsManaged = true }]
         Seq.init maxDomains (fun i -> let mgr = pool.RequestAppDomain (mkDeps i) in mgr.Id)
         |> Seq.distinct
         |> Seq.length
@@ -135,7 +135,7 @@ module ``AppDomain Pool Tests`` =
     let ``07. Should fail when passing max domain threshold.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
-        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] }]
+        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; IsManaged = true }]
         shouldFailwith<_,OutOfResourcesException>(fun () ->
             for i in 1 .. maxDomains + 1 do
                 let mgr = pool.RequestAppDomain (mkDeps i)
@@ -145,7 +145,7 @@ module ``AppDomain Pool Tests`` =
     let ``08. Should successfully dispose idle domains when passing domain threshold.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
-        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] }]
+        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; IsManaged = true }]
         for i in 1 .. 3 * maxDomains do
             let mgr = pool.RequestAppDomain (mkDeps i)
             mgr.Reset()
@@ -154,7 +154,7 @@ module ``AppDomain Pool Tests`` =
     let ``09. Should automatically dispose instances in pool with timespan threshold.`` () =
         use pool = AppDomainPoolTester.Init(threshold = TimeSpan.FromSeconds 1.)
         let name = Guid.NewGuid().ToString()
-        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] }]
+        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; IsManaged = true }]
         for i in 1 .. maxDomains do
             let mgr = pool.RequestAppDomain (mkDeps i) in ()
 
@@ -166,7 +166,7 @@ module ``AppDomain Pool Tests`` =
     let ``10. Should not automatically dispose busy instances in pool with timespan threshold.`` () =
         use pool = AppDomainPoolTester.Init(threshold = TimeSpan.FromSeconds 1.)
         let name = Guid.NewGuid().ToString()
-        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] }]
+        let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; IsManaged = true }]
         for i in 1 .. maxDomains do
             let mgr = pool.RequestAppDomain (mkDeps i) in ()
             mgr.AddTask()

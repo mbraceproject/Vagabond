@@ -24,6 +24,8 @@ type VagabondState =
         Serializer : FsPicklerSerializer
         /// Assembly Cache instance
         AssemblyCache : AssemblyCache
+        /// user supplied unmanaged assembly dependencies
+        UnmanagedAssemblies : Map<AssemblyId, VagabondAssembly>
     }
 
 /// registers an assembly resolution handler based on AppDomain lookups;
@@ -37,7 +39,12 @@ let registerAssemblyResolutionHandler () =
 ///
 
 let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
+    // first, look up unmanaged assembly state
+    match state.UnmanagedAssemblies.TryFind id with
+    | Some va -> state, va
+    | None ->
 
+    // check if slice of a local dynamic assembly
     match state.CompilerState.TryFindSliceInfo id.FullName with
     // is dynamic assembly slice which requires static initialization
     | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
@@ -90,32 +97,36 @@ let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : A
             { state with AssemblyExportState = exportState }, va
 
     | None ->
-        // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain in that order; 
-        // this is because cache contains vagabond metadata while AppDomain does not.
-        match state.AssemblyExportState.TryFind id with
-        | Some va -> state, va
-        | None ->
-            match state.AssemblyCache.TryGetCachedAssemblyInfo id with
-            | Some pkg -> state, pkg
-            | None ->
-                // finally, attempt to resolve from AppDomain
-                let localAssembly =
-                    if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
-                    else tryGetLoadedAssembly id.FullName
 
-                match localAssembly with
-                | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
-                    let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
-                    raise <| VagabondException(msg)
+    // look up export state
+    match state.AssemblyExportState.TryFind id with
+    | Some va -> state, va
+    | None ->
 
-                | Some asmb -> 
-                    let va = state.AssemblyCache.CreateVagabondAssembly asmb
-                    let exportState = state.AssemblyExportState.Add(id, va)
-                    { state with AssemblyExportState = exportState }, va
+    // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain in that order; 
+    // this is because cache contains vagabond metadata while AppDomain does not.
+    match state.AssemblyCache.TryGetCachedAssemblyInfo id with
+    | Some pkg -> state, pkg
+    | None ->
 
-                | None ->
-                    let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
-                    raise <| VagabondException(msg)
+    // finally, attempt to resolve from AppDomain
+    let localAssembly =
+        if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
+        else tryGetLoadedAssembly id.FullName
+
+    match localAssembly with
+    | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
+        let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
+        raise <| VagabondException(msg)
+
+    | Some asmb -> 
+        let va = state.AssemblyCache.CreateVagabondAssembly asmb
+        let exportState = state.AssemblyExportState.Add(id, va)
+        { state with AssemblyExportState = exportState }, va
+
+    | None ->
+        let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
+        raise <| VagabondException(msg)
 
 
 ///
@@ -196,15 +207,23 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
         else
             success <| tryLoadStaticInitializers None va
 
+    let loadUnmanaged (va : VagabondAssembly) =
+        let result = Loaded(va.Id, true, None)
+        { state with UnmanagedAssemblies = state.UnmanagedAssemblies.Add(va.Id, va) }, result
+
     try
-        match state.AssemblyImportState.TryFind va.Id with
-        // dynamic assembly slice generated in local process
-        | None when state.CompilerState.IsLocalDynamicAssemblySlice va.Id -> success <| Loaded (va.Id, true, None)
-        // assembly not registered in state, attempt to load now
-        | None 
-        | Some (NotLoaded _) 
-        | Some (LoadFault _) -> loadAssembly va
-        | Some (Loaded(id, true, Some info)) -> success <| tryLoadStaticInitializers (Some info) va
-        | Some (Loaded _ as result) -> state, result
+        if va.Id.IsManaged then
+            match state.AssemblyImportState.TryFind va.Id with
+            // dynamic assembly slice generated in local process
+            | None when state.CompilerState.IsLocalDynamicAssemblySlice va.Id -> success <| Loaded (va.Id, true, None)
+            // assembly not registered in state, attempt to load now
+            | None 
+            | Some (NotLoaded _) 
+            | Some (LoadFault _) -> loadAssembly va
+            | Some (Loaded(id, true, Some info)) -> success <| tryLoadStaticInitializers (Some info) va
+            | Some (Loaded _ as result) -> state, result
+        else
+            // add assembly to unmanaged dependency state
+            loadUnmanaged va
 
     with e -> state, LoadFault(va.Id, e)

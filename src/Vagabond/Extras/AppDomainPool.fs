@@ -89,7 +89,7 @@ module private Impl =
             { Id = id; Manager = manager; AppDomain = appDomain; Dependencies = dependencies }
 
         member adli.AddDependencies (dependencies : seq<AssemblyId>) =
-            { adli with Dependencies = Map.addMany (dependencies |> Seq.map (fun d -> d.FullName, d)) adli.Dependencies }
+            { adli with Dependencies = dependencies |> Seq.map (fun d -> d.FullName, d) |> Map.addMany adli.Dependencies }
 
 
     /// Globad AppDomain load state

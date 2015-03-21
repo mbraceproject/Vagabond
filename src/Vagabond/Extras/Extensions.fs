@@ -4,8 +4,5 @@
 module Extensions =
 
     type AssemblyId with
-        /// Generates a unique filename for supplied AssemblyId
-        member id.FileName =
-            let name = id.GetName().Name |> stripInvalidFileChars
-            let hash = Convert.toBase32String id.ImageHash
-            sprintf "%s-%s.dll" name hash
+        /// Gets a unique assebly filename for supplied AssemblyId
+        member id.AssemblyFileName = id.GetAssemblyFileName()

@@ -291,6 +291,12 @@ module internal Utils =
                 id.IsStrongAssembly
             else
                 false
+        
+        /// Gets a unique assembly file name based on provided assembly id
+        member id.GetAssemblyFileName() =
+            let name = id.GetName().Name |> stripInvalidFileChars
+            let hash = Convert.toBase32String id.ImageHash
+            sprintf "%s-%s.dll" name hash
 
     type UnManagedAssembly =
         static member Define(path : string, ?name : string) =

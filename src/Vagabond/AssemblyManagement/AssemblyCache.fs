@@ -21,9 +21,8 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
 
     // gets a unique file name in cache directory that corresponds to assembly id.
     let getCachedAssemblyPath (id : AssemblyId) =
-        let hash = Convert.toBase32String id.ImageHash
-        let name = sprintf "%s-%s" (id.GetName().Name |> stripInvalidFileChars) hash
-        Path.Combine(cacheDirectory, name + ".dll")
+        let fileName = id.GetAssemblyFileName()
+        Path.Combine(cacheDirectory, fileName)
 
     /// gets metadata file path for given cached assembly
     static let getMetadataPath path = Path.ChangeExtension(path, ".vagabond")

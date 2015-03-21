@@ -355,3 +355,10 @@ type Vagabond =
     static member ComputeAssemblyId (assembly : Assembly) : AssemblyId = 
         let _ = assembly.Location // force exception in case of dynamic assembly
         assembly.AssemblyId
+
+    /// <summary>
+    ///     Computes unique id's for a collection of static assemblies.
+    /// </summary>
+    /// <param name="assemblies"></param>
+    static member ComputeAssemblyIds (assemblies : seq<Assembly>) : AssemblyId list =
+        assemblies |> Seq.map Vagabond.ComputeAssemblyId |> Seq.toList

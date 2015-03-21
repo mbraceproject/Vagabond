@@ -17,20 +17,17 @@ open Nessos.Vagabond.DependencyAnalysis
 
 /// creates a path for provided assembly name so that
 /// invalid characters are stripped and overwrites are avoided.
-let getAssemblyPath =
-    let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape
-    let regex = new Regex(sprintf "[%s]" invalidChars, RegexOptions.Compiled)
-    fun (path : string) (name : string) ->
-        let stripped = regex.Replace(name, "")
-        let rec getSuffix i =
-            let path = 
-                if i = 0 then Path.Combine(path, stripped + ".dll")
-                else Path.Combine(path, sprintf "%s-%d.dll" name i)
+let getAssemblyPath (path : string) (name : string) =
+    let stripped = stripInvalidFileChars name
+    let rec getSuffix i =
+        let path = 
+            if i = 0 then Path.Combine(path, stripped + ".dll")
+            else Path.Combine(path, sprintf "%s-%d.dll" name i)
 
-            if File.Exists path then getSuffix (i+1)
-            else path
+        if File.Exists path then getSuffix (i+1)
+        else path
 
-        getSuffix 0 
+    getSuffix 0 
 
 /// create an initial, empty compiler state
 

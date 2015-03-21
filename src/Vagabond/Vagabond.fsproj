@@ -64,6 +64,7 @@
     <Compile Include="AssemblyManagement\AssemblyManagement.fs" />
     <Compile Include="AssemblyManagement\Control.fs" />
     <Compile Include="Vagabond.fs" />
+    <Compile Include="Extras\Extensions.fs" />
     <Compile Include="Extras\AppDomainPool.fs" />
     <Compile Include="Extras\AssemblyProtocols.fs" />
     <Compile Include="Extras\ExportableAssembly.fs" />

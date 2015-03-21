@@ -1,3 +1,4 @@
+* 0.5.1 - Improve assembly exportation API, add support for unmanaged assemblies.
 * 0.5.0 - Refactor API, pickle vagabond data to files, add compression, bug fixes.
 * 0.3.2 - Update AppDomainPool, add examples and tests.
 * 0.3.1 - Implement AppDomainPool.

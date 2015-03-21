@@ -13,7 +13,7 @@ type IRemoteAssemblyReceiver =
 /// Defines an abstract assembly exporter; to be used by VagabondClient.
 type IRemoteAssemblyPublisher =
     /// receives a collection of dependencies required by remote publisher.
-    abstract GetRequiredAssemblyInfo : unit -> Async<AssemblyId list>
+    abstract GetRequiredAssemblyInfo : unit -> Async<(AssemblyId * VagabondMetadata option) list>
     /// request assembly packages from publisher.
     abstract PullAssemblies : AssemblyId list -> Async<VagabondAssembly list>
 
@@ -24,12 +24,11 @@ type VagabondManager with
     /// </summary>
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="assemblies">Assemblies to be exported.</param>
-    member v.SubmitAssemblies(receiver : IRemoteAssemblyReceiver, assemblies : seq<Assembly>) = async {
-        let index = assemblies |> Seq.map (fun a -> a.AssemblyId, a) |> Map.ofSeq
+    member v.SubmitAssemblies(receiver : IRemoteAssemblyReceiver, dependencies : seq<AssemblyId>) = async {
+        let dependencies = Seq.toList dependencies
 
         // Step 1. submit assembly identifiers to receiver; get back loaded state
-        let headers = index |> Map.toList |> List.map fst
-        let! info = receiver.GetLoadedAssemblyInfo headers
+        let! info = receiver.GetLoadedAssemblyInfo dependencies
         
         // Step 2. detect dependencies that require posting
         let tryGetAssemblyPackage (info : AssemblyLoadInfo) =
@@ -67,7 +66,7 @@ type VagabondManager with
     /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
     member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool) =
         let assemblies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
-        v.SubmitAssemblies(receiver, assemblies)
+        v.SubmitAssemblies(receiver, assemblies |> List.map(fun a -> a.AssemblyId))
 
 
     /// <summary>
@@ -81,14 +80,18 @@ type VagabondManager with
         let! dependencies = publisher.GetRequiredAssemblyInfo()
 
         // step 2. resolve dependencies that are missing from client
-        let tryCheckLoadStatus (id : AssemblyId) =
+        let tryCheckLoadStatus (id : AssemblyId, metadata : VagabondMetadata option) =
             if v.IsLocalDynamicAssemblySlice id then None
             else
-                match v.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy) with
-                | NotLoaded id
-                | LoadFault (id,_) -> Some id
-                | Loaded (id,_, Some info) when info.IsPartial -> Some id
-                | Loaded _ -> None
+                match v.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy), metadata with
+                | NotLoaded id, _
+                | LoadFault (id,_), _ -> Some id
+                // local state missing required metadata
+                | Loaded(id, _, None), Some _ -> Some id
+                // local state contains partial stat initializers and incoming is of next generation
+                | Loaded(id, _, Some md), Some md' when md.IsPartial && md.Generation < md'.Generation -> Some id
+                // local state contains dependency, filter out
+                | Loaded _, _ -> None
 
         let missing = dependencies |> List.choose tryCheckLoadStatus
 

@@ -163,9 +163,29 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '51', 51)" onmouseover="showTip(event, '51', 51)">
-            Initialize(...)
+            GetFileName(id)
           </code>
           <div class="tip" id="51">
+            <strong>Signature:</strong> id:AssemblyId -&gt; string<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L392-392" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Generates a unique file name that corresponds to the particular assembly id.
+Useful for caching implementations.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
+            Initialize(...)
+          </code>
+          <div class="tip" id="52">
             <strong>Signature:</strong> (ignoredAssemblies:seq&lt;Assembly&gt; * cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option * compressStaticData:bool option) -&gt; VagabondManager<br />
                       </div>
         </td>
@@ -181,10 +201,10 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
+          <code onmouseout="hideTip(event, '53', 53)" onmouseover="showTip(event, '53', 53)">
             Initialize(...)
           </code>
-          <div class="tip" id="52">
+          <div class="tip" id="53">
             <strong>Signature:</strong> (cacheDirectory:string option * profiles:IDynamicAssemblyProfile list option * typeConverter:ITypeNameConverter option * isIgnoredAssembly:(Assembly -&gt; bool) option * requireLoadedInAppDomain:bool option * loadPolicy:AssemblyLoadPolicy option * compressStaticData:bool option) -&gt; VagabondManager<br />
                       </div>
         </td>

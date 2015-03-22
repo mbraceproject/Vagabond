@@ -357,7 +357,7 @@ type Vagabond =
     /// <summary>
     ///     Resolves all assembly dependencies of given assemblies.
     /// </summary>
-    /// <param name="assemblies"></param>
+    /// <param name="assemblies">Starting assembly dependencies.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="requireLoadedInAppDomain">
     ///     Demand all transitive dependencies be loadable in current AppDomain.
@@ -372,7 +372,7 @@ type Vagabond =
     /// <summary>
     ///     Computes a unique id for given static assembly.
     /// </summary>
-    /// <param name="assembly">a static assembly.</param>
+    /// <param name="assembly">Input static assembly.</param>
     static member ComputeAssemblyId (assembly : Assembly) : AssemblyId = 
         let _ = assembly.Location // force exception in case of dynamic assembly
         assembly.AssemblyId
@@ -380,6 +380,13 @@ type Vagabond =
     /// <summary>
     ///     Computes unique id's for a collection of static assemblies.
     /// </summary>
-    /// <param name="assemblies"></param>
+    /// <param name="assemblies">Input static assemblies</param>
     static member ComputeAssemblyIds (assemblies : seq<Assembly>) : AssemblyId list =
         assemblies |> Seq.map Vagabond.ComputeAssemblyId |> Seq.toList
+
+    /// <summary>
+    ///     Generates a unique file name that corresponds to the particular assembly id.
+    ///     Useful for caching implementations.
+    /// </summary>
+    /// <param name="id">Input assembly identifier</param>
+    static member GetFileName(id : AssemblyId) : string = id.GetFileName()

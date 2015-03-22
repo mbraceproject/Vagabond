@@ -21,11 +21,10 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
 
     // gets a unique file name in cache directory that corresponds to assembly id.
     let getCachedAssemblyPath (id : AssemblyId) =
-        let fileName = id.GetAssemblyFileName()
-        Path.Combine(cacheDirectory, fileName)
+        Path.Combine(cacheDirectory, id.GetFileName() + ".dll")
 
     /// gets metadata file path for given cached assembly
-    static let getMetadataPath path = Path.ChangeExtension(path, ".vagabond")
+    static let getMetadataPath path = Path.ChangeExtension(path, ".vmetadata")
     /// gets symbols file path for given cached assembly
     static let getSymbolsPath path = 
         if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
@@ -35,7 +34,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
     static let getStaticInitPath gen path = 
         let directory = Path.GetDirectoryName path
         let fileName = Path.GetFileNameWithoutExtension path
-        Path.Combine(directory, sprintf "%s-%d.init" (Path.GetFileNameWithoutExtension path) gen)
+        Path.Combine(directory, sprintf "%s-%d.vdata" (Path.GetFileNameWithoutExtension path) gen)
 
     /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {

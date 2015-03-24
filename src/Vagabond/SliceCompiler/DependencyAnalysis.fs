@@ -7,6 +7,7 @@ open System.Reflection
 
 open Nessos.FsPickler
 
+open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyParser
 open Nessos.Vagabond.SliceCompilerTypes
 

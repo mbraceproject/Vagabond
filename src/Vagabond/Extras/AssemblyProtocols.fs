@@ -3,6 +3,8 @@ module Nessos.Vagabond.AssemblyProtocols
 
 open System.Reflection
 
+open Nessos.Vagabond.AssemblyNaming
+
 /// Defines an abstract assembly load target; to be used by VagabondServer.
 type IRemoteAssemblyReceiver =
     /// receives the assembly load state of the remote party for the given id's.

@@ -9,6 +9,7 @@ open Nessos.FsPickler
 
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
+open Nessos.Vagabond.AssemblyNaming
 
 /// A static initializer comprises of a static field and its contained value
 type StaticInitializer = FieldInfo * obj

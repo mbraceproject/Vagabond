@@ -3,7 +3,6 @@
 open System
 open System.IO
 open System.Collections.Generic
-open System.Text.RegularExpressions
 open System.Reflection
 
 open Mono.Cecil
@@ -12,6 +11,7 @@ open Nessos.FsPickler
 
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompilerTypes
+open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyParser
 open Nessos.Vagabond.DependencyAnalysis
 
@@ -29,19 +29,9 @@ let getAssemblyPath (path : string) (name : string) =
 
     getSuffix 0 
 
-/// create an initial, empty compiler state
 
-let initCompilerState uuid (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
-    let mkSliceName (name : string) (id : int) = sprintf "%s_%O_%d" name uuid id
-    let assemblyRegex = Regex(sprintf "^(.*)_%O_([0-9]+)" uuid, RegexOptions.Compiled)
-    let tryExtractDynamicAssemblyId (assemblyName : string) =
-        let m = assemblyRegex.Match(assemblyName)
-        if m.Success then 
-            let dynamicName = m.Groups.[1].Value
-            let sliceId = int <| m.Groups.[2].Value
-            Some (dynamicName, sliceId)
-        else
-            None
+/// create an initial, empty compiler state
+let initCompilerState (uuid : Guid) (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
     {
         CompilerId = uuid
         Profiles = profiles
@@ -49,13 +39,12 @@ let initCompilerState uuid (profiles : IDynamicAssemblyProfile list) (outDirecto
 
         DynamicAssemblies = Map.empty
 
-        TryGetDynamicAssemblyId = tryExtractDynamicAssemblyId
-        CreateAssemblySliceName = mkSliceName
+        TryGetDynamicAssemblyId = AssemblySliceName.tryParseLocalDynamicAssemblySlice uuid
+        CreateAssemblySliceName = AssemblySliceName.mkSliceName uuid
     }
 
 
 /// compiles a slice of given dynamic assembly snapshot
-
 let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
                                 (assemblyState : DynamicAssemblyState)
                                 (typeData : Map<string, TypeParseInfo>)
@@ -81,7 +70,6 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
 
     let sliceInfo = 
         { 
-            SourceId = state.CompilerId
             Assembly = assembly 
             DynamicAssemblyQualifiedName = assemblyState.DynamicAssembly.FullName 
             SliceId = sliceId 
@@ -108,8 +96,8 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
 
     sliceInfo, state
 
-/// compiles a collection of assemblies
 
+/// compiles a collection of assemblies
 let compileDynamicAssemblySlices ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
     try
         // resolve dynamic assembly dependency graph

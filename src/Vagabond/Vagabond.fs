@@ -7,6 +7,7 @@ open System.Reflection
 open Nessos.FsPickler
 
 open Nessos.Vagabond.Utils
+open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.DependencyAnalysis
 open Nessos.Vagabond.Control
 

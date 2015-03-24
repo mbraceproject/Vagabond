@@ -14,8 +14,6 @@ type DynamicTypeInfo =
 /// Contains information on compiled dynamic assembly slice
 and DynamicAssemblySlice =
     {
-        /// Vagabond instance unique identifier
-        SourceId : Guid
         /// Qualified name of original dynamic assembly
         DynamicAssemblyQualifiedName : string
         /// Slice serial number

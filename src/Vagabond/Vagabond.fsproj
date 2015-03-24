@@ -56,6 +56,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="SliceCompiler\DynamicAssemblyProfile.fs" />
     <Compile Include="SliceCompiler\SliceCompilerTypes.fs" />
+    <Compile Include="SliceCompiler\AssemblyNaming.fs" />
     <Compile Include="SliceCompiler\Serialization.fs" />
     <Compile Include="SliceCompiler\AssemblyParser.fs" />
     <Compile Include="SliceCompiler\DependencyAnalysis.fs" />

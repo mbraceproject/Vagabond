@@ -29,7 +29,7 @@ type IDynamicAssemblyProfile =
     abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
 
 
-
+/// Default dynamic assembly profile; no erasure, no static initialization.
 type internal DefaultDynamicAssemblyProfile () =
     interface IDynamicAssemblyProfile with
         member __.IsMatch _ = raise <| new NotSupportedException()

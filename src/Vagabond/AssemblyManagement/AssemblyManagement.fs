@@ -9,6 +9,7 @@ open Nessos.FsPickler
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompilerTypes
+open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyCache
 
 /// Immutable Vagabond state object

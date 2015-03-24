@@ -134,7 +134,6 @@ module internal Utils =
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
     /// try get assembly that is loaded in current appdomain
-
     let tryGetLoadedAssembly =
         let load fullName =
             let results =
@@ -150,7 +149,6 @@ module internal Utils =
         tryConcurrentMemoize load
 
     /// try get assembly loaded in appdomain or load it now
-
     let tryLoadAssembly (fullName : string) =
         match tryGetLoadedAssembly fullName with
         | Some _ as a -> a
@@ -159,7 +157,6 @@ module internal Utils =
             with :? FileNotFoundException | :? FileLoadException -> None
 
     // toplogical sorting for DAGs
-
     type Graph<'T> = ('T * 'T list) list
 
     /// Attempt to compute a topological sorting for graph if DAG,
@@ -255,57 +252,6 @@ module internal Utils =
                 b.Append (encodingIndex.[int idx]) |> ignore
 
             b.ToString ()
-
-    /// computes a unique assembly identifier
-
-    type AssemblyIdGenerator private () =
-        static let hashCache = new ConcurrentDictionary<string, byte []> ()
-        static let hashAlgorithm = SHA256Managed.Create()
-        static let hostId = Guid.NewGuid().ToByteArray()
-
-        static let getImageHash(path : string) =
-            hashCache.GetOrAdd(path, fun path -> use fs = File.OpenRead path in hashAlgorithm.ComputeHash(fs))
-
-        static member GetManagedAssemblyId(assembly : Assembly) =
-            let hash =
-                if assembly.IsDynamic then
-                    let this = System.Text.Encoding.Default.GetBytes assembly.FullName
-                    Array.append hostId this
-                else
-                    getImageHash assembly.Location
-
-            { FullName = assembly.FullName ; ImageHash = hash ; IsManaged = true }
-
-        static member GetUnManagedAssemblyId(name : string, path : string) =
-            { FullName = name ; ImageHash = getImageHash path ; IsManaged = false }
-
-    type Assembly with 
-        member a.AssemblyId = AssemblyIdGenerator.GetManagedAssemblyId a
-
-    type AssemblyId with
-        /// checks if provided assembly can be resolved from local environment
-        /// based on the provided load policy
-        member id.CanBeResolvedLocally (policy : AssemblyLoadPolicy) =
-            if policy.HasFlag AssemblyLoadPolicy.ResolveAll then true
-            elif policy.HasFlag AssemblyLoadPolicy.ResolveStrongNames then 
-                id.IsStrongAssembly
-            else
-                false
-        
-        /// Gets a unique assembly file name based on provided assembly id
-        member id.GetFileName() =
-            let an = id.GetName()
-            let name = stripInvalidFileChars an.Name
-            let version = an.Version.ToString()
-            let hash = Convert.toBase32String id.ImageHash
-            sprintf "%s-v%s-%s" name version hash
-
-    type UnManagedAssembly =
-        static member Define(path : string, ?name : string) =
-            let name = match name with Some n -> n | None -> Path.GetFileNameWithoutExtension path
-            let id = AssemblyIdGenerator.GetUnManagedAssemblyId(name, path)
-            { Id = id ; Image = path ; Symbols = None ; Metadata = None }
-
 
     module Map =
         

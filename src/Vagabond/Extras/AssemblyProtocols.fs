@@ -66,9 +66,18 @@ type VagabondManager with
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
     /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
-    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool) =
-        let assemblies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation)
-        v.SubmitAssemblies(receiver, assemblies |> List.map(fun a -> a.AssemblyId))
+    /// <param name="includeNativeAssemblies">Include declared native assemblies if specified. Defaults to true.</param>
+    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool, ?includeNativeAssemblies:bool) = async {
+        let includeNativeAssemblies = defaultArg includeNativeAssemblies true
+        let managedDependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation) |> List.map (fun a -> a.AssemblyId)
+        let dependencies = 
+            if includeNativeAssemblies then 
+                let unmanaged = v.UnManagedDependencies |> List.map (fun um -> um.Id)
+                List.append unmanaged managedDependencies
+            else managedDependencies
+
+        return! v.SubmitAssemblies(receiver, dependencies)
+    }
 
 
     /// <summary>

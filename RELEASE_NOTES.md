@@ -1,3 +1,4 @@
+* 0.5.3 - Use shorter file names in assembly cache.
 * 0.5.2 - Implement Vagabond.GetFileName for assembly ids.
 * 0.5.1 - Improve assembly exportation API, add support for unmanaged assemblies.
 * 0.5.0 - Refactor API, pickle vagabond data to files, add compression, bug fixes.

@@ -4,6 +4,7 @@ open NUnit.Framework
 
 open Nessos.Vagabond
 
+#nowarn "1571"
 
 [<TestFixture>]
 module ``Generic Vagabond API tests`` =
@@ -12,14 +13,14 @@ module ``Generic Vagabond API tests`` =
     let ``Unmanaged Assembly loading`` () =
         let path = typeof<int>.Assembly.Location
         let instance = Vagabond.Initialize()
-        let info = instance.IncludeUnmanagedAssembly(path)
+        let info = instance.RegisterNativeDependency(path)
         info.Id.IsManaged |> shouldEqual false
         info.Image |> shouldEqual path
         info.Symbols |> shouldEqual None
         Option.isNone info.Metadata |> shouldEqual true
-        let info' = instance.UnManagedDependencies.[0]
+        let info' = instance.NativeDependencies.[0]
         info'.Id |> shouldEqual info.Id
         let instance' = Vagabond.Initialize()
         let loadInfo = instance'.LoadVagabondAssembly info
-        let info'' = instance'.UnManagedDependencies.Head
+        let info'' = instance'.NativeDependencies.Head
         info''.Id |> shouldEqual info.Id

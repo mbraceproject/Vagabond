@@ -25,8 +25,8 @@ type VagabondState =
         Serializer : FsPicklerSerializer
         /// Assembly Cache instance
         AssemblyCache : AssemblyCache
-        /// user supplied unmanaged assembly dependencies
-        UnmanagedAssemblies : Map<AssemblyId, VagabondAssembly>
+        /// Native assembly manager
+        NativeAssemblyManager : NativeAssemblyManager
     }
 
 /// registers an assembly resolution handler based on AppDomain lookups;
@@ -41,7 +41,7 @@ let registerAssemblyResolutionHandler () =
 
 let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
     // first, look up unmanaged assembly state
-    match state.UnmanagedAssemblies.TryFind id with
+    match state.NativeAssemblyManager.TryFind id with
     | Some va -> state, va
     | None ->
 
@@ -187,7 +187,6 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
         | Some _, None -> Loaded(pkg.Id, true, previous)
         // silently discard if loaded generation larger than current
         | Some info, Some (md,_) when info.Generation > md.Generation -> Loaded(pkg.Id, true, Some info)
-
         // perform the static initialization
         | _, Some (md, init) ->
             let initializers = state.AssemblyCache.ReadStaticInitializers init
@@ -208,10 +207,6 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
         else
             success <| tryLoadStaticInitializers None va
 
-    let loadUnmanaged (va : VagabondAssembly) =
-        let result = Loaded(va.Id, true, None)
-        { state with UnmanagedAssemblies = state.UnmanagedAssemblies.Add(va.Id, va) }, result
-
     try
         if va.Id.IsManaged then
             match state.AssemblyImportState.TryFind va.Id with
@@ -225,6 +220,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
             | Some (Loaded _ as result) -> state, result
         else
             // add assembly to unmanaged dependency state
-            loadUnmanaged va
+            let result = state.NativeAssemblyManager.Load va
+            state, result
 
     with e -> state, LoadFault(va.Id, e)

@@ -197,12 +197,6 @@ module internal Utils =
 
             new MailboxProcessor<_>(loop init, ?cancellationToken = ct)
 
-    /// Add path to 'PATH' environment variable
-    let addPathtoEnvironment (path : string) =
-        let envPath = Environment.GetEnvironmentVariable("PATH")
-        if envPath.Contains (";" + path) then ()
-        else Environment.SetEnvironmentVariable("PATH", envPath + ";" + path)
-
     /// Strips invalid character from a candidate filename
     let stripInvalidFileChars =
         let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape

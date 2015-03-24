@@ -16,7 +16,7 @@ open Nessos.Vagabond
 type VagabondConfig private () =
 
     static let manager =
-        let cachePath = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%O" <| Guid.NewGuid())
+        let cachePath = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%s" <| Guid.NewGuid().ToString("N"))
         let _ = Directory.CreateDirectory cachePath
         Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 

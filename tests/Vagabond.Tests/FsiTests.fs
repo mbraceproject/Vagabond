@@ -484,11 +484,11 @@ module FsiTests =
         // register native dll's
 
         let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
-        let libiomp5md = Path.Combine(nativeDir, "libiomp5md.dll")
-        let mkl = Path.Combine(nativeDir, "MathNet.Numerics.MKL.dll")
+        let libiomp5md = nativeDir + "libiomp5md.dll"
+        let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
-        fsi.EvalInteraction <| "client.RegisterNativeAssembly " + getPathLiteral libiomp5md
-        fsi.EvalInteraction <| "client.RegisterNativeAssembly " + getPathLiteral mkl
+        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
+        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
 
         let code' = """
         let useNativeMKL () = Control.UseNativeMKL()

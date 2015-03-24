@@ -47,15 +47,16 @@ type AssemblyIdGenerator private () =
                 let this = System.Text.Encoding.Default.GetBytes assembly.FullName
                 Array.append hostId this
             else
-                // memoize managed assemblies
+                // memoize managed assembly hashing
                 getMemoizedHash assembly.Location
 
         { FullName = assembly.FullName ; ImageHash = hash ; IsManaged = true }
 
-    /// Computes the assembly id for provided unmanaged assembly.
-    static member GetUnManagedAssemblyId(name : string, path : string) =
-        // do not memoize unmanaged assemblies?
-        { FullName = name ; ImageHash = computeHash path ; IsManaged = false }
+    /// Unmemoized, unmanaged assembly id generator
+    static member ComputeUnmanagedAssemblyId (path : string) =
+        let name = Path.GetFileName path
+        let hash = computeHash path
+        { FullName = name ; ImageHash = hash ; IsManaged = false }
 
 
 module AssemblySliceName =
@@ -129,9 +130,8 @@ type AssemblyId with
         |> stripInvalidFileChars
 
 
-type UnManagedAssembly =
+type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file
-    static member Define(path : string, ?name : string) =
-        let name = match name with Some n -> n | None -> Path.GetFileNameWithoutExtension path
-        let id = AssemblyIdGenerator.GetUnManagedAssemblyId(name, path)
+    static member CreateUnmanaged(path : string) =
+        let id = AssemblyIdGenerator.ComputeUnmanagedAssemblyId path
         { Id = id ; Image = path ; Symbols = None ; Metadata = None }

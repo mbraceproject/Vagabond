@@ -25,13 +25,10 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
         | Some d when Directory.Exists d -> d
         | Some d -> raise <| new DirectoryNotFoundException(d)
         | None -> 
-            let subdir = sprintf "vagabond-%O" uuid
+            let subdir = sprintf "vagabond-%s" <| uuid.ToString("N")
             let path = Path.Combine(Path.GetTempPath(), subdir)
             let _ = Directory.CreateDirectory(path)
             path
-
-    // add cache path to environment for loading unmanaged assemblies
-    do addPathtoEnvironment cacheDirectory
 
     let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
     let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
@@ -74,13 +71,14 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     /// </summary>
     /// <param name="path">Path to the unmanaged assembly.</param>
     /// <param name="name">Identifier for unmanaged assembly. Defaults to the assembly file name.</param>
-    member __.IncludeUnmanagedAssembly(path : string, ?name : string) =
-        let va = UnManagedAssembly.Define(path, ?name = name)
-        controller.PostAndReply(fun ch -> IncludeUnmanagedAssemblyDependencies([va], ch))
+    [<CompilerMessage("Native assembly support is an experimental feature of Vagabond.", 1571)>]
+    member __.RegisterNativeDependency(path : string) : VagabondAssembly =
+        let va = VagabondAssembly.CreateUnmanaged(path)
+        controller.PostAndReply(fun ch -> RegisterNativeDependency(va, ch))
         va
 
-    /// Returns all unmanaged dependencies for vagabond instance.
-    member __.UnManagedDependencies = controller.UnmanagedAssemblies
+    /// Returns all unmanaged dependencies registered to Vagabond instance.
+    member __.NativeDependencies : VagabondAssembly list = controller.NativeDependencies
 
     //
     //  #region Assembly compilation

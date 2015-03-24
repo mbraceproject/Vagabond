@@ -13,6 +13,8 @@ open Nessos.Vagabond
 open Nessos.Vagabond.AssemblyProtocols
 open Nessos.Vagabond.ExportableAssembly
 
+#nowarn "1571"
+
 type internal ServerMsg =
     | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
     | LoadAssemblies of ExportableAssembly list * IReplyChannel<AssemblyLoadInfo list>
@@ -103,9 +105,9 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     /// Kills thunk server if local process
     member __.Kill() = proc |> Option.iter (fun p -> p.Kill())
     /// Register a native assembly for instance
-    member __.RegisterNativeAssembly(path : string) = VagabondConfig.Instance.IncludeUnmanagedAssembly path |> ignore
+    member __.RegisterNativeDependency(path : string) = VagabondConfig.Instance.RegisterNativeDependency path |> ignore
     /// Gets registered native assemblies for instance
-    member __.NativeAssemblies = VagabondConfig.Instance.UnManagedDependencies |> List.map (fun d -> d.Image)
+    member __.NativeAssemblies = VagabondConfig.Instance.NativeDependencies |> List.map (fun d -> d.Image)
 
     /// Gets or sets the server executable location.
     static member Executable

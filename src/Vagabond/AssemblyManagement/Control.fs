@@ -23,8 +23,8 @@ type VagabondMessage =
     | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
-    | IncludeUnmanagedAssemblyDependencies of VagabondAssembly list * ReplyChannel<unit>
-    | GetUnmanagedAssemblyDependencies of ReplyChannel<Map<AssemblyId, VagabondAssembly>>
+    | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
+    | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly list>
 
 /// A mailboxprocessor wrapper for handling vagabond state
 type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
@@ -40,13 +40,14 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
     let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
     let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler, compressStaticData)
+    let nativeAssemblyManager = new NativeAssemblyManager(cacheDirectory)
 
     let initState =
         {
             CompilerState = !compilerState
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
-            UnmanagedAssemblies = Map.empty
+            NativeAssemblyManager = nativeAssemblyManager
 
             Serializer = defaultPickler
             AssemblyCache = assemblyCache
@@ -94,7 +95,6 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
                 // a reply is given; this is to eliminate a certain class of race conditions.
                 compilerState := compState
                 do rc.Reply result
-
                 return { state with CompilerState = compState }
 
             with e ->
@@ -104,9 +104,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
         | GetVagabondAssembly (policy, id, rc) ->
             try
                 let state', va = exportAssembly state policy id
-
                 rc.Reply va
-
                 return state'
 
             with e ->
@@ -116,9 +114,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
         | LoadAssembly (policy, va, rc) ->
             try
                 let state', result = loadAssembly state policy va
-
                 rc.Reply result
-
                 return state'
 
             with e ->
@@ -128,22 +124,24 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
         | GetAssemblyLoadInfo (policy, id, rc) ->
             try
                 let state', result = getAssemblyLoadInfo state policy id
-
                 rc.Reply result
-
                 return state'
 
             with e ->
                 rc.ReplyWithError e
                 return state
 
-        | IncludeUnmanagedAssemblyDependencies(dependencies, rc) ->
-            let state' = { state with UnmanagedAssemblies = dependencies |> Seq.map (fun d -> d.Id, d) |> Map.addMany state.UnmanagedAssemblies }
-            rc.Reply (())
-            return state'
+        | RegisterNativeDependency(assembly, rc) ->
+            try
+                let loadInfo = state.NativeAssemblyManager.Load assembly
+                rc.Reply (())
+            with e ->
+                rc.ReplyWithError e
 
-        | GetUnmanagedAssemblyDependencies rc ->
-            rc.Reply state.UnmanagedAssemblies
+            return state
+
+        | GetRegisteredNativeDependencies rc ->
+            rc.Reply state.NativeAssemblyManager.LoadedNativeAssemblies
             return state
     }
 
@@ -162,8 +160,4 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
     member __.PostAndAsyncReply msgB = actor.PostAndAsyncReply msgB
     member __.PostAndReply msgB = actor.PostAndReply msgB
-    member __.UnmanagedAssemblies = 
-        actor.PostAndReply GetUnmanagedAssemblyDependencies 
-        |> Map.toSeq 
-        |> Seq.map snd 
-        |> Seq.toList
+    member __.NativeDependencies = actor.PostAndReply GetRegisteredNativeDependencies

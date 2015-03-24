@@ -72,7 +72,7 @@ type VagabondManager with
         let managedDependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation) |> List.map (fun a -> a.AssemblyId)
         let dependencies = 
             if includeNativeAssemblies then 
-                let unmanaged = v.UnManagedDependencies |> List.map (fun um -> um.Id)
+                let unmanaged = v.NativeDependencies |> List.map (fun um -> um.Id)
                 List.append unmanaged managedDependencies
             else managedDependencies
 

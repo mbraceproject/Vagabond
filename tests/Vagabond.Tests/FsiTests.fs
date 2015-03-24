@@ -14,9 +14,6 @@ open Nessos.Vagabond
 [<TestFixture>]
 module FsiTests =
 
-    // leave this to force static dependency on LinqOptimizer tp ensure it is copied to the build directory
-    let private linqOptBinder () = Nessos.LinqOptimizer.FSharp.Query.ofSeq [] |> ignore
-
     // by default, NUnit copies test assemblies to a temp directory
     // use Directory.GetCurrentDirectory to gain access to the original build directory
     let private buildDirectory = Directory.GetCurrentDirectory()
@@ -103,10 +100,13 @@ module FsiTests =
                 "Mono.Cecil.dll"
                 "Vagabond.dll"
                 "Thespian.dll"
-                "LinqOptimizer.Base.dll"
-                "LinqOptimizer.Core.dll"
-                "LinqOptimizer.FSharp.dll"
                 "ThunkServer.exe"
+
+                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
+                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
+                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
+                "../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+                "../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
             ]
 
         fsi.EvalInteraction "open ThunkServer"
@@ -462,3 +462,37 @@ module FsiTests =
 
         fsi.EvalInteraction code
         fsi.EvalExpression "sum" |> shouldEqual 192.
+
+
+    [<Test>]
+    let ``19. Native dependencies`` () =
+        let fsi = FsiSession.Value
+
+        let code = """
+        open MathNet.Numerics
+        open MathNet.Numerics.LinearAlgebra
+
+        let getRandomDeterminant () =
+            let m = Matrix<double>.Build.Random(200,200) 
+            m.LU().Determinant
+
+        client.EvaluateThunk getRandomDeterminant
+        """
+
+        fsi.EvalInteraction code
+
+        // register native dll's
+
+        let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
+        let libiomp5md = Path.Combine(nativeDir, "libiomp5md.dll")
+        let mkl = Path.Combine(nativeDir, "MathNet.Numerics.MKL.dll")
+
+        fsi.EvalInteraction <| "client.RegisterNativeAssembly " + getPathLiteral libiomp5md
+        fsi.EvalInteraction <| "client.RegisterNativeAssembly " + getPathLiteral mkl
+
+        let code' = """
+        let useNativeMKL () = Control.UseNativeMKL()
+        client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
+        """
+
+        fsi.EvalInteraction code'

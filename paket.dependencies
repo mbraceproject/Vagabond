@@ -1,6 +1,9 @@
 source https://www.nuget.org/api/v2
 source C:\Users\eirik\SkyDrive\Development\Nuget
 
+nuget MathNet.Numerics
+nuget MathNet.Numerics.FSharp
+nuget MathNet.Numerics.MKL.Win-x64
 nuget Nuget.CommandLine 2.8.3
 nuget FSharp.Data 2.0.9
 nuget FsPickler 1.0.8

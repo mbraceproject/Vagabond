@@ -181,3 +181,27 @@ let configMs = configT.Methods |> Seq.toArray
 let ctor = configMs |> Seq.find (fun t -> t.Name.Contains ".cctor")
 
 ctor.ToString()
+
+(*
+Example 7: Deploy library-generated dynamic assemblies
+*)
+
+#r "../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+#r "../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+
+open MathNet.Numerics
+open MathNet.Numerics.LinearAlgebra
+
+let getRandomDeterminant () =
+    let m = Matrix<double>.Build.Random(200,200) 
+    m.LU().Determinant
+
+client.EvaluateThunk getRandomDeterminant
+
+client.RegisterNativeAssembly <| __SOURCE_DIRECTORY__ + "/../../packages/MathNet.Numerics.MKL.Win-x64/content/libiomp5md.dll"
+client.RegisterNativeAssembly <| __SOURCE_DIRECTORY__ + "/../../packages/MathNet.Numerics.MKL.Win-x64/content/MathNet.Numerics.MKL.dll"
+client.NativeAssemblies
+
+let useNativeMKL () = Control.UseNativeMKL()
+
+client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())

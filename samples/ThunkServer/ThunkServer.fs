@@ -59,7 +59,7 @@ type ThunkServer private () =
 
     static member Start () = new ThunkServer()
 
-
+/// Client object for interacting with thunk server
 type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     static let mutable exe = None
 
@@ -73,13 +73,16 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
                 }
         }
 
+    /// Upload dependencies for object graph to thunk server
     member __.UploadDependenciesAsync (obj : obj) = async {
         let! errors = VagabondConfig.Instance.SubmitObjectDependencies(assemblyUploader, obj, permitCompilation = true)
         return ()
     }
 
+    /// Upload dependencies for object graph to thunk server
     member __.UploadDependencies (obj:obj) = __.UploadDependenciesAsync obj |> Async.RunSynchronously
 
+    /// Asynchronously evaluates a thunk on remote server
     member __.EvaluateThunkAsync (f : unit -> 'T) = async {
         // load dependencies to server
         do! __.UploadDependenciesAsync f
@@ -93,9 +96,16 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
             | Choice2Of2 e -> raise e
     }
 
+    /// Evaluates a thunk on remote server
     member __.EvaluateThunk (f : unit -> 'T) = __.EvaluateThunkAsync f |> Async.RunSynchronously
+    /// Evaluates a function on remote server
     member __.EvaluateDelegate (f : Func<'T>) = __.EvaluateThunk f.Invoke
+    /// Kills thunk server if local process
     member __.Kill() = proc |> Option.iter (fun p -> p.Kill())
+    /// Register a native assembly for instance
+    member __.RegisterNativeAssembly(path : string) = VagabondConfig.Instance.IncludeUnmanagedAssembly path |> ignore
+    /// Gets registered native assemblies for instance
+    member __.NativeAssemblies = VagabondConfig.Instance.UnManagedDependencies |> List.map (fun d -> d.Image)
 
     /// Gets or sets the server executable location.
     static member Executable
@@ -116,6 +126,8 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         return new ThunkClient(serverRef, proc)
     }
     
+    /// Initialize a local thunk server
     static member InitLocal () = ThunkClient.InitLocalAsync() |> Async.RunSynchronously
 
+    /// Conect to a thunk server of given thespian uri
     static member Connect(uri : string) = new ThunkClient(ActorRef.fromUri uri)

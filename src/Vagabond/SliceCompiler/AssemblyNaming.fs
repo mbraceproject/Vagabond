@@ -50,13 +50,12 @@ type AssemblyIdGenerator private () =
                 // memoize managed assembly hashing
                 getMemoizedHash assembly.Location
 
-        { FullName = assembly.FullName ; ImageHash = hash ; IsManaged = true }
+        { FullName = assembly.FullName ; ImageHash = hash }
 
     /// Unmemoized, unmanaged assembly id generator
-    static member ComputeUnmanagedAssemblyId (path : string) =
-        let name = Path.GetFileName path
+    static member GetManagedAssemblyId(name : string, path : string) =
         let hash = computeHash path
-        { FullName = name ; ImageHash = hash ; IsManaged = false }
+        { FullName = name ; ImageHash = hash }
 
 
 module AssemblySliceName =
@@ -133,5 +132,8 @@ type AssemblyId with
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file
     static member CreateUnmanaged(path : string) =
-        let id = AssemblyIdGenerator.ComputeUnmanagedAssemblyId path
-        { Id = id ; Image = path ; Symbols = None ; Metadata = None }
+        let name = Path.GetFileNameWithoutExtension path
+        let extension = Path.GetExtension path
+        let id = AssemblyIdGenerator.GetManagedAssemblyId(name, path)
+        let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; Extension = extension ; DataDependencies = [||] }
+        { Id = id ; Image = path ; Symbols = None ; Metadata = metadata }

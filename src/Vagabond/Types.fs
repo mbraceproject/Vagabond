@@ -30,8 +30,6 @@ type AssemblyId =
         FullName : string
         /// digest of the raw assembly image
         ImageHash : byte []
-        /// Is managed CIL assembly
-        IsManaged : bool
     }
 with
     /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
@@ -41,21 +39,49 @@ with
 
     override id.ToString() = id.FullName
 
+
+/// Specifies data dependency content
+//type DataDependency =
+//    /// Data dependency failed to serialize
+//    | Errored of message:string * Pickle<exn>
+//    /// Data dependency pickled in-memory
+//    | Pickled of pickle:Pickle<obj>
+//    /// Data dependency pickled to file; reserved for large data bindings
+//    | Persisted of path:string
+
+/// Data dependency information
+type DataDependencyInfo =
+    { 
+        /// Unique identifier
+        Id : int
+        /// Human-readable dependency identifier.
+        Name : string
+        /// Is partially evaluated data dependency.
+        IsPartial : bool
+        /// Data dependency generation.
+        Generation : int
+        /// Pickled static field from which data was extracted.
+        FieldInfo : Pickle<FieldInfo>
+//        /// Data dependency container.
+//        Data : DataDependency
+    }
+
 /// Vagabond metadata for dynamic assembly slices
 [<NoEquality; NoComparison>]
 type VagabondMetadata =
     {
-        /// Generation of given static initializer
-        Generation : int
+        /// Specifies if is managed CIL assembly.
+        IsManagedAssembly : bool
 
-        /// Is partial static initialization data
-        IsPartial : bool
+        /// Specifies the filename extension.
+        Extension : string
 
-        /// Static fields that have been pickled succesfully
-        PickledFields : (string * Pickle<FieldInfo>) []
+        /// Specifies if assembly is dynamic assembly slice.
+        IsDynamicAssemblySlice : bool
 
-        /// Static fields that failed to be pickled
-        ErroredFields : (string * Pickle<FieldInfo * exn>) []
+        /// Static data dependencies for assembly; 
+        /// used in dynamic assembly slices with erased static constructors.
+        DataDependencies : DataDependencyInfo []
     }
 
 /// Exportable Vagabond assembly and metadata
@@ -72,7 +98,7 @@ type VagabondAssembly =
         Symbols : string option
 
         /// Vagabond metadata and static initialization data path
-        Metadata : (VagabondMetadata * string) option
+        Metadata : VagabondMetadata
     }
 with
     /// Assembly qualified name

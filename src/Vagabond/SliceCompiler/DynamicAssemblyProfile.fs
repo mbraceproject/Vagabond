@@ -25,8 +25,8 @@ type IDynamicAssemblyProfile =
     /// Specifies if static field is to be pickled
     abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
 
-    /// Decides if given slices requires fresh evaluation of assemblies
-    abstract IsPartiallyEvaluatedSlice : sliceResolver : (Type -> Assembly option) -> Assembly -> bool
+    /// Decides if given type is being currently initialized
+    abstract IsPartiallyEvaluatedType : dynType:Type -> bool
 
 
 /// Default dynamic assembly profile; no erasure, no static initialization.
@@ -39,7 +39,7 @@ type internal DefaultDynamicAssemblyProfile () =
         member __.EraseType _ = false
         member __.EraseStaticConstructor _ = false
         member __.PickleStaticField (_,_) = false
-        member __.IsPartiallyEvaluatedSlice _ _ = false
+        member __.IsPartiallyEvaluatedType _ = false
 
 /// Dynamic Assembly profile for F# Interactive
 type FsiDynamicAssemblyProfile () =
@@ -70,7 +70,6 @@ type FsiDynamicAssemblyProfile () =
             |> Seq.tryPick Some
             |> Option.map fst
 
-
     interface IDynamicAssemblyProfile with
         member __.IsMatch (a : Assembly) =
             let an = a.GetName() in an.Name = fsiAssemblyName
@@ -92,7 +91,15 @@ type FsiDynamicAssemblyProfile () =
         member __.PickleStaticField (f : FieldInfo, isErasedCctor) =
             isErasedCctor && not <| f.FieldType.Name.StartsWith("$")
 
-        member __.IsPartiallyEvaluatedSlice (sliceResolver : Type -> Assembly option) (slice : Assembly) =
+        member __.IsPartiallyEvaluatedType (ty : Type) =
+            let rec getRootType (t : Type) =
+                match t.DeclaringType with
+                | null -> t
+                | dt -> getRootType dt
+
             tryGetCurrentInteractionType () 
-            |> Option.bind sliceResolver
-            |> Option.exists (fun a -> a = slice)
+            |> Option.exists (fun t -> getRootType ty = t)
+//        member __.IsPartiallyEvaluatedSlice (sliceResolver : Type -> Assembly option) (slice : Assembly) =
+//            tryGetCurrentInteractionType () 
+//            |> Option.bind sliceResolver
+//            |> Option.exists (fun a -> a = slice)

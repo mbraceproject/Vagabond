@@ -10,22 +10,22 @@
   </PropertyGroup>
   <PropertyGroup>
     <!-- Paket command -->
-    <PaketExePath Condition=" '$(PaketExePath)' == '' ">$(PaketToolsPath)Paket.exe</PaketExePath>
-    <PaketBootStrapperExePath Condition=" '$(PaketBootStrapperExePath)' == '' ">$(PaketToolsPath)Paket.bootstrapper.exe</PaketBootStrapperExePath>
+    <PaketExePath Condition=" '$(PaketExePath)' == '' ">$(PaketToolsPath)paket.exe</PaketExePath>
+    <PaketBootStrapperExePath Condition=" '$(PaketBootStrapperExePath)' == '' ">$(PaketToolsPath)paket.bootstrapper.exe</PaketBootStrapperExePath>
     <PaketCommand Condition=" '$(OS)' == 'Windows_NT'">"$(PaketExePath)"</PaketCommand>
     <PaketCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(PaketExePath)</PaketCommand>
     <PaketBootStrapperCommand Condition=" '$(OS)' == 'Windows_NT'">"$(PaketBootStrapperExePath)"</PaketBootStrapperCommand>
     <PaketBootStrapperCommand Condition=" '$(OS)' != 'Windows_NT' ">mono --runtime=v4.0.30319 $(PaketBootStrapperExePath)</PaketBootStrapperCommand>
     <!-- Commands -->
-    <PaketReferences Condition="!Exists('$(MSBuildProjectFullPath).Paket.references')">$(MSBuildProjectDirectory)\Paket.references</PaketReferences>
-    <PaketReferences Condition="Exists('$(MSBuildProjectFullPath).Paket.references')">$(MSBuildProjectFullPath).Paket.references</PaketReferences>
+    <PaketReferences Condition="!Exists('$(MSBuildProjectFullPath).paket.references')">$(MSBuildProjectDirectory)\paket.references</PaketReferences>
+    <PaketReferences Condition="Exists('$(MSBuildProjectFullPath).paket.references')">$(MSBuildProjectFullPath).paket.references</PaketReferences>
     <RestoreCommand>$(PaketCommand) restore --references-files "$(PaketReferences)"</RestoreCommand>
     <DownloadPaketCommand>$(PaketBootStrapperCommand)</DownloadPaketCommand>
     <!-- We need to ensure packages are restored prior to assembly resolve -->
     <BuildDependsOn Condition="$(RestorePackages) == 'true'">RestorePackages; $(BuildDependsOn);</BuildDependsOn>
   </PropertyGroup>
   <Target Name="CheckPrerequisites">
-    <!-- Raise an error if we're unable to locate Paket.exe -->
+    <!-- Raise an error if we're unable to locate paket.exe -->
     <Error Condition="'$(DownloadPaket)' != 'true' AND !Exists('$(PaketExePath)')" Text="Unable to locate '$(PaketExePath)'" />
     <MsBuild Targets="DownloadPaket" Projects="$(MSBuildThisFileFullPath)" Properties="Configuration=NOT_IMPORTANT;DownloadPaket=$(DownloadPaket)" />
   </Target>

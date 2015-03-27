@@ -30,7 +30,7 @@ type VagabondState =
         DataImportState : Map<string, DataGeneration []>
         /// Assembly export state
         AssemblyExportState : Map<AssemblyId, VagabondAssembly>
-        /// Assembly import state
+        /// Imported assembly load state
         AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
         /// Vagabond Serializer instance
         Serializer : FsPicklerSerializer

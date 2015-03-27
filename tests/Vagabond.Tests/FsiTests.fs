@@ -503,7 +503,9 @@ module FsiTests =
         fsi.EvalInteraction "let array = [|1..100|]"
 
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
 
         fsi.EvalInteraction "array.[49] <- 0"
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5000
+
+        fsi.EvalInteraction "array.[49] <- 50"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050

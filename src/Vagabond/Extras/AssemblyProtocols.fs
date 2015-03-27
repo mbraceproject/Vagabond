@@ -26,7 +26,7 @@ type VagabondManager with
     /// </summary>
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="assemblies">Assemblies to be exported.</param>
-    member v.SubmitAssemblies(receiver : IRemoteAssemblyReceiver, dependencies : seq<AssemblyId>) = async {
+    member v.SubmitDependencies(receiver : IRemoteAssemblyReceiver, dependencies : seq<AssemblyId>) = async {
         let dependencies = Seq.toList dependencies
 
         // Step 1. submit assembly identifiers to receiver; get back loaded state
@@ -77,7 +77,7 @@ type VagabondManager with
                 List.append unmanaged managedDependencies
             else managedDependencies
 
-        return! v.SubmitAssemblies(receiver, dependencies)
+        return! v.SubmitDependencies(receiver, dependencies)
     }
 
 

@@ -28,7 +28,8 @@ type VagabondMessage =
     | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly list>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded : bool, 
+                            compressDataFiles : bool, dataPersistThreshold : int64, isIgnoredAssembly : Assembly -> bool, ?tyConv : ITypeNameConverter) =
 
     do 
         if not <| Directory.Exists cacheDirectory then
@@ -45,6 +46,9 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
     let initState =
         {
+            CompressDataFiles = compressDataFiles
+            DataPersistThreshold = dataPersistThreshold
+
             CompilerState = !compilerState
             DataExportState = Map.empty
             DataImportState = Map.empty

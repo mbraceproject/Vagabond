@@ -22,6 +22,10 @@ type DataExportState =
 /// Immutable Vagabond state object
 type VagabondState =
     {
+        /// Use Gzip compression for persisted data files.
+        CompressDataFiles : bool
+        /// Size threshold in bytes after which a data dependency will be persisted to file.
+        DataPersistThreshold : int64
         /// Dynamic assembly compiler state
         CompilerState : DynamicAssemblyCompilerState
         /// Locally compiled dynamic assembly data export state

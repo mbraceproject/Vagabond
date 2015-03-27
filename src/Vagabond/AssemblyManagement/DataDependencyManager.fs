@@ -14,16 +14,11 @@ open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagementTypes
 
-/// threshold in bytes after which to persist binding to file
-let persistThreshold = 10L * 1024L
-/// Use Gzip compression for large persisted data bindings
-let compress = true
-
 /// pickle value to file
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
     use fs = File.OpenWrite path
     let stream =
-        if compress then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
+        if state.CompressDataFiles then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
         else fs :> _
     state.Serializer.Serialize(stream, value)
 
@@ -31,7 +26,7 @@ let picklePersistedBinding (state : VagabondState) (path : string) (value : obj)
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
     use fs = File.OpenRead path
     let stream =
-        if compress then new GZipStream(fs, CompressionMode.Decompress) :> Stream
+        if state.CompressDataFiles then new GZipStream(fs, CompressionMode.Decompress) :> Stream
         else fs :> _
     state.Serializer.Deserialize<obj>(stream)
 
@@ -59,7 +54,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     let data =
         match hashResult with
         // file size exceeds threshold; declare persisted to file
-        | Choice1Of2 hash when hash.Length > persistThreshold -> Persisted hash.Length
+        | Choice1Of2 hash when hash.Length > state.DataPersistThreshold -> Persisted hash.Length
         // pickle in metadata
         | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled pickle
         // pickle serialization exception

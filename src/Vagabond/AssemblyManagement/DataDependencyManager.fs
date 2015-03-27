@@ -19,6 +19,7 @@ let persistThreshold = 10L * 1024L
 /// Use Gzip compression for large persisted data bindings
 let compress = true
 
+/// pickle value to file
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
     use fs = File.OpenWrite path
     let stream =
@@ -26,6 +27,7 @@ let picklePersistedBinding (state : VagabondState) (path : string) (value : obj)
         else fs :> _
     state.Serializer.Serialize(stream, value)
 
+/// unpickle value from file
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
     use fs = File.OpenRead path
     let stream =
@@ -36,23 +38,31 @@ let unpicklePersistedBinding (state : VagabondState) (path : string) =
 /// export data dependency for locally generated slice
 let exportDataDependency (state : VagabondState) (assemblyPath : string) 
                             (id : DataDependencyId) (current : DataExportState option) (field : FieldInfo) : DataExportState =
-    
+    // get current value for static field
     let value = field.GetValue(null)
+    // compute the MurMur3 hash for the object; this will allow detection of future mutations of the dependency
+    // it also records any exceptions in case of the object being non-serializable.
     let hashResult = try state.Serializer.ComputeHash value |> Choice1Of2 with e -> Choice2Of2 e
+    // decide if a new pickle generation needs to be generated
+    // compare with previously recorded hash, if it exists.
     let requireNewGen =
         match current, hashResult with
-        | None, _ -> true // no previous gen, update
+        | None, _ -> true // no previous generation, update
         | Some { Hash = Choice1Of2 hash }, Choice1Of2 hash' -> hash <> hash' // only update if different hash, i.e. value updated
         | Some { Hash = Choice2Of2 _ }, Choice1Of2 _ -> true // if was exception but now successful, update
         | Some { Hash = Choice1Of2 _ }, Choice2Of2 _ -> false // if was successful but is exception, do not update
         | Some { Hash = Choice2Of2 e }, Choice2Of2 e' -> e.GetType() <> e'.GetType() // if was and is exception, only update if different exns
 
+    // no update required, return current state
     if not requireNewGen then Option.get current else
 
     let data =
         match hashResult with
+        // file size exceeds threshold; declare persisted to file
         | Choice1Of2 hash when hash.Length > persistThreshold -> Persisted hash.Length
+        // pickle in metadata
         | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled pickle
+        // pickle serialization exception
         | Choice2Of2 e -> Errored (e.ToString(), state.Serializer.PickleTyped e)
 
     let dependencyInfo =
@@ -60,6 +70,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
         | None -> { Id = id ; Name = field.ToString() ; Generation = 0 ; FieldInfo = state.Serializer.PickleTyped field ; Data = data }
         | Some { Info = di } -> { di with Generation = di.Generation + 1 ; Data = data }
 
+    // persist to file, if so required
     let persistFile =
         match data with
         | Persisted _ ->
@@ -88,11 +99,13 @@ let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice
 let importDataDependency (state : VagabondState) (va : VagabondAssembly) 
                             (current : DataGeneration option) (persistPath : string option) (di : DataDependencyInfo) =
 
+    // determine if data dependency requires updating
     let shouldUpdate =
         match current with
         | None -> true
         | Some gen -> gen < di.Generation
 
+    // return current generation if update not required
     if not shouldUpdate then Option.get current else
 
     let updateValue (value : obj) =
@@ -100,10 +113,12 @@ let importDataDependency (state : VagabondState) (va : VagabondAssembly)
         field.SetValue(null, value)
 
     match di.Data, persistPath with
+    // unpickle from metadata
     | Pickled pickle, _ ->
         let value = state.Serializer.UnPickleTyped pickle
         updateValue value
     | Persisted _, None -> invalidOp <| sprintf "Assembly '%O' missing data initializer for value '%s'." va.FullName di.Name
+    // unpickle from file
     | Persisted _, Some path ->
         let value = unpicklePersistedBinding state path
         updateValue value
@@ -111,6 +126,7 @@ let importDataDependency (state : VagabondState) (va : VagabondAssembly)
 
     di.Generation
 
+/// import data dependencies to local AppDomain
 let importDataDependencies (state : VagabondState) (va : VagabondAssembly) =
     if Array.isEmpty va.Metadata.DataDependencies then state else
 

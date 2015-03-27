@@ -112,6 +112,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
         let state = { state with AssemblyImportState = state.AssemblyImportState.Add(va.Id, info) }
         state, info
 
+    // load assembly to the current AppDomain
     let loadAssembly (va : VagabondAssembly) =
         let assembly = System.Reflection.Assembly.LoadFrom va.Image
 
@@ -122,6 +123,8 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
         elif policy.HasFlag AssemblyLoadPolicy.RequireIdentical && assembly.AssemblyId <> va.Id then
             let msg = sprintf "an incompatible version of '%s' has been loaded." va.FullName
             raise <| VagabondException(msg)
+
+
     try
         if va.Metadata.IsManagedAssembly then
             match state.AssemblyImportState.TryFind va.Id with

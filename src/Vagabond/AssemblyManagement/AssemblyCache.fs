@@ -10,9 +10,6 @@ open Nessos.Vagabond
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.AssemblyNaming
 
-///// A static initializer comprises of a static field and its contained value
-//type StaticInitializer = FieldInfo * obj
-
 /// Contains methods for caching assemblies and vagabond metadata to specified folder.
 type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     do

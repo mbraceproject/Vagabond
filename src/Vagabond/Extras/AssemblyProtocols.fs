@@ -32,23 +32,21 @@ type VagabondManager with
         // Step 1. submit assembly identifiers to receiver; get back loaded state
         let! info = receiver.GetLoadedAssemblyInfo dependencies
         
-        // Step 2. detect dependencies that require posting
-        let tryGetAssemblyPackage (info : AssemblyLoadInfo) =
+        // Step 2. detect dependencies that require uploading
+        let tryGetMissingAssembly (info : AssemblyLoadInfo) =
             match info with
-            | LoadFault(id, (:?VagabondException as e)) -> raise e
-            | LoadFault(id, e) -> 
-                raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
+            | LoadFault(id, _)
             | NotLoaded id -> 
-                Some <| v.GetVagabondAssembly(id)
+                Some <| v.GetVagabondAssembly id
             | Loaded(id,_,md) ->
                 let va = v.GetVagabondAssembly id
-                let md' = va.Metadata
-                let requireUpdate = (md.DataDependencies, md'.DataDependencies) ||> Array.exists2 (fun remote current -> remote.Generation < current.Generation)
+                // detect if newer data dependencies exist
+                let requireUpdate = (md.DataDependencies, va.Metadata.DataDependencies) ||> Array.exists2 (fun remote current -> remote.Generation < current.Generation)
                 if requireUpdate then Some va
                 else None
 
-        let assemblyPackages = info |> List.choose tryGetAssemblyPackage
-        let! loadResults = receiver.PushAssemblies assemblyPackages
+        let missingAssemblies = info |> List.choose tryGetMissingAssembly
+        let! loadResults = receiver.PushAssemblies missingAssemblies
 
         // Step 3. check load results; if client replies with fault, fail.
         let gatherErrors (info : AssemblyLoadInfo) =
@@ -102,14 +100,14 @@ type VagabondManager with
                 | LoadFault (id,_) -> Some id
                 // local state missing required metadata
                 | Loaded(id, _, localMD) ->
-                    // local state contains partial stat initializers and incoming is of next generation
+                    // local state contains partial static initializers and incoming are of next generation
                     let requiresUpdate = (remoteMD.DataDependencies, localMD.DataDependencies) ||> Array.exists2 (fun r l -> l.Generation < r.Generation)
                     if requiresUpdate then Some id else None
 
         let missing = dependencies |> List.choose tryCheckLoadStatus
 
         if missing.Length > 0 then
-            // step 3. download assembly packages for missing dependencies
+            // step 3. download missing dependencies
             let! assemblies = publisher.PullAssemblies missing
             let loadResults = v.LoadVagabondAssemblies(assemblies, ?loadPolicy = loadPolicy)
 

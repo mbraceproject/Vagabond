@@ -17,9 +17,6 @@ type AssemblyLoadPolicy =
     | ResolveAll = 2
     /// If assembly is to be resolved locally, then it should have identical image hash.
     | RequireIdentical = 4
-    /// Assemblies are to be cached only, not loaded in AppDomain
-    | CacheOnly = 8
-            
 
 /// Vagabond unique assembly identifier
 [<StructuralComparison>]

@@ -48,36 +48,16 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '34', 34)" onmouseover="showTip(event, '34', 34)">
-            GetDataReader(id, arg2)
-          </code>
-          <div class="tip" id="34">
-            <strong>Signature:</strong> (id:AssemblyId * VagabondMetadata) -&gt; Async&lt;Stream&gt;<br />
-              <strong>Modifiers:</strong> abstract<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L115-115" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Asynchronously returns a read stream for Vagabond data of given id.</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '35', 35)" onmouseover="showTip(event, '35', 35)">
+          <code onmouseout="hideTip(event, '44', 44)" onmouseover="showTip(event, '44', 44)">
             GetImageReader(id)
           </code>
-          <div class="tip" id="35">
+          <div class="tip" id="44">
             <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L109-109" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L144-144" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -88,40 +68,60 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '36', 36)" onmouseover="showTip(event, '36', 36)">
-            TryGetSymbolReader(id)
+          <code onmouseout="hideTip(event, '45', 45)" onmouseover="showTip(event, '45', 45)">
+            GetPersistedDataDependencyReader(...)
           </code>
-          <div class="tip" id="36">
-            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream option&gt;<br />
+          <div class="tip" id="45">
+            <strong>Signature:</strong> (id:AssemblyId * dataDependency:DataDependencyInfo) -&gt; Async&lt;Stream&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L111-111" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L150-150" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Asynchronously returns a read stream for assembly debug symbols of given id.</p>
+          <p>Asynchronously returns a read stream for Vagabond data of given id.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '37', 37)" onmouseover="showTip(event, '37', 37)">
-            TryReadMetadata(id)
+          <code onmouseout="hideTip(event, '46', 46)" onmouseover="showTip(event, '46', 46)">
+            ReadMetadata(id)
           </code>
-          <div class="tip" id="37">
-            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;VagabondMetadata option&gt;<br />
+          <div class="tip" id="46">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;VagabondMetadata&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L113-113" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L148-148" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
           <p>Asynchronously reads Vagabond metadata information for assembly of given id.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '47', 47)" onmouseover="showTip(event, '47', 47)">
+            TryGetSymbolReader(id)
+          </code>
+          <div class="tip" id="47">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream option&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L146-146" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously returns a read stream for assembly debug symbols of given id.</p>
 
         </td>
       </tr>

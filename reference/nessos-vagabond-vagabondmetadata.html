@@ -48,76 +48,58 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '86', 86)" onmouseover="showTip(event, '86', 86)">
-            ErroredFields
+          <code onmouseout="hideTip(event, '96', 96)" onmouseover="showTip(event, '96', 96)">
+            DataDependencies
           </code>
-          <div class="tip" id="86">
-            <strong>Signature:</strong> (string * Pickle&lt;FieldInfo * exn&gt;) []<br />
+          <div class="tip" id="96">
+            <strong>Signature:</strong> DataDependencyInfo []<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L58-58" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L83-83" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Static fields that failed to be pickled</p>
+          <p>Static data dependencies for assembly; 
+used in dynamic assembly slices with erased static constructors.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '87', 87)" onmouseover="showTip(event, '87', 87)">
-            Generation
+          <code onmouseout="hideTip(event, '97', 97)" onmouseover="showTip(event, '97', 97)">
+            IsDynamicAssemblySlice
           </code>
-          <div class="tip" id="87">
-            <strong>Signature:</strong> int<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L49-49" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Generation of given static initializer</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '88', 88)" onmouseover="showTip(event, '88', 88)">
-            IsPartial
-          </code>
-          <div class="tip" id="88">
+          <div class="tip" id="97">
             <strong>Signature:</strong> bool<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L52-52" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L79-79" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Is partial static initialization data</p>
+          <p>Specifies if assembly is dynamic assembly slice.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '89', 89)" onmouseover="showTip(event, '89', 89)">
-            PickledFields
+          <code onmouseout="hideTip(event, '98', 98)" onmouseover="showTip(event, '98', 98)">
+            IsManagedAssembly
           </code>
-          <div class="tip" id="89">
-            <strong>Signature:</strong> (string * Pickle&lt;FieldInfo&gt;) []<br />
+          <div class="tip" id="98">
+            <strong>Signature:</strong> bool<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L55-55" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L76-76" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Static fields that have been pickled succesfully</p>
+          <p>Specifies if is managed CIL assembly.</p>
 
         </td>
       </tr>

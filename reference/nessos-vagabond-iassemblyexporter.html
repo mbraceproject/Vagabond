@@ -48,60 +48,100 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '31', 31)" onmouseover="showTip(event, '31', 31)">
-            GetImageWriter(id)
+          <code onmouseout="hideTip(event, '39', 39)" onmouseover="showTip(event, '39', 39)">
+            GetPersistedDataDependencyReader(...)
           </code>
-          <div class="tip" id="31">
-            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream&gt;<br />
+          <div class="tip" id="39">
+            <strong>Signature:</strong> (id:AssemblyId * dataDependency:DataDependencyInfo) -&gt; Async&lt;Stream&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L100-100" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L137-137" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Asynchronously returns a write stream for assembly image of given id.</p>
+          <p>Asynchronously returns a write stream for writing supplied persisted data dependency.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '32', 32)" onmouseover="showTip(event, '32', 32)">
-            GetSymbolWriter(id)
+          <code onmouseout="hideTip(event, '40', 40)" onmouseover="showTip(event, '40', 40)">
+            TryGetImageWriter(id)
           </code>
-          <div class="tip" id="32">
-            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream&gt;<br />
+          <div class="tip" id="40">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream option&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L102-102" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L131-131" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Asynchronously returns a write stream for assembly debug symbols of given id.</p>
+          <p>Asynchronously returns a write stream for assembly image of given id. Returns 'None' if image already exists.</p>
 
         </td>
       </tr>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '33', 33)" onmouseover="showTip(event, '33', 33)">
+          <code onmouseout="hideTip(event, '41', 41)" onmouseover="showTip(event, '41', 41)">
+            TryGetMetadata(id)
+          </code>
+          <div class="tip" id="41">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;VagabondMetadata option&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L135-135" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously returns currently stored Vagabond metadata for given id. Returns 'None' if it does not exist.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '42', 42)" onmouseover="showTip(event, '42', 42)">
+            TryGetSymbolsWriter(id)
+          </code>
+          <div class="tip" id="42">
+            <strong>Signature:</strong> id:AssemblyId -&gt; Async&lt;Stream option&gt;<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L133-133" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '43', 43)" onmouseover="showTip(event, '43', 43)">
             WriteMetadata(id, metadata)
           </code>
-          <div class="tip" id="33">
-            <strong>Signature:</strong> (id:AssemblyId * metadata:VagabondMetadata) -&gt; Async&lt;Stream&gt;<br />
+          <div class="tip" id="43">
+            <strong>Signature:</strong> (id:AssemblyId * metadata:VagabondMetadata) -&gt; Async&lt;unit&gt;<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L104-104" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Types.fs#L139-139" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Asynchronously returns a write stream for Vagabond data of given id.</p>
+          <p>Asynchronously writes Vagabond metadata for assembly of provided id.</p>
 
         </td>
       </tr>

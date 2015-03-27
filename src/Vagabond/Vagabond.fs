@@ -236,7 +236,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     /// <param name="id">input assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
     member __.LoadVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
-        match controller.AssemblyCache.TryGetCachedAssemblyInfo id with
+        match controller.AssemblyCache.TryGetCachedAssembly id with
         | None -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy)
         | Some va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy)
 

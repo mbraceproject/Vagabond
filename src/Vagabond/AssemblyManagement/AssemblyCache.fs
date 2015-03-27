@@ -2,7 +2,6 @@
 
 open System
 open System.IO
-open System.IO.Compression
 open System.Reflection
 
 open Nessos.FsPickler
@@ -11,31 +10,31 @@ open Nessos.Vagabond
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.AssemblyNaming
 
-/// A static initializer comprises of a static field and its contained value
-type StaticInitializer = FieldInfo * obj
+///// A static initializer comprises of a static field and its contained value
+//type StaticInitializer = FieldInfo * obj
 
 /// Contains methods for caching assemblies and vagabond metadata to specified folder.
-type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, compressStaticData : bool) =
+type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     do
         if not <| Directory.Exists cacheDirectory then
             raise <| new DirectoryNotFoundException(cacheDirectory)
 
     // gets a unique file name in cache directory that corresponds to assembly id.
-    let getCachedAssemblyPath (id : AssemblyId) =
+    static let getCachedAssemblyPath cacheDirectory (id : AssemblyId) =
         Path.Combine(cacheDirectory, id.GetFileName() + ".dll")
 
-    /// gets metadata file path for given cached assembly
-    static let getMetadataPath path = Path.ChangeExtension(path, ".vmetadata")
     /// gets symbols file path for given cached assembly
     static let getSymbolsPath path = 
         if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
         else Path.ChangeExtension(path, ".pdb")
 
-    /// gets vagabond static initialization file for given cached assembly
-    static let getStaticInitPath gen path = 
-        let directory = Path.GetDirectoryName path
-        let fileName = Path.GetFileNameWithoutExtension path
-        Path.Combine(directory, sprintf "%s-%d.vdata" (Path.GetFileNameWithoutExtension path) gen)
+    /// gets metadata file path for given cached assembly
+    static let getMetadataPath path = Path.ChangeExtension(path, ".vgb")
+
+    /// gets path for persisted dependency
+    static let getPersistedDataPath (cachePath : string) (id : DataDependencyId) (gen : int) =
+        let fileName = Path.GetFileNameWithoutExtension cachePath
+        sprintf "%s-%d-%d.dat" fileName id gen
 
     /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {
@@ -49,60 +48,60 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
         do! fs.CopyToAsync(target)
     }
 
-    // read dynamic assembly metadata from cache
-    let tryReadMetadata path =
-        let mf = getMetadataPath path
-        if File.Exists mf then
-            let metadata =
-                use fs = File.OpenRead mf
-                pickler.Deserialize<VagabondMetadata>(fs)
-
-            let staticInitializer = getStaticInitPath metadata.Generation path
-            if File.Exists staticInitializer then
-                Some (metadata, staticInitializer)
-            else
-                raise <| new FileNotFoundException(staticInitializer)
+    /// try reading vagabond metadata from cachePath
+    let tryReadMetadata cachePath =
+        let metadataPath = getMetadataPath cachePath
+        if File.Exists metadataPath then
+            use fs = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.None)
+            let md = pickler.Deserialize<VagabondMetadata>(fs)
+            Some md
         else
             None
-        
-    // writes static vagabond metadata based on current state
-    let writeMetadata path (input : VagabondMetadata, sourceInit : string) =
-        let current = tryReadMetadata path
-        match current with
-        // input metadata is stale, keep current
-        | Some (m, _) when m.Generation > input.Generation -> current
-        | _ ->
-            let initFile = getStaticInitPath input.Generation path
-            if not <| File.Exists initFile then File.Copy(sourceInit, initFile, true)
-            do
-                use fs = File.OpenWrite (getMetadataPath path)
-                pickler.Serialize<VagabondMetadata>(fs, input)
 
-            Some(input, initFile)
+    /// writes vagabond metadata to cachePath
+    let writeMetadata cachePath (md : VagabondMetadata) =
+        use fs = new FileStream(getMetadataPath cachePath, FileMode.Create, FileAccess.Write, FileShare.None)
+        pickler.Serialize<VagabondMetadata>(fs, md)
+
+    /// read vagabond metadata from cachePath
+    let readMetadata cachePath =
+        match tryReadMetadata cachePath with
+        | None -> raise <| new FileNotFoundException(getMetadataPath cachePath)
+        | Some md -> md
+
+    /// returns an array of data dependency paths given metadata
+    let getPersistedDataDependencies (md : VagabondMetadata) =
+        md.DataDependencies |> Array.filter (fun dd -> match dd.Data with Persisted _ -> true | _ -> false)
 
     // resolve symbols file
-    let tryFindSymbols path =
-        let symbols = getSymbolsPath path
+    let tryFindSymbols cachePath =
+        let symbols = getSymbolsPath cachePath
         if File.Exists symbols then Some symbols
         else None
 
     /// gets persisted Vagabond assembly from cache
-    let getPersistedAssembly (path : string) (id : AssemblyId) =
-        let symbols = tryFindSymbols path
-        let metadata = tryReadMetadata path
+    let getPersistedAssembly (cachePath:string) (id : AssemblyId) =
+        let symbols = tryFindSymbols cachePath
+        let metadata = readMetadata cachePath
+        let dataDependencies = getPersistedDataDependencies metadata
         {
             Id = id
-            Image = path
+            Image = cachePath
             Symbols = symbols
             Metadata = metadata
+            PersistedDataDependencies = dataDependencies |> Array.map (fun dd -> dd.Id, getPersistedDataPath cachePath dd.Id dd.Generation)
         }
+
+    // Returns persist path for given data dependency
+    static member GetPersistedDataPath (assemblyPath : string, id, generation) =
+        getPersistedDataPath assemblyPath id generation
 
     /// Current cache directory
     member __.CacheDirectory = cacheDirectory
 
     /// Returns cached assembly of provided id, if it exists
-    member __.TryGetCachedAssemblyInfo(id : AssemblyId) =
-        let cachePath = getCachedAssemblyPath id
+    member __.TryGetCachedAssembly(id : AssemblyId) : VagabondAssembly option =
+        let cachePath = getCachedAssemblyPath cacheDirectory id
 
         if File.Exists cachePath then
             Some <| getPersistedAssembly cachePath id
@@ -110,45 +109,19 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
             None
 
     /// Checks if assembly of provided id exists in cache
-    member __.IsCachedAssembly(id : AssemblyId) =
-        __.TryGetCachedAssemblyInfo(id).IsSome
+    member __.IsCachedAssembly(id : AssemblyId) : bool =
+        __.TryGetCachedAssembly(id).IsSome
 
     /// Creates a Vagabond assembly record for given System.Reflection.Assembly.
-    member __.CreateVagabondAssembly(assembly : Assembly) =
+    member __.CreateVagabondAssembly(assembly : Assembly) : VagabondAssembly =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
             invalidArg assembly.FullName "assembly is dynamic or not persistable."
         else
             getPersistedAssembly assembly.Location assembly.AssemblyId
 
-    /// Creates a Vagabond assembly record for given Assembly and metadata.
-    member __.WriteStaticInitializers(assembly : Assembly, initializers : StaticInitializer [], metadata : VagabondMetadata) =
-        if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
-            invalidArg assembly.FullName "assembly is dynamic or not persistable."
-        else
-            let symbols = tryFindSymbols assembly.Location
-            let initFile = getStaticInitPath metadata.Generation assembly.Location
-            let metadataFile = getMetadataPath assembly.Location
-            do
-                use fs = File.OpenWrite initFile
-                let stream =
-                    if compressStaticData then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
-                    else fs :> _
-                pickler.Serialize<StaticInitializer []>(fs, initializers)
-
-            let md = writeMetadata metadataFile (metadata, initFile)
-            { Id = assembly.AssemblyId ; Image = assembly.Location ; Symbols = symbols ; Metadata = md }
-
-    /// Reads static initialization data from provided file
-    member __.ReadStaticInitializers(initFile : string) =
-        use fs = File.OpenRead initFile
-        let stream =
-            if compressStaticData then new GZipStream(fs, CompressionMode.Decompress) :> Stream
-            else fs :> _
-        pickler.Deserialize<StaticInitializer []>(fs)
-
     /// Import assembly of given id to cache
     member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
-        let cachePath = getCachedAssemblyPath id
+        let cachePath = getCachedAssemblyPath cacheDirectory id
         if not <| File.Exists cachePath then
             let! imgReader = importer.GetImageReader id
             do! streamToFile imgReader cachePath
@@ -166,50 +139,73 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer, comp
                     return Some symbolsPath
         }
 
-        let! metadata = async {
-            let! metadata = importer.TryReadMetadata id
-            match metadata with
-            | None -> return None
-            | Some md ->
-                let metadataFile = getMetadataPath cachePath
-                let writeMetadata () = async {
-                    let initFile = getStaticInitPath md.Generation cachePath
-                    use! dataReader = importer.GetDataReader(id, md) in
-                    do! streamToFile dataReader initFile
-                    writeMetadata cachePath (md, metadataFile) |> ignore
-                    return Some (md, initFile)
-                }
+        // read current metadata, if it exists
+        let! metadata = importer.ReadMetadata id
+        let persistedDependencies =
+            match tryReadMetadata cachePath with
+            | None -> getPersistedDataDependencies metadata
+            | Some current ->
+                // dependencies from previous generations already cached, detect which need updating
+                let indexedCurrent = current.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
+                metadata 
+                |> getPersistedDataDependencies
+                |> Array.filter (fun dd -> dd.Generation > indexedCurrent.[dd.Id].Generation)
 
-                match tryReadMetadata metadataFile with
-                | None -> return! writeMetadata ()
-                | Some(cmd, _) as current when cmd.Generation > md.Generation -> return current
-                | Some _ -> return! writeMetadata ()
+        let importPersistedDependency (dd : DataDependencyInfo) = async {
+            let dpath = getPersistedDataPath cachePath dd.Id dd.Generation
+            use! dataReader = importer.GetPersistedDataDependencyReader(id, dd)
+            do! streamToFile dataReader dpath
         }
 
-        return {
-            Id = id
-            Image = cachePath
-            Symbols = symbolsPath
-            Metadata = metadata
-        }
+        // download persisted data dependency files
+        do! persistedDependencies |> Seq.map importPersistedDependency |> Async.Parallel |> Async.Ignore
+
+        // finaly, write metadata file
+        writeMetadata cachePath metadata
     }
 
     /// Exports assembly of given id from cache
-    member __.Export(exporter : IAssemblyExporter, pkg : VagabondAssembly) = async {
-        do! async {
-            use! writer = exporter.GetImageWriter(pkg.Id)
-            do! fileToStream pkg.Image writer
-        }
+    member __.Export(exporter : IAssemblyExporter, va : VagabondAssembly) = async {
+        // 1. Write image if not found in remote party
+        let! writer = exporter.TryGetImageWriter va.Id
+        match writer with
+        | None -> ()
+        | Some s ->
+            use s = s
+            do! fileToStream va.Image s
 
-        match pkg.Symbols with
+        // 2. Write symbols if exists locally but not found in remote party
+        match va.Symbols with
         | None -> ()
         | Some sf ->
-            use! writer = exporter.GetSymbolWriter pkg.Id
-            do! fileToStream sf writer
+            let! writer = exporter.TryGetSymbolsWriter va.Id
+            match writer with
+            | None -> ()
+            | Some s ->
+                use s = s
+                do! fileToStream sf s
 
-        match pkg.Metadata with
-        | None -> ()
-        | Some (md, init) ->
-            use! writer = exporter.WriteMetadata(pkg.Id, md)
-            do! fileToStream init writer
+        // 4. Get remote current metadata, if it exists
+        let! remoteMD = exporter.TryGetMetadata va.Id
+
+        // 3. Write data dependencies if not found in remote party
+        let localDependencyInfo = va.Metadata.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
+        let requiredDependencies =
+            match remoteMD with
+            | None -> va.PersistedDataDependencies
+            | Some remoteMD ->
+                // dependencies from previous generations already cached, detect which need updating
+                let remoteMD = remoteMD.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
+                va.PersistedDataDependencies
+                |> Array.filter (fun (id, _) -> localDependencyInfo.[id].Generation > remoteMD.[id].Generation)
+
+        let writePersistedDataDependency (id : DataDependencyId, path : string) = async {
+            use! writer = exporter.GetPersistedDataDependencyReader(va.Id, localDependencyInfo.[id])
+            do! fileToStream path writer
+        }
+
+        do! requiredDependencies |> Seq.map writePersistedDataDependency |> Async.Parallel |> Async.Ignore
+
+        // 4. Write metadata
+        do! exporter.WriteMetadata(va.Id, va.Metadata)
     }

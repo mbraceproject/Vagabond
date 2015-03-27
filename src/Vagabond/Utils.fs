@@ -83,6 +83,13 @@ module internal Utils =
 
             ts.ToArray(), ss.ToArray()
 
+
+    type IDictionary<'K, 'V> with
+        member d.TryFind(k : 'K) =
+            let ok,v = d.TryGetValue k
+            if ok then Some v
+            else None
+
     type Async =
 
         /// <summary>

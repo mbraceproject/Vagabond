@@ -40,30 +40,32 @@ with
     override id.ToString() = id.FullName
 
 
+type DataDependencyId = int
+type DataGeneration = int
+
+
 /// Specifies data dependency content
-//type DataDependency =
-//    /// Data dependency failed to serialize
-//    | Errored of message:string * Pickle<exn>
-//    /// Data dependency pickled in-memory
-//    | Pickled of pickle:Pickle<obj>
-//    /// Data dependency pickled to file; reserved for large data bindings
-//    | Persisted of path:string
+type DataDependency =
+    /// Data dependency failed to serialize
+    | Errored of message:string * Pickle<exn>
+    /// Data dependency pickled in-memory
+    | Pickled of pickle:Pickle<obj>
+    /// Data dependency pickled to file; reserved for large data bindings
+    | Persisted of size:int64
 
 /// Data dependency information
 type DataDependencyInfo =
     { 
         /// Unique identifier
-        Id : int
+        Id : DataDependencyId
         /// Human-readable dependency identifier.
         Name : string
-        /// Is partially evaluated data dependency.
-        IsPartial : bool
         /// Data dependency generation.
-        Generation : int
+        Generation : DataGeneration
         /// Pickled static field from which data was extracted.
         FieldInfo : Pickle<FieldInfo>
-//        /// Data dependency container.
-//        Data : DataDependency
+        /// Data dependency container.
+        Data : DataDependency
     }
 
 /// Vagabond metadata for dynamic assembly slices
@@ -73,11 +75,11 @@ type VagabondMetadata =
         /// Specifies if is managed CIL assembly.
         IsManagedAssembly : bool
 
-        /// Specifies the filename extension.
-        Extension : string
-
         /// Specifies if assembly is dynamic assembly slice.
         IsDynamicAssemblySlice : bool
+
+        /// Specifies the filename extension.
+        Extension : string
 
         /// Static data dependencies for assembly; 
         /// used in dynamic assembly slices with erased static constructors.
@@ -99,6 +101,9 @@ type VagabondAssembly =
 
         /// Vagabond metadata and static initialization data path
         Metadata : VagabondMetadata
+
+        /// Paths to bindings that are persisted to disk
+        PersistedDataDependencies : (DataDependencyId * string) []
     }
 with
     /// Assembly qualified name
@@ -122,12 +127,16 @@ with
 
 /// Abstract assembly image exporting API
 type IAssemblyExporter =
-    /// Asynchronously returns a write stream for assembly image of given id.
-    abstract GetImageWriter : id:AssemblyId -> Async<Stream>
-    /// Asynchronously returns a write stream for assembly debug symbols of given id.
-    abstract GetSymbolWriter : id:AssemblyId -> Async<Stream>
-    /// Asynchronously returns a write stream for Vagabond data of given id.
-    abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<Stream>
+    /// Asynchronously returns a write stream for assembly image of given id. Returns 'None' if image already exists.
+    abstract TryGetImageWriter : id:AssemblyId -> Async<Stream option>
+    /// Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.
+    abstract TryGetSymbolsWriter : id:AssemblyId -> Async<Stream option>
+    /// Asynchronously returns currently stored Vagabond metadata for given id. Returns 'None' if it does not exist.
+    abstract TryGetMetadata : id:AssemblyId -> Async<VagabondMetadata option>
+    /// Asynchronously returns a write stream for writing supplied persisted data dependency.
+    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
+    /// Asynchronously writes Vagabond metadata for assembly of provided id.
+    abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<unit>
 
 /// Abstract assembly image importing API
 type IAssemblyImporter =
@@ -136,9 +145,9 @@ type IAssemblyImporter =
     /// Asynchronously returns a read stream for assembly debug symbols of given id.
     abstract TryGetSymbolReader : id:AssemblyId -> Async<Stream option>
     /// Asynchronously reads Vagabond metadata information for assembly of given id.
-    abstract TryReadMetadata : id:AssemblyId -> Async<VagabondMetadata option>
+    abstract ReadMetadata : id:AssemblyId -> Async<VagabondMetadata>
     /// Asynchronously returns a read stream for Vagabond data of given id.
-    abstract GetDataReader : id:AssemblyId * VagabondMetadata -> Async<Stream>
+    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 

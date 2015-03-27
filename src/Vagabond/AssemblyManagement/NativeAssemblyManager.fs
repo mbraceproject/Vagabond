@@ -26,8 +26,9 @@ type internal NativeAssemblyManager(path : string) =
             let cachePath = Path.Combine(container, va.Id.FullName)
             let shouldCopy =
                 if File.Exists cachePath then
-                    let cachedId = AssemblyIdGenerator.ComputeUnmanagedAssemblyId cachePath
-                    cachedId <> va.Id
+                    failwith "not implemented"
+//                    let cachedId = AssemblyIdGenerator.GetManagedAssemblyId cachePath
+//                    cachedId <> va.Id
                 else
                     true
 

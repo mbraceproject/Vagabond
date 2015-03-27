@@ -12,22 +12,7 @@ open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyCache
 
-/// Immutable Vagabond state object
-type VagabondState =
-    {
-        /// Dynamic assembly compiler state
-        CompilerState : DynamicAssemblyCompilerState
-        /// Locally compiled dynamic assembly export states
-        AssemblyExportState : Map<AssemblyId, VagabondAssembly>
-        /// Local assembly import state
-        AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
-        /// Vagabond Serializer instance
-        Serializer : FsPicklerSerializer
-        /// Assembly Cache instance
-        AssemblyCache : AssemblyCache
-        /// Native assembly manager
-        NativeAssemblyManager : NativeAssemblyManager
-    }
+
 
 /// registers an assembly resolution handler based on AppDomain lookups;
 /// this is needed since assembly lookups often fail when loaded at runtime.
@@ -49,44 +34,47 @@ let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : A
     match state.CompilerState.TryFindSliceInfo id.FullName with
     // is dynamic assembly slice which requires static initialization
     | Some (dynAssembly, sliceInfo) when sliceInfo.RequiresStaticInitialization ->
-        match state.AssemblyExportState.TryFind id with
-        // assembly has already been exported as completed slice, so just return the previous static initialization
-        | Some va when not (va.Metadata |> Option.get |> fst).IsPartial -> state, va
-        | info -> 
 
-        // need to create a new static initialization package
-
-        let generation =
-            match info with
-            | None -> 0
-            | Some va -> let md,_ = Option.get va.Metadata in md.Generation + 1
-
-        let isPartiallyEvaluated = 
-            dynAssembly.Profile.IsPartiallyEvaluatedSlice
-                (dynAssembly.TryGetSlice >> Option.map (fun s -> s.Assembly)) 
-                    sliceInfo.Assembly
-                
-        let tryPickle (fI : FieldInfo) =
-            try
-                let value = fI.GetValue(null)
-                let size = state.Serializer.ComputeSize value
-                Choice1Of2 (fI, value)
-            with e -> 
-                Choice2Of2 (fI, e)
-
-        let initializers, errors = Array.map tryPickle sliceInfo.StaticFields |> Choice.split
-
-        let metadata =
-            {
-                Generation = generation
-                IsPartial = isPartiallyEvaluated
-                PickledFields = initializers |> Array.map (fun (f,_) -> f.ToString(), state.Serializer.PickleTyped f)
-                ErroredFields = errors |> Array.map (function (f,_) as err -> f.ToString(), state.Serializer.PickleTyped err)
-            }
-
-        let va = state.AssemblyCache.WriteStaticInitializers(sliceInfo.Assembly, initializers, metadata)
-        let exportState = state.AssemblyExportState.Add(id, va)
-        { state with AssemblyExportState = exportState }, va
+        let dependencies = state.DataManager.ExportDataDependencies sliceInfo
+        
+//        match state.AssemblyExportState.TryFind id with
+//        // assembly has already been exported as completed slice, so just return the previous static initialization
+//        | Some va when not (va.Metadata |> Option.get |> fst).IsPartial -> state, va
+//        | info -> 
+//
+//        // need to create a new static initialization package
+//
+//        let generation =
+//            match info with
+//            | None -> 0
+//            | Some va -> let md,_ = Option.get va.Metadata in md.Generation + 1
+//
+//        let isPartiallyEvaluated = 
+//            dynAssembly.Profile.IsPartiallyEvaluatedSlice
+//                (dynAssembly.TryGetSlice >> Option.map (fun s -> s.Assembly)) 
+//                    sliceInfo.Assembly
+//                
+//        let tryPickle (fI : FieldInfo) =
+//            try
+//                let value = fI.GetValue(null)
+//                let size = state.Serializer.ComputeSize value
+//                Choice1Of2 (fI, value)
+//            with e -> 
+//                Choice2Of2 (fI, e)
+//
+//        let initializers, errors = Array.map tryPickle sliceInfo.StaticFields |> Choice.split
+//
+//        let metadata =
+//            {
+//                Generation = generation
+//                IsPartial = isPartiallyEvaluated
+//                PickledFields = initializers |> Array.map (fun (f,_) -> f.ToString(), state.Serializer.PickleTyped f)
+//                ErroredFields = errors |> Array.map (function (f,_) as err -> f.ToString(), state.Serializer.PickleTyped err)
+//            }
+//
+//        let va = state.AssemblyCache.WriteStaticInitializers(sliceInfo.Assembly, initializers, metadata)
+//        let exportState = state.AssemblyExportState.Add(id, va)
+//        { state with AssemblyExportState = exportState }, va
 
     | Some(_, sliceInfo) ->
         match state.AssemblyExportState.TryFind id with
@@ -106,7 +94,7 @@ let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : A
 
     // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain in that order; 
     // this is because cache contains vagabond metadata while AppDomain does not.
-    match state.AssemblyCache.TryGetCachedAssemblyInfo id with
+    match state.AssemblyCache.TryGetCachedAssembly id with
     | Some pkg -> state, pkg
     | None ->
 
@@ -142,7 +130,7 @@ let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLoadPolicy) (i
     | None when state.CompilerState.IsLocalDynamicAssemblySlice id -> state, Loaded (id, true, None)
     | None ->
         // look up assembly cache
-        match state.AssemblyCache.TryGetCachedAssemblyInfo id with
+        match state.AssemblyCache.TryGetCachedAssembly id with
         | Some va -> state, Loaded(id, false, va.Metadata |> Option.map fst)
         | None ->
             // Attempt resolving locally

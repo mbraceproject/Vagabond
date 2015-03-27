@@ -136,4 +136,4 @@ type VagabondAssembly with
         let extension = Path.GetExtension path
         let id = AssemblyIdGenerator.GetManagedAssemblyId(name, path)
         let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; Extension = extension ; DataDependencies = [||] }
-        { Id = id ; Image = path ; Symbols = None ; Metadata = metadata }
+        { Id = id ; Image = path ; Symbols = None ; Metadata = metadata ; PersistedDataDependencies = [||] }

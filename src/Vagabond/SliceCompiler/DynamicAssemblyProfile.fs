@@ -25,8 +25,8 @@ type IDynamicAssemblyProfile =
     /// Specifies if static field is to be pickled
     abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
 
-    /// Decides if given type is being currently initialized
-    abstract IsPartiallyEvaluatedType : dynType:Type -> bool
+//    /// Decides if given type is being currently initialized
+//    abstract IsPartiallyEvaluatedType : dynType:Type -> bool
 
 
 /// Default dynamic assembly profile; no erasure, no static initialization.
@@ -39,7 +39,7 @@ type internal DefaultDynamicAssemblyProfile () =
         member __.EraseType _ = false
         member __.EraseStaticConstructor _ = false
         member __.PickleStaticField (_,_) = false
-        member __.IsPartiallyEvaluatedType _ = false
+//        member __.IsPartiallyEvaluatedType _ = false
 
 /// Dynamic Assembly profile for F# Interactive
 type FsiDynamicAssemblyProfile () =
@@ -48,27 +48,27 @@ type FsiDynamicAssemblyProfile () =
     let fsiRegex = new Regex("^FSI_([0-9]{4})$")
     let fsiAssembly = ref None
 
-    let tryGetCurrentInteractionType () =
-        match !fsiAssembly with
-        | None ->
-            let result =
-                System.AppDomain.CurrentDomain.GetAssemblies() 
-                |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = fsiAssemblyName)
-            fsiAssembly := result
-        | _ -> ()
-
-        match !fsiAssembly with
-        | None -> None
-        | Some a ->
-            a.GetTypes()
-            |> Seq.choose (fun t ->
-                let m = fsiRegex.Match t.Name 
-                if m.Success then
-                    Some(t, int <| m.Groups.[1].Value)
-                else None)
-            |> Seq.sortBy (fun (_,id) -> - id)
-            |> Seq.tryPick Some
-            |> Option.map fst
+//    let tryGetCurrentInteractionType () =
+//        match !fsiAssembly with
+//        | None ->
+//            let result =
+//                System.AppDomain.CurrentDomain.GetAssemblies() 
+//                |> Array.tryFind(fun a -> a.IsDynamic && a.GetName().Name = fsiAssemblyName)
+//            fsiAssembly := result
+//        | _ -> ()
+//
+//        match !fsiAssembly with
+//        | None -> None
+//        | Some a ->
+//            a.GetTypes()
+//            |> Seq.choose (fun t ->
+//                let m = fsiRegex.Match t.Name 
+//                if m.Success then
+//                    Some(t, int <| m.Groups.[1].Value)
+//                else None)
+//            |> Seq.sortBy (fun (_,id) -> - id)
+//            |> Seq.tryPick Some
+//            |> Option.map fst
 
     interface IDynamicAssemblyProfile with
         member __.IsMatch (a : Assembly) =
@@ -91,14 +91,14 @@ type FsiDynamicAssemblyProfile () =
         member __.PickleStaticField (f : FieldInfo, isErasedCctor) =
             isErasedCctor && not <| f.FieldType.Name.StartsWith("$")
 
-        member __.IsPartiallyEvaluatedType (ty : Type) =
-            let rec getRootType (t : Type) =
-                match t.DeclaringType with
-                | null -> t
-                | dt -> getRootType dt
-
-            tryGetCurrentInteractionType () 
-            |> Option.exists (fun t -> getRootType ty = t)
+//        member __.IsPartiallyEvaluatedType (ty : Type) =
+//            let rec getRootType (t : Type) =
+//                match t.DeclaringType with
+//                | null -> t
+//                | dt -> getRootType dt
+//
+//            tryGetCurrentInteractionType () 
+//            |> Option.exists (fun t -> getRootType ty = t)
 //        member __.IsPartiallyEvaluatedSlice (sliceResolver : Type -> Assembly option) (slice : Assembly) =
 //            tryGetCurrentInteractionType () 
 //            |> Option.bind sliceResolver

@@ -63,6 +63,8 @@
     <Compile Include="SliceCompiler\SliceCompiler.fs" />
     <Compile Include="AssemblyManagement\AssemblyCache.fs" />
     <Compile Include="AssemblyManagement\NativeAssemblyManager.fs" />
+    <Compile Include="AssemblyManagement\ManagementTypes.fs" />
+    <Compile Include="AssemblyManagement\DataDependencyManager.fs" />
     <Compile Include="AssemblyManagement\AssemblyManagement.fs" />
     <Compile Include="AssemblyManagement\Control.fs" />
     <Compile Include="Vagabond.fs" />

@@ -83,6 +83,13 @@ module internal Utils =
 
             ts.ToArray(), ss.ToArray()
 
+
+    type IDictionary<'K, 'V> with
+        member d.TryFind(k : 'K) =
+            let ok,v = d.TryGetValue k
+            if ok then Some v
+            else None
+
     type Async =
 
         /// <summary>
@@ -156,6 +163,13 @@ module internal Utils =
             try Some <| Assembly.Load(fullName)
             with :? FileNotFoundException | :? FileLoadException -> None
 
+
+    /// registers an assembly resolution handler based on AppDomain lookups;
+    /// this is needed since assembly lookups often fail when loaded at runtime.
+    let registerAssemblyResolutionHandler () = 
+        System.AppDomain.CurrentDomain.add_AssemblyResolve <|
+            new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
+
     // toplogical sorting for DAGs
     type Graph<'T> = ('T * 'T list) list
 
@@ -202,6 +216,11 @@ module internal Utils =
         let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape
         let regex = new Regex(sprintf "[%s]" invalidChars, RegexOptions.Compiled)
         fun (fileName : string) -> regex.Replace(fileName, "")
+
+    /// gets symbols file path for given cached assembly
+    let getSymbolsPath path = 
+        if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
+        else Path.ChangeExtension(path, ".pdb")
 
     [<RequireQualifiedAccess>]
     module Convert =

@@ -23,19 +23,19 @@ type internal NativeAssemblyManager(path : string) =
     /// Loads a native assembly by copying to the native path
     member __.Load(va : VagabondAssembly) =
         try
-            let cachePath = Path.Combine(container, va.Id.FullName)
+            let cachePath = Path.Combine(container, Path.ChangeExtension(va.Id.FullName, va.Id.Extension))
             let shouldCopy =
                 if File.Exists cachePath then
-                    let cachedId = AssemblyIdGenerator.ComputeUnmanagedAssemblyId cachePath
+                    let cachedId = AssemblyIdGenerator.GetManagedAssemblyId cachePath
                     cachedId <> va.Id
                 else
                     true
 
             if shouldCopy then File.Copy(va.Image, cachePath, true)
             // add copied assembly to state
-            installed.Add(va.Id, { va with Image = cachePath })
+            installed.[va.Id] <- { va with Image = cachePath }
 
-            Loaded(va.Id, true, None)
+            Loaded(va.Id, true, va.Metadata)
 
         with e -> LoadFault(va.Id, e)
 

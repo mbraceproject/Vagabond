@@ -15,7 +15,9 @@ type ExportableAssembly =
         /// Assembly symbols
         SymbolsRaw : byte [] option
         /// Vagabond metadata * static initializers
-        MetadataRaw : (VagabondMetadata * byte []) option
+        Metadata : VagabondMetadata
+        /// Raw peristed data dependencies
+        PersistedDataRaw : (DataDependencyId * byte []) []
     }
 
 type VagabondManager with
@@ -27,22 +29,42 @@ type VagabondManager with
     member v.CreateRawAssembly(va : VagabondAssembly) =
         let imageBuf = new MemoryStream()
         let symbols = va.Symbols |> Option.map (fun _ -> new MemoryStream())
-        let initializers = va.Metadata |> Option.map (fun (m,_) -> m, new MemoryStream())
+        let persisted = ref Map.empty<DataDependencyId, MemoryStream>
+
         let exporter =
             {
                 new IAssemblyExporter with
-                    member __.GetImageWriter _ = async { return imageBuf :> _ }
-                    member __.GetSymbolWriter _ = async { return Option.get symbols :> _ }
-                    member __.WriteMetadata (_,_) = async { return initializers |> Option.get |> snd :> _ }
+                    member x.TryGetImageWriter(id: AssemblyId) = async {
+                        return Some (imageBuf :> _)
+                    }
+
+                    member x.TryGetSymbolsWriter(id: AssemblyId) = async {
+                        return symbols |> Option.map unbox
+                    }
+
+                    member x.TryGetMetadata(id: AssemblyId) = async {
+                        return None
+                    }
+
+                    member x.GetPersistedDataDependencyReader(id: AssemblyId, dataDependency: DataDependencyInfo) = async {
+                        let mem = new MemoryStream()
+                        persisted := persisted.Value.Add(dataDependency.Id, mem)
+                        return mem :> _
+                    }
+                    
+                    member x.WriteMetadata(id: AssemblyId, metadata: VagabondMetadata) = async.Zero()
             }
 
         v.ExportAssemblies(exporter, [|va|]) |> Async.RunSync
+
+        let persisted = persisted.Value |> Map.toSeq |> Seq.map (fun (id,m) -> id, m.ToArray()) |> Seq.toArray
 
         {
             Id = va.Id
             ImageRaw = imageBuf.ToArray()
             SymbolsRaw = symbols |> Option.map (fun s -> s.ToArray())
-            MetadataRaw = initializers |> Option.map (fun (m,s) -> m, s.ToArray())
+            Metadata = va.Metadata
+            PersistedDataRaw = persisted
         }
 
     /// <summary>
@@ -56,17 +78,22 @@ type VagabondManager with
     ///     Import a raw assembly to cache.
     /// </summary>
     /// <param name="raw">raw assembly input.</param>
-    member v.CacheRawAssembly(ra : ExportableAssembly) : VagabondAssembly =
+    member v.CacheRawAssembly(ea : ExportableAssembly) : VagabondAssembly =
+        let persisted = ea.PersistedDataRaw |> Map.ofArray
         let importer =
             {
                 new IAssemblyImporter with
-                    member __.GetImageReader _ = async { return new MemoryStream(ra.ImageRaw) :> _ }
-                    member __.TryGetSymbolReader _ = async { return ra.SymbolsRaw |> Option.map (fun s -> new MemoryStream(s) :> _) }
-                    member __.TryReadMetadata _ = async { return ra.MetadataRaw |> Option.map fst }
-                    member __.GetDataReader (_,_) = async { return let _,d = ra.MetadataRaw |> Option.get in new MemoryStream(d) :> _ }
+                    member __.GetImageReader(id: AssemblyId) = async { return new MemoryStream(ea.ImageRaw) :> _ }
+                    member __.TryGetSymbolReader _ = async { return ea.SymbolsRaw |> Option.map (fun s -> new MemoryStream(s) :> _) }
+                    
+                    member __.GetPersistedDataDependencyReader(id: AssemblyId, dataDependency: DataDependencyInfo) = async {
+                        return new MemoryStream(persisted.[dataDependency.Id]) :> Stream
+                    }
+                    
+                    member __.ReadMetadata(id: AssemblyId) = async { return ea.Metadata }
             }
 
-        v.ImportAssemblies(importer, [ra.Id]) |> Async.RunSync |> List.head
+        v.ImportAssemblies(importer, [ea.Id]) |> Async.RunSync |> List.head
 
     /// <summary>
     ///     Import raw assemblies to cache.

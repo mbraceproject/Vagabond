@@ -14,6 +14,8 @@ open Nessos.Vagabond
 [<TestFixture>]
 module FsiTests =
 
+    let is64BitProcess = IntPtr.Size = 8
+
     // by default, NUnit copies test assemblies to a temp directory
     // use Directory.GetCurrentDirectory to gain access to the original build directory
     let private buildDirectory = Directory.GetCurrentDirectory()
@@ -466,33 +468,47 @@ module FsiTests =
 
     [<Test>]
     let ``19. Native dependencies`` () =
+        if is64BitProcess then
+            let fsi = FsiSession.Value
+
+            let code = """
+            open MathNet.Numerics
+            open MathNet.Numerics.LinearAlgebra
+
+            let getRandomDeterminant () =
+                let m = Matrix<double>.Build.Random(200,200) 
+                m.LU().Determinant
+
+            client.EvaluateThunk getRandomDeterminant
+            """
+
+            fsi.EvalInteraction code
+
+            // register native dll's
+
+            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
+            let libiomp5md = nativeDir + "libiomp5md.dll"
+            let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
+
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
+
+            let code' = """
+            let useNativeMKL () = Control.UseNativeMKL()
+            client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
+            """
+
+            fsi.EvalInteraction code'
+
+    [<Test>]
+    let ``20. Update earlier bindings if value changed`` () =
         let fsi = FsiSession.Value
+        fsi.EvalInteraction "let array = [|1..100|]"
 
-        let code = """
-        open MathNet.Numerics
-        open MathNet.Numerics.LinearAlgebra
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
 
-        let getRandomDeterminant () =
-            let m = Matrix<double>.Build.Random(200,200) 
-            m.LU().Determinant
+        fsi.EvalInteraction "array.[49] <- 0"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5000
 
-        client.EvaluateThunk getRandomDeterminant
-        """
-
-        fsi.EvalInteraction code
-
-        // register native dll's
-
-        let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
-        let libiomp5md = nativeDir + "libiomp5md.dll"
-        let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
-
-        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
-        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
-
-        let code' = """
-        let useNativeMKL () = Control.UseNativeMKL()
-        client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
-        """
-
-        fsi.EvalInteraction code'
+        fsi.EvalInteraction "array.[49] <- 50"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050

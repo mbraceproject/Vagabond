@@ -13,6 +13,7 @@ open Nessos.Vagabond.SliceCompilerTypes
 
 open Microsoft.FSharp.Reflection
 
+/// Assembly-specific topological ordering for assembly dependencies
 let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
     match tryGetTopologicalOrdering dependencies with
     | Choice1Of2 sorted -> sorted
@@ -21,7 +22,8 @@ let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
         let cycles = cycles |> Seq.map (fun (a,_) -> a.GetName().Name) |> String.concat ", "
         raise <| new VagabondException(sprintf "Came across cyclic dependencies of assemblies: %s" cycles)
 
-let gatherObjectDependencies (graph:obj) =
+/// returns all type depndencies for supplied object graph
+let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
     let types = new HashSet<Type> ()
     let assemblies = new HashSet<Assembly> ()
 
@@ -54,7 +56,6 @@ let gatherObjectDependencies (graph:obj) =
 
 
 /// assemblies ignored by Vagabond during assembly traversal
-
 let private isIgnoredAssembly =
     let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
     let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
@@ -69,8 +70,8 @@ let private isIgnoredAssembly =
         Array.exists ((=) a) vagabondAssemblies ||
             Array.exists ((=) (getPublicKey a)) systemPkt
 
-/// locally resolve an assembly by qualified name
 
+/// locally resolve an assembly by qualified name
 let private tryResolveAssembly ignoreF requireLoaded (state : DynamicAssemblyCompilerState option) (fullName : string) =
     match state |> Option.bind (fun s -> s.TryFindSliceInfo fullName) with
     | Some (_,info) -> Some info.Assembly
@@ -83,8 +84,8 @@ let private tryResolveAssembly ignoreF requireLoaded (state : DynamicAssemblyCom
             raise <| new VagabondException(msg)
         | None -> None
 
-/// recursively traverse assembly dependency graph
 
+/// recursively traverse assembly dependency graph
 let traverseDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
 
     let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
@@ -112,7 +113,6 @@ let traverseDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerS
 
 /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation
 /// the dynamic assemblies are then parsed to Cecil and sorted topologically for correct compilation order.
-
 let parseDynamicAssemblies ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
     let isDynamicAssemblyRequiringCompilation (a : Assembly) =
@@ -147,9 +147,10 @@ let parseDynamicAssemblies ignoreF requireLoaded (state : DynamicAssemblyCompile
     |> List.map (fun a -> let _,_,data = dynamicAssemblies.[a.AssemblyId] in data)
 
 
-
+/// Assembly dependency and its directly referenced types
 type Dependencies = (Assembly * seq<Type>) list
 
+/// compute dependencies for supplied object graph
 let computeDependencies (obj:obj) : Dependencies =
     let types, assemblies = gatherObjectDependencies obj
         
@@ -158,8 +159,8 @@ let computeDependencies (obj:obj) : Dependencies =
     |> Seq.append (assemblies |> Seq.map (fun a -> a, Seq.empty))
     |> Seq.toList
 
-/// determines the assemblies that require slice compilation based on given dependency input
 
+/// determines the assemblies that require slice compilation based on given dependency input
 let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
     dependencies
     |> List.filter(fun (a,types) ->
@@ -173,7 +174,6 @@ let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerS
 
 
 /// reassigns assemblies so that the correct assembly slices are matched
-
 let remapDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
     let remap (a : Assembly, ts : seq<Type>) =
         if a.IsDynamic then

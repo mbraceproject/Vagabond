@@ -1,7 +1,7 @@
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (3.25.1)
+    FAKE (3.26.1)
     FSharp.Compiler.Service (0.0.86)
     FSharp.Core (3.1.2.1)
     FSharp.Data (2.0.9)
@@ -11,7 +11,7 @@ NUGET
       FSharpVSPowerTools.Core (>= 1.7.0)
     FSharpVSPowerTools.Core (1.7.0)
       FSharp.Compiler.Service (>= 0.0.81)
-    FsPickler (1.0.8)
+    FsPickler (1.0.16)
     LinqOptimizer.FSharp (0.6.3)
     MathNet.Numerics (3.6.0)
       TaskParallelLibrary (>= 1.0.2856) - framework: >= net35 < net40

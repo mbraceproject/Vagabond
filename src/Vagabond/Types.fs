@@ -15,11 +15,8 @@ type AssemblyLoadPolicy =
     | ResolveStrongNames = 1
     /// All assembly names can be looked up by runtime
     | ResolveAll = 2
-    /// If assembly is to be resolved locally, then it should have identical SHA256 hashcode.
+    /// If assembly is to be resolved locally, then it should have identical image hash.
     | RequireIdentical = 4
-    /// Assemblies are to be cached only, not loaded in AppDomain
-    | CacheOnly = 8
-            
 
 /// Vagabond unique assembly identifier
 [<StructuralComparison>]
@@ -30,8 +27,8 @@ type AssemblyId =
         FullName : string
         /// digest of the raw assembly image
         ImageHash : byte []
-        /// Is managed CIL assembly
-        IsManaged : bool
+        /// Specifies the filename extension.
+        Extension : string
     }
 with
     /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
@@ -41,21 +38,49 @@ with
 
     override id.ToString() = id.FullName
 
+
+/// Data dependency identifier
+type DataDependencyId = int
+/// Pickle generation id for data dependency
+type DataGeneration = int
+
+/// Specifies data dependency content
+type DataDependency =
+    /// Data dependency failed to serialize
+    | Errored of message:string * Pickle<exn>
+    /// Data dependency pickled in-memory
+    | Pickled of pickle:Pickle<obj>
+    /// Data dependency pickled to file; reserved for large data bindings
+    | Persisted of size:int64
+
+/// Data dependency information
+type DataDependencyInfo =
+    { 
+        /// Unique identifier
+        Id : DataDependencyId
+        /// Human-readable dependency identifier.
+        Name : string
+        /// Data dependency generation.
+        Generation : DataGeneration
+        /// Pickled static field from which data was extracted.
+        FieldInfo : Pickle<FieldInfo>
+        /// Data dependency container.
+        Data : DataDependency
+    }
+
 /// Vagabond metadata for dynamic assembly slices
 [<NoEquality; NoComparison>]
 type VagabondMetadata =
     {
-        /// Generation of given static initializer
-        Generation : int
+        /// Specifies if is managed CIL assembly.
+        IsManagedAssembly : bool
 
-        /// Is partial static initialization data
-        IsPartial : bool
+        /// Specifies if assembly is dynamic assembly slice.
+        IsDynamicAssemblySlice : bool
 
-        /// Static fields that have been pickled succesfully
-        PickledFields : (string * Pickle<FieldInfo>) []
-
-        /// Static fields that failed to be pickled
-        ErroredFields : (string * Pickle<FieldInfo * exn>) []
+        /// Static data dependencies for assembly; 
+        /// used in dynamic assembly slices with erased static constructors.
+        DataDependencies : DataDependencyInfo []
     }
 
 /// Exportable Vagabond assembly and metadata
@@ -72,7 +97,10 @@ type VagabondAssembly =
         Symbols : string option
 
         /// Vagabond metadata and static initialization data path
-        Metadata : (VagabondMetadata * string) option
+        Metadata : VagabondMetadata
+
+        /// Paths to bindings that are persisted to disk
+        PersistedDataDependencies : (DataDependencyId * string) []
     }
 with
     /// Assembly qualified name
@@ -84,9 +112,12 @@ with
 
 /// Assembly load information
 type AssemblyLoadInfo =
+    /// Assembly does not exist in remote party.
     | NotLoaded of AssemblyId
+    /// Error when attempting to load assembly.
     | LoadFault of AssemblyId * exn
-    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata option
+    /// Assembly successfuly loaded in remote party.
+    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata
 with
     member info.Id = 
         match info with
@@ -96,12 +127,16 @@ with
 
 /// Abstract assembly image exporting API
 type IAssemblyExporter =
-    /// Asynchronously returns a write stream for assembly image of given id.
-    abstract GetImageWriter : id:AssemblyId -> Async<Stream>
-    /// Asynchronously returns a write stream for assembly debug symbols of given id.
-    abstract GetSymbolWriter : id:AssemblyId -> Async<Stream>
-    /// Asynchronously returns a write stream for Vagabond data of given id.
-    abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<Stream>
+    /// Asynchronously returns a write stream for assembly image of given id. Returns 'None' if image already exists.
+    abstract TryGetImageWriter : id:AssemblyId -> Async<Stream option>
+    /// Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.
+    abstract TryGetSymbolsWriter : id:AssemblyId -> Async<Stream option>
+    /// Asynchronously returns currently stored Vagabond metadata for given id. Returns 'None' if it does not exist.
+    abstract TryGetMetadata : id:AssemblyId -> Async<VagabondMetadata option>
+    /// Asynchronously returns a write stream for writing supplied persisted data dependency.
+    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
+    /// Asynchronously writes Vagabond metadata for assembly of provided id.
+    abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<unit>
 
 /// Abstract assembly image importing API
 type IAssemblyImporter =
@@ -110,19 +145,13 @@ type IAssemblyImporter =
     /// Asynchronously returns a read stream for assembly debug symbols of given id.
     abstract TryGetSymbolReader : id:AssemblyId -> Async<Stream option>
     /// Asynchronously reads Vagabond metadata information for assembly of given id.
-    abstract TryReadMetadata : id:AssemblyId -> Async<VagabondMetadata option>
+    abstract ReadMetadata : id:AssemblyId -> Async<VagabondMetadata>
     /// Asynchronously returns a read stream for Vagabond data of given id.
-    abstract GetDataReader : id:AssemblyId * VagabondMetadata -> Async<Stream>
+    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 
 type VagabondException = 
     inherit Exception
     internal new (message : string, ?inner : exn) = { inherit Exception(message, defaultArg inner null) }
-    private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }
-
-[<AutoSerializable(true)>] 
-type OutOfResourcesException =
-    inherit Exception
-    internal new (message : string) = { inherit Exception(message) }
     private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }

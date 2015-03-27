@@ -13,6 +13,7 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompiler
 open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.Serialization
+open Nessos.Vagabond.AssemblyManagementTypes
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
@@ -27,7 +28,8 @@ type VagabondMessage =
     | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly list>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded, compressStaticData, isIgnoredAssembly : Assembly -> bool, ?tyConv) =
+type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded : bool, 
+                            compressDataFiles : bool, dataPersistThreshold : int64, isIgnoredAssembly : Assembly -> bool, ?tyConv : ITypeNameConverter) =
 
     do 
         if not <| Directory.Exists cacheDirectory then
@@ -39,14 +41,21 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
     let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
-    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler, compressStaticData)
+    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler)
     let nativeAssemblyManager = new NativeAssemblyManager(cacheDirectory)
 
     let initState =
         {
+            CompressDataFiles = compressDataFiles
+            DataPersistThreshold = dataPersistThreshold
+
             CompilerState = !compilerState
+            DataExportState = Map.empty
+            DataImportState = Map.empty
+
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
+
             NativeAssemblyManager = nativeAssemblyManager
 
             Serializer = defaultPickler

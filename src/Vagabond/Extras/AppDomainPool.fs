@@ -12,6 +12,12 @@ open Microsoft.FSharp.Control
 open Nessos.FsPickler
 open Nessos.Vagabond
 
+[<AutoSerializable(true)>] 
+type OutOfResourcesException =
+    inherit Exception
+    internal new (message : string) = { inherit Exception(message) }
+    private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }
+
 /// User-defined configuration object
 /// passed at AppDomain initialization
 /// Values are instantiated on the client appdomain

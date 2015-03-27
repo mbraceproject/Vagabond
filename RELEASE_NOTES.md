@@ -1,3 +1,4 @@
+* 0.6.0 - Rewrite data exportation/importation logic and API.
 * 0.5.4 - Bugfixes in the native assembly implementation.
 * 0.5.3 - Use shorter file names in assembly cache.
 * 0.5.2 - Implement Vagabond.GetFileName for assembly ids.

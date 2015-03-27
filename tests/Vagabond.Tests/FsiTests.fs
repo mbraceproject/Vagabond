@@ -16,6 +16,8 @@ module FsiTests =
 
     let is64BitProcess = IntPtr.Size = 8
 
+    let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
+
     // by default, NUnit copies test assemblies to a temp directory
     // use Directory.GetCurrentDirectory to gain access to the original build directory
     let private buildDirectory = Directory.GetCurrentDirectory()
@@ -468,7 +470,7 @@ module FsiTests =
 
     [<Test>]
     let ``19. Native dependencies`` () =
-        if is64BitProcess then
+        if is64BitProcess && not runsOnMono.Value then
             let fsi = FsiSession.Value
 
             let code = """

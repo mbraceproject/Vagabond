@@ -14,6 +14,8 @@ open Nessos.Vagabond
 [<TestFixture>]
 module FsiTests =
 
+    let is64BitProcess = IntPtr.Size = 8
+
     // by default, NUnit copies test assemblies to a temp directory
     // use Directory.GetCurrentDirectory to gain access to the original build directory
     let private buildDirectory = Directory.GetCurrentDirectory()
@@ -466,36 +468,37 @@ module FsiTests =
 
     [<Test>]
     let ``19. Native dependencies`` () =
-        let fsi = FsiSession.Value
+        if is64BitProcess then
+            let fsi = FsiSession.Value
 
-        let code = """
-        open MathNet.Numerics
-        open MathNet.Numerics.LinearAlgebra
+            let code = """
+            open MathNet.Numerics
+            open MathNet.Numerics.LinearAlgebra
 
-        let getRandomDeterminant () =
-            let m = Matrix<double>.Build.Random(200,200) 
-            m.LU().Determinant
+            let getRandomDeterminant () =
+                let m = Matrix<double>.Build.Random(200,200) 
+                m.LU().Determinant
 
-        client.EvaluateThunk getRandomDeterminant
-        """
+            client.EvaluateThunk getRandomDeterminant
+            """
 
-        fsi.EvalInteraction code
+            fsi.EvalInteraction code
 
-        // register native dll's
+            // register native dll's
 
-        let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
-        let libiomp5md = nativeDir + "libiomp5md.dll"
-        let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
+            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
+            let libiomp5md = nativeDir + "libiomp5md.dll"
+            let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
-        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
-        fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
 
-        let code' = """
-        let useNativeMKL () = Control.UseNativeMKL()
-        client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
-        """
+            let code' = """
+            let useNativeMKL () = Control.UseNativeMKL()
+            client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
+            """
 
-        fsi.EvalInteraction code'
+            fsi.EvalInteraction code'
 
     [<Test>]
     let ``20. Update earlier bindings if value changed`` () =

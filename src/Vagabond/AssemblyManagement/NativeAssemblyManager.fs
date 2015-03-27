@@ -33,7 +33,7 @@ type internal NativeAssemblyManager(path : string) =
 
             if shouldCopy then File.Copy(va.Image, cachePath, true)
             // add copied assembly to state
-            installed.Add(va.Id, { va with Image = cachePath })
+            installed.[va.Id] <- { va with Image = cachePath }
 
             Loaded(va.Id, true, va.Metadata)
 

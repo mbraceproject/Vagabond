@@ -39,9 +39,10 @@ with
     override id.ToString() = id.FullName
 
 
+/// Data dependency identifier
 type DataDependencyId = int
+/// Pickle generation id for data dependency
 type DataGeneration = int
-
 
 /// Specifies data dependency content
 type DataDependency =
@@ -111,8 +112,11 @@ with
 
 /// Assembly load information
 type AssemblyLoadInfo =
+    /// Assembly does not exist in remote party.
     | NotLoaded of AssemblyId
+    /// Error when attempting to load assembly.
     | LoadFault of AssemblyId * exn
+    /// Assembly successfuly loaded in remote party.
     | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata
 with
     member info.Id = 
@@ -150,10 +154,4 @@ type IAssemblyImporter =
 type VagabondException = 
     inherit Exception
     internal new (message : string, ?inner : exn) = { inherit Exception(message, defaultArg inner null) }
-    private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }
-
-[<AutoSerializable(true)>] 
-type OutOfResourcesException =
-    inherit Exception
-    internal new (message : string) = { inherit Exception(message) }
     private new (sI : SerializationInfo, sc : StreamingContext) =  { inherit Exception(sI, sc) }

@@ -11,6 +11,7 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.AssemblyParser
 open Nessos.Vagabond.SliceCompilerTypes
 
+/// Parse info for dynamic type
 type TypeParseInfo =
     | AlwaysIncluded
     | InCurrentSlice of eraseCctor:bool * pickledFields:FieldInfo[]
@@ -19,7 +20,6 @@ type TypeParseInfo =
 
 /// traverses a dynamic assembly and compiles and index of parse information
 /// to be used for the assembly parser configuration
-
 let computeSliceData (state : DynamicAssemblyState) =
 
     let rec getParseInfo (parent : TypeParseInfo option) (map : Map<string, TypeParseInfo>) (t : Type) =
@@ -86,8 +86,7 @@ let computeSliceData (state : DynamicAssemblyState) =
     |> Array.filter (fun t -> not t.IsNested)
     |> getParseInfos None Map.empty
     
-// used by the assembly parser to remap references to corresponding slices
-
+/// used by the assembly parser to remap references to corresponding slices
 let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
     match state.DynamicAssemblies.TryFind t.Assembly.FullName with
     | None -> None
@@ -101,7 +100,6 @@ let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
         
 
 /// the main assembly parsing method
-
 let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly : Assembly) =
 
     // resolve dynamic assembly state

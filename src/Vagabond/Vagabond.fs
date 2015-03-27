@@ -17,7 +17,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
                                 ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy,
                                 ?compressStaticData : bool) =
 
-    static do AssemblyManagement.registerAssemblyResolutionHandler ()
+    static do registerAssemblyResolutionHandler ()
 
     let uuid = Guid.NewGuid()
     let cacheDirectory = 

@@ -24,10 +24,14 @@ type VagabondState =
     {
         /// Dynamic assembly compiler state
         CompilerState : DynamicAssemblyCompilerState
-        /// Locally compiled dynamic assembly export state
-        AssemblyExportState : Map<AssemblyId, DataExportState [] * VagabondAssembly>
-        /// Local assembly import state
-        AssemblyImportState : Map<AssemblyId, DataGeneration [] * AssemblyLoadInfo>
+        /// Locally compiled dynamic assembly data export state
+        DataExportState : Map<string, DataExportState []>
+        /// Local data import state
+        DataImportState : Map<string, DataGeneration []>
+        /// Assembly export state
+        AssemblyExportState : Map<AssemblyId, VagabondAssembly>
+        /// Assembly import state
+        AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
         /// Vagabond Serializer instance
         Serializer : FsPicklerSerializer
         /// Assembly Cache instance

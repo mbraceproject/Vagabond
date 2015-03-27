@@ -13,6 +13,7 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompiler
 open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.Serialization
+open Nessos.Vagabond.AssemblyManagementTypes
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
@@ -39,14 +40,18 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
     let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
-    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler, compressStaticData)
+    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler)
     let nativeAssemblyManager = new NativeAssemblyManager(cacheDirectory)
 
     let initState =
         {
             CompilerState = !compilerState
+            DataExportState = Map.empty
+            DataImportState = Map.empty
+
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
+
             NativeAssemblyManager = nativeAssemblyManager
 
             Serializer = defaultPickler

@@ -10,6 +10,7 @@ open Nessos.FsPickler
 open Nessos.FsPickler.Hashing
 
 open Nessos.Vagabond.SliceCompilerTypes
+open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagementTypes
 
@@ -18,21 +19,17 @@ let persistThreshold = 10L * 1024L
 /// Use Gzip compression for large persisted data bindings
 let compress = true
 
-//let exportState = new Dictionary<Assembly * DataDependencyId, DataDependencyInfo * (string * int) option * Choice<HashResult, exn>> ()
-//    let importState = new Dictionary<(* assembly path *) string * DataDependencyId, (*generation*) int> ()
-
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
     use fs = File.OpenWrite path
     let stream =
-        if compress then new GZipStream(fs, CompressionMode.Decompress) :> Stream
+        if compress then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
         else fs :> _
     state.Serializer.Serialize(stream, value)
-    stream.Flush()
 
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
     use fs = File.OpenRead path
     let stream =
-        if compress then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
+        if compress then new GZipStream(fs, CompressionMode.Decompress) :> Stream
         else fs :> _
     state.Serializer.Deserialize<obj>(stream)
 
@@ -45,10 +42,10 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     let requireNewGen =
         match current, hashResult with
         | None, _ -> true // no previous gen, update
-        | Some{ Hash = Choice1Of2 hash }, Choice1Of2 hash' -> hash <> hash' // only update if different hash, i.e. value updated
-        | Some{ Hash = Choice2Of2 _ }, Choice1Of2 _ -> true // if was exception but now successful, update
-        | Some{ Hash = Choice1Of2 _ }, Choice2Of2 _ -> false // if was successful but is exception, do not update
-        | Some{ Hash = Choice2Of2 e }, Choice2Of2 e' -> e.GetType() <> e'.GetType() // if was and is exception, only update if different exns
+        | Some { Hash = Choice1Of2 hash }, Choice1Of2 hash' -> hash <> hash' // only update if different hash, i.e. value updated
+        | Some { Hash = Choice2Of2 _ }, Choice1Of2 _ -> true // if was exception but now successful, update
+        | Some { Hash = Choice1Of2 _ }, Choice2Of2 _ -> false // if was successful but is exception, do not update
+        | Some { Hash = Choice2Of2 e }, Choice2Of2 e' -> e.GetType() <> e'.GetType() // if was and is exception, only update if different exns
 
     if not requireNewGen then Option.get current else
 
@@ -73,48 +70,54 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
 
     { AssemblyPath = assemblyPath ; Hash = hashResult ; Info = dependencyInfo ; PersistFile = persistFile }
 
+/// export data dependencies given controller state for provided compiled dynamic assembly slice
 let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice) =
-    match state.AssemblyExportState.TryFind slice.Assembly.Id with
-    | None ->
-        let assemblyPath = slice.Assembly.Location
-        let dataDependencies = slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id None fI)
-        let metadata =
-            {
-                
-            
-            }
-//
-//        exportState.[key] <- (dependencyInfo, persistFile, pickleResult)
-//        (dependencyInfo, persistFile)
-//
-//    /// import data dependency for locally loaded assembly slice
-//    let importDataDependency (va : VagabondAssembly) (persistPath : string option) (di : DataDependencyInfo) =
-//        let key = va.Image, di.Id
-//        let previousGen = importState.TryFind key
-//        let shouldUpdate =
-//            match previousGen with
-//            | None -> true
-//            | Some gen -> gen < di.Generation
-//
-//        if shouldUpdate then
-//            let updateValue (value : obj) =
-//                let field = serializer.UnPickleTyped di.FieldInfo
-//                field.SetValue(null, value)
-//                importState.[key] <- di.Generation
-//
-//            match di.Data, persistPath with
-//            | Pickled pickle, _ ->
-//                let value = serializer.UnPickleTyped pickle
-//                updateValue value
-//            | Persisted _, None -> invalidOp <| sprintf "Assembly '%O' missing data initializer for value '%s'." va.FullName di.Name
-//            | Persisted _, Some path ->
-//                let value = unpicklePersistedBinding path
-//                updateValue value
-//            | Errored _, _ -> ()  
-//
-//    member __.ExportDataDependencies(slice : DynamicAssemblySlice) =
-//        slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency slice.Assembly id fI)
-//
-//    member __.ImportDataDependencies (va : VagabondAssembly) =
-//        let indexed = va.PersistedDataDependencies |> Map.ofArray
-//        va.Metadata.DataDependencies |> Array.iter (fun di -> importDataDependency va (indexed.TryFind di.Id) di)
+    let assemblyPath = slice.Assembly.Location
+    let exportState =
+        match state.DataExportState.TryFind assemblyPath with
+        | None -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id None fI)
+        | Some deps -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id (Some deps.[id]) fI)
+
+    let persisted = exportState |> Array.choose (fun de -> de.PersistFile)
+    let dependencies = exportState |> Array.map (fun de -> de.Info)
+    let va = VagabondAssembly.CreateManaged(slice.Assembly, true, dependencies, persisted)
+    { state with DataExportState = state.DataExportState.Add(assemblyPath, exportState) }, va
+
+
+/// import data dependency for locally loaded assembly slice
+let importDataDependency (state : VagabondState) (va : VagabondAssembly) 
+                            (current : DataGeneration option) (persistPath : string option) (di : DataDependencyInfo) =
+
+    let shouldUpdate =
+        match current with
+        | None -> true
+        | Some gen -> gen < di.Generation
+
+    if not shouldUpdate then Option.get current else
+
+    let updateValue (value : obj) =
+        let field = state.Serializer.UnPickleTyped di.FieldInfo
+        field.SetValue(null, value)
+
+    match di.Data, persistPath with
+    | Pickled pickle, _ ->
+        let value = state.Serializer.UnPickleTyped pickle
+        updateValue value
+    | Persisted _, None -> invalidOp <| sprintf "Assembly '%O' missing data initializer for value '%s'." va.FullName di.Name
+    | Persisted _, Some path ->
+        let value = unpicklePersistedBinding state path
+        updateValue value
+    | Errored _, _ -> ()
+
+    di.Generation
+
+let importDataDependencies (state : VagabondState) (va : VagabondAssembly) =
+    if Array.isEmpty va.Metadata.DataDependencies then state else
+
+    let persisted = va.PersistedDataDependencies |> Map.ofArray
+    let importState =
+        match state.DataImportState.TryFind va.Image with
+        | None -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va None (persisted.TryFind dd.Id) dd)
+        | Some gens -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va (Some gens.[dd.Id]) (persisted.TryFind dd.Id) dd)
+
+    { state with DataImportState = state.DataImportState.Add(va.Image, importState) }

@@ -15,7 +15,6 @@ type AssemblyIdGenerator private () =
     // this is not really a problem since there is no
     // requirement of cryptographic properties here.
     static let hashAlgorithm = MD5.Create()
-    static let hostId = Guid.NewGuid().ToByteArray()
 
     /// computes a hash based on the MD5 + length of a provided file
     /// size should be at most 8 + 16 = 24 bytes or 48 base32 chars
@@ -36,26 +35,32 @@ type AssemblyIdGenerator private () =
         let hash = use fs = File.OpenRead path in hashAlgorithm.ComputeHash fs
         Array.append bsize hash
 
-    static let getMemoizedHash = memoize computeHash
+    static let getManagedAssemblyId(assembly : Assembly) =
+        if assembly.IsDynamic then
+            // generating Assembly id's for dynamic assemblies is convenient,
+            // but such instances should not leak to the public API.
+            // generate a few random bytes for 'hash'.
+            // this is ok since we only access the API through memoization
+            let hash = Guid.NewGuid().ToByteArray()
+            let extension = "__dynamic__assembly__"
+            { FullName = assembly.FullName ; ImageHash = hash ; Extension = extension }
+        else
+            let location = assembly.Location
+            let hash = computeHash location
+            let extension = Path.GetExtension location
+            { FullName = assembly.FullName ; ImageHash = hash ; Extension = extension }
+
+    static let getMemoizedManagedAssemblyId = concurrentMemoize getManagedAssemblyId
 
     /// Computes the assembly id for provided managed assembly.
-    static member GetManagedAssemblyId(assembly : Assembly) =
-        let hash =
-            if assembly.IsDynamic then
-                // generating Assembly id's for dynamic assemblies is convenient,
-                // but such instances should not leak to the public API.
-                let this = System.Text.Encoding.Default.GetBytes assembly.FullName
-                Array.append hostId this
-            else
-                // memoize managed assembly hashing
-                getMemoizedHash assembly.Location
-
-        { FullName = assembly.FullName ; ImageHash = hash }
+    static member GetManagedAssemblyId(assembly : Assembly) = getMemoizedManagedAssemblyId assembly
 
     /// Unmemoized, unmanaged assembly id generator
-    static member GetManagedAssemblyId(name : string, path : string) =
+    static member GetManagedAssemblyId(path : string) =
+        let name = Path.GetFileName path
+        let extension = Path.GetExtension path
         let hash = computeHash path
-        { FullName = name ; ImageHash = hash }
+        { FullName = name ; ImageHash = hash ; Extension = extension }
 
 
 module AssemblySliceName =
@@ -117,8 +122,7 @@ type AssemblyId with
         // need to keep file names as short as possible
         // without losing uniqueness.
         match AssemblySliceName.tryParseDynamicAssemblySlice an.Name with
-        | None -> 
-            sprintf "%s-%O-%s" (truncate 40 an.Name) an.Version hash
+        | None -> sprintf "%s-%O-%s" (truncate 40 an.Name) an.Version hash
         | Some(name, slice, guid) -> 
             // we cache using a shortened vagabond guid; 
             // we do this since uniqueness is guaranteed by the hash alone.
@@ -128,12 +132,33 @@ type AssemblyId with
         // strip invalid characters; fix scriptcs bug
         |> stripInvalidFileChars
 
-
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file
     static member CreateUnmanaged(path : string) =
-        let name = Path.GetFileNameWithoutExtension path
-        let extension = Path.GetExtension path
-        let id = AssemblyIdGenerator.GetManagedAssemblyId(name, path)
-        let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; Extension = extension ; DataDependencies = [||] }
+        let id = AssemblyIdGenerator.GetManagedAssemblyId path
+        let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; DataDependencies = [||] }
         { Id = id ; Image = path ; Symbols = None ; Metadata = metadata ; PersistedDataDependencies = [||] }
+
+    /// Defines un unmanaged VagabondAssembly for provided managed assembly
+    static member CreateManaged(assembly : Assembly, isDynamicAssemblySlice : bool, dataDependencies, dataFiles) =
+        let location = assembly.Location
+        let extension = Path.GetExtension location
+        let symbols =
+            let file = getSymbolsPath location
+            if File.Exists file then Some file else None
+
+        let id = assembly.AssemblyId
+        let metadata = 
+            { 
+                IsManagedAssembly = true
+                IsDynamicAssemblySlice = isDynamicAssemblySlice
+                DataDependencies = dataDependencies
+            }
+
+        {
+            Id = id
+            Image = location
+            Symbols = symbols
+            Metadata = metadata
+            PersistedDataDependencies = dataFiles
+        }

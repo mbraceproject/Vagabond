@@ -496,3 +496,14 @@ module FsiTests =
         """
 
         fsi.EvalInteraction code'
+
+    [<Test>]
+    let ``20. Update earlier bindings if value changed`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction "let array = [|1..100|]"
+
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
+
+        fsi.EvalInteraction "array.[49] <- 0"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5000

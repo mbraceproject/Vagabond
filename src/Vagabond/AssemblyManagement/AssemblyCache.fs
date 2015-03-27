@@ -21,20 +21,16 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
 
     // gets a unique file name in cache directory that corresponds to assembly id.
     static let getCachedAssemblyPath cacheDirectory (id : AssemblyId) =
-        Path.Combine(cacheDirectory, id.GetFileName() + ".dll")
-
-    /// gets symbols file path for given cached assembly
-    static let getSymbolsPath path = 
-        if runsOnMono.Value then Path.ChangeExtension(path, ".mdb") 
-        else Path.ChangeExtension(path, ".pdb")
+        Path.Combine(cacheDirectory, id.GetFileName() + id.Extension)
 
     /// gets metadata file path for given cached assembly
     static let getMetadataPath path = Path.ChangeExtension(path, ".vgb")
 
     /// gets path for persisted dependency
     static let getPersistedDataPath (cachePath : string) (id : DataDependencyId) (gen : int) =
+        let dir = Path.GetDirectoryName cachePath
         let fileName = Path.GetFileNameWithoutExtension cachePath
-        sprintf "%s-%d-%d.dat" fileName id gen
+        Path.Combine(dir, sprintf "%s-%d-%d.dat" fileName id gen)
 
     /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {
@@ -47,6 +43,12 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         use fs = File.OpenRead path
         do! fs.CopyToAsync(target)
     }
+
+    // resolve symbols file
+    static let tryFindSymbols cachePath =
+        let symbols = getSymbolsPath cachePath
+        if File.Exists symbols then Some symbols
+        else None
 
     /// try reading vagabond metadata from cachePath
     let tryReadMetadata cachePath =
@@ -73,14 +75,8 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     let getPersistedDataDependencies (md : VagabondMetadata) =
         md.DataDependencies |> Array.filter (fun dd -> match dd.Data with Persisted _ -> true | _ -> false)
 
-    // resolve symbols file
-    let tryFindSymbols cachePath =
-        let symbols = getSymbolsPath cachePath
-        if File.Exists symbols then Some symbols
-        else None
-
     /// gets persisted Vagabond assembly from cache
-    let getPersistedAssembly (cachePath:string) (id : AssemblyId) =
+    let getCachedAssembly (cachePath:string) (id : AssemblyId) =
         let symbols = tryFindSymbols cachePath
         let metadata = readMetadata cachePath
         let dataDependencies = getPersistedDataDependencies metadata
@@ -104,7 +100,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         let cachePath = getCachedAssemblyPath cacheDirectory id
 
         if File.Exists cachePath then
-            Some <| getPersistedAssembly cachePath id
+            Some <| getCachedAssembly cachePath id
         else
             None
 
@@ -113,11 +109,25 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         __.TryGetCachedAssembly(id).IsSome
 
     /// Creates a Vagabond assembly record for given System.Reflection.Assembly.
-    member __.CreateVagabondAssembly(assembly : Assembly) : VagabondAssembly =
+    static member CreateVagabondAssembly(assembly : Assembly, isSlice : bool) : VagabondAssembly =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
             invalidArg assembly.FullName "assembly is dynamic or not persistable."
         else
-            getPersistedAssembly assembly.Location assembly.AssemblyId
+            let location = assembly.Location
+            let symbols = tryFindSymbols location
+            let metadata =
+                {
+                    IsManagedAssembly = true
+                    IsDynamicAssemblySlice = isSlice
+                    DataDependencies = [||]
+                }
+            {
+                Id = assembly.AssemblyId
+                Image = location
+                Symbols = symbols
+                Metadata = metadata
+                PersistedDataDependencies = [||]
+            }
 
     /// Import assembly of given id to cache
     member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
@@ -155,13 +165,16 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
             let dpath = getPersistedDataPath cachePath dd.Id dd.Generation
             use! dataReader = importer.GetPersistedDataDependencyReader(id, dd)
             do! streamToFile dataReader dpath
+            return (dd.Id, dpath)
         }
 
         // download persisted data dependency files
-        do! persistedDependencies |> Seq.map importPersistedDependency |> Async.Parallel |> Async.Ignore
+        let! persistedFiles = persistedDependencies |> Seq.map importPersistedDependency |> Async.Parallel
 
         // finaly, write metadata file
         writeMetadata cachePath metadata
+
+        return { Id = id ; Image = cachePath ; Symbols = symbolsPath ; Metadata = metadata ; PersistedDataDependencies = persistedFiles }
     }
 
     /// Exports assembly of given id from cache

@@ -15,7 +15,7 @@ type AssemblyLoadPolicy =
     | ResolveStrongNames = 1
     /// All assembly names can be looked up by runtime
     | ResolveAll = 2
-    /// If assembly is to be resolved locally, then it should have identical SHA256 hashcode.
+    /// If assembly is to be resolved locally, then it should have identical image hash.
     | RequireIdentical = 4
     /// Assemblies are to be cached only, not loaded in AppDomain
     | CacheOnly = 8
@@ -30,6 +30,8 @@ type AssemblyId =
         FullName : string
         /// digest of the raw assembly image
         ImageHash : byte []
+        /// Specifies the filename extension.
+        Extension : string
     }
 with
     /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
@@ -78,9 +80,6 @@ type VagabondMetadata =
         /// Specifies if assembly is dynamic assembly slice.
         IsDynamicAssemblySlice : bool
 
-        /// Specifies the filename extension.
-        Extension : string
-
         /// Static data dependencies for assembly; 
         /// used in dynamic assembly slices with erased static constructors.
         DataDependencies : DataDependencyInfo []
@@ -117,7 +116,7 @@ with
 type AssemblyLoadInfo =
     | NotLoaded of AssemblyId
     | LoadFault of AssemblyId * exn
-    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata option
+    | Loaded of AssemblyId * isAppDomainLoaded:bool * metadata:VagabondMetadata
 with
     member info.Id = 
         match info with

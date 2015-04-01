@@ -516,6 +516,6 @@ module FsiTests =
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
 
     [<Test>]
-    let ``21. Multi-threaded parallel tests`` () =
+    let ``21. Concurrent calls to client`` () =
         let fsi = FsiSession.Value
         fsi.EvalInteraction "[|1..100|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"

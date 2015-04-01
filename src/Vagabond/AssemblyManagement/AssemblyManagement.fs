@@ -68,13 +68,13 @@ let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : A
 let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
 
     match state.AssemblyImportState.TryFind id with
-    | Some loadState -> state, loadState
+    | Some (Loaded _ as loadState) -> state, loadState
     // dynamic assembly slice generated in local process
     | None when state.CompilerState.IsLocalDynamicAssemblySlice id -> 
         let state, va = exportAssembly state policy id
         state, Loaded (id, true, va.Metadata)
 
-    | None ->
+    | _ ->
         // look up assembly cache
         match state.AssemblyCache.TryGetCachedAssembly id with
         | Some va -> state, Loaded(id, false, va.Metadata)
@@ -141,12 +141,12 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
                 let state' = importDataDependencies state va
                 success state' <| Loaded(va.Id, true, va.Metadata)
             // assembly already in AppDomain, update data dependencies if necessary
-            | Some(Loaded(id, true,_)) ->
+            | Some(Loaded(id, true, _)) ->
                 let state' = importDataDependencies state va
                 success state' <| Loaded(id, true, va.Metadata)
         else
             // add assembly to unmanaged dependency state
             let result = state.NativeAssemblyManager.Load va
-            state, result
+            success state result
 
     with e -> state, LoadFault(va.Id, e)

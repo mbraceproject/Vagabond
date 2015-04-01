@@ -5,6 +5,7 @@ open System.IO
 open System.Security.Cryptography
 open System.Reflection
 open System.Text.RegularExpressions
+open System.Threading
 
 open Nessos.Vagabond
 
@@ -14,7 +15,8 @@ type AssemblyIdGenerator private () =
     // have moved to MD5 to reduce size to 128 bits.
     // this is not really a problem since there is no
     // requirement of cryptographic properties here.
-    static let hashAlgorithm = MD5.Create()
+    // MD5 instances are not thread safe, wrap to ThreadLocal<_>
+    static let hashAlgorithm = new ThreadLocal<_>(fun () -> MD5.Create())
 
     /// computes a hash based on the MD5 + length of a provided file
     /// size should be at most 8 + 16 = 24 bytes or 48 base32 chars
@@ -32,7 +34,7 @@ type AssemblyIdGenerator private () =
         
         let fileInfo = new FileInfo(path)
         let bsize = long2Bytes fileInfo.Length
-        let hash = use fs = File.OpenRead path in hashAlgorithm.ComputeHash fs
+        let hash = use fs = File.OpenRead path in hashAlgorithm.Value.ComputeHash fs
         Array.append bsize hash
 
     static let getManagedAssemblyId(assembly : Assembly) =

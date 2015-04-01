@@ -58,8 +58,8 @@ type AssemblyIdGenerator private () =
     static member GetManagedAssemblyId(assembly : Assembly) = getMemoizedManagedAssemblyId assembly
 
     /// Unmemoized, unmanaged assembly id generator
-    static member GetManagedAssemblyId(path : string) =
-        let name = Path.GetFileName path
+    static member GetAssemblyId(path : string) =
+        let name = Path.GetFileNameWithoutExtension path
         let extension = Path.GetExtension path
         let hash = computeHash path
         { FullName = name ; ImageHash = hash ; Extension = extension }
@@ -137,7 +137,7 @@ type AssemblyId with
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file
     static member CreateUnmanaged(path : string) =
-        let id = AssemblyIdGenerator.GetManagedAssemblyId path
+        let id = AssemblyIdGenerator.GetAssemblyId path
         let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; DataDependencies = [||] }
         { Id = id ; Image = path ; Symbols = None ; Metadata = metadata ; PersistedDataDependencies = [||] }
 

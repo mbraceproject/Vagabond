@@ -518,4 +518,4 @@ module FsiTests =
     [<Test>]
     let ``21. Concurrent calls to client`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "[|1..100|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"
+        fsi.EvalInteraction "[|1..20|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"

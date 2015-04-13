@@ -1,3 +1,4 @@
+* 0.6.2 - Ignored assemblies bugfix.
 * 0.6.1 - Misc bugfixes.
 * 0.6.0 - Rewrite data exportation/importation logic and API.
 * 0.5.4 - Bugfixes in the native assembly implementation.

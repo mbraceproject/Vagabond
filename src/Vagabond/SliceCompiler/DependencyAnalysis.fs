@@ -58,9 +58,10 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
 /// assemblies ignored by Vagabond during assembly traversal
 let private isIgnoredAssembly =
     let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-    let systemPkt = [| getPublicKey typeof<int>.Assembly ; getPublicKey typeof<int option>.Assembly |]
+    let systemPkt = [| getPublicKey typeof<int>.Assembly |]
     let vagabondAssemblies = 
         [| 
+            typeof<int option>
             typeof<Mono.Cecil.AssemblyDefinition>
             typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>
             typeof<Nessos.Vagabond.AssemblyId>

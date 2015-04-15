@@ -112,6 +112,8 @@ module internal Utils =
             | Choice2Of3 e -> reraise' e
             | Choice3Of3 e -> raise e
 
+    let hset (ts : seq<'T>) = new HashSet<'T>(ts)
+
     let memoize f =
         let dict = new Dictionary<_,_>()
         fun x ->
@@ -175,12 +177,27 @@ module internal Utils =
 
     /// Attempt to compute a topological sorting for graph if DAG,
     /// If not DAG returns the reduced DAG for further debugging
-    let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, Graph<'T>> =
+    let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, 'T list> =
+        let locateCycle (g : Graph<'T>) =
+            let d = dict g
+            let rec tryFindCycleInPath (path : 'T list) (acc : 'T list) (t : 'T) =
+                match path with
+                | [] -> None
+                | h :: tl when h = t -> Some (h :: acc)
+                | h :: tl -> tryFindCycleInPath tl (h :: acc) t
+
+            let rec walk (path : 'T list) (t : 'T) =
+                match tryFindCycleInPath path [] t with
+                | Some _ as cycle -> cycle
+                | None -> d.[t] |> List.tryPick (walk (t :: path))
+
+            g |> List.head |> fst |> walk [] |> Option.get
+
         let rec aux sorted (g : Graph<'T>) =
-            if g.IsEmpty then Choice1Of2 (List.rev sorted) else
+            if List.isEmpty g then Choice1Of2 (List.rev sorted) else
 
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> Choice2Of2 g // not a DAG, return reduced graph
+            | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
             | Some (t,_) ->
                 let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
                 aux (t :: sorted) g0

@@ -17,10 +17,10 @@ open Microsoft.FSharp.Reflection
 let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
     match tryGetTopologicalOrdering dependencies with
     | Choice1Of2 sorted -> sorted
-    | Choice2Of2 cycles ->
+    | Choice2Of2 cycle ->
         // graph not DAG, return an appropriate exception
-        let cycles = cycles |> Seq.map (fun (a,_) -> a.GetName().Name) |> String.concat ", "
-        raise <| new VagabondException(sprintf "Came across cyclic dependencies of assemblies: %s" cycles)
+        let cycle = cycle |> Seq.map (fun a -> a.GetName().Name) |> String.concat ", "
+        raise <| new VagabondException(sprintf "Found circular dependencies: %s." cycle)
 
 /// returns all type depndencies for supplied object graph
 let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
@@ -58,18 +58,25 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
 /// assemblies ignored by Vagabond during assembly traversal
 let private isIgnoredAssembly =
     let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-    let systemPkt = [| getPublicKey typeof<int>.Assembly |]
+    let systemPkt = getPublicKey typeof<int>.Assembly
+    let msPkt = getPublicKey typeof<int option>.Assembly
     let vagabondAssemblies = 
-        [| 
-            typeof<int option>
-            typeof<Mono.Cecil.AssemblyDefinition>
-            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>
-            typeof<Nessos.Vagabond.AssemblyId>
-        |] |> Array.map (fun t -> t.Assembly)
+        hset [|
+            typeof<int option>.Assembly
+            typeof<Mono.Cecil.AssemblyDefinition>.Assembly
+            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>.Assembly
+            typeof<Nessos.Vagabond.AssemblyId>.Assembly
+        |]
+
+    // ignore MS assemblies that are in circular dependency
+    let cyclicLibs = hset [| "System.Web" ; "System.Web.Services" ; "System.Web.Design" |]
 
     fun (a:Assembly) ->
-        Array.exists ((=) a) vagabondAssemblies ||
-            Array.exists ((=) (getPublicKey a)) systemPkt
+        if vagabondAssemblies.Contains a then true
+        else
+            let pkt = getPublicKey a
+            pkt = systemPkt ||
+            pkt = msPkt && cyclicLibs.Contains(a.GetName().Name)
 
 
 /// locally resolve an assembly by qualified name

@@ -1,3 +1,4 @@
+* 0.6.3 - Improve cyclic dependency error reporting.
 * 0.6.2 - Ignored assemblies bugfix.
 * 0.6.1 - Misc bugfixes.
 * 0.6.0 - Rewrite data exportation/importation logic and API.

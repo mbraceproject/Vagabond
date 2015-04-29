@@ -43,17 +43,14 @@ let computeSliceData (state : DynamicAssemblyState) =
             | Some (InSpecificSlice slice) -> update map t (InPastSlice (slice, false))
             | None ->
                 // new type, compute information
-
                 if t.Namespace = null && t.DeclaringType = null && t.Name = "[<Module>]" then
                     update map t AlwaysIncluded
-
-                elif state.Profile.EraseType t then
-                    update map t Erased
-
-                elif state.Profile.AlwaysIncludeType t then
-                    update map t AlwaysIncluded
-
                 else
+
+                match state.Profile.GetTypeParseBehaviour t with
+                | TypeParseBehaviour.InEverySlice -> update map t AlwaysIncluded
+                | TypeParseBehaviour.InNoSlice -> update map t Erased
+                | TypeParseBehaviour.InCurrentSlice ->
                     // determine emitted type metadata
                     let eraseCctor = state.Profile.EraseStaticConstructor t
                     let pickledFields =

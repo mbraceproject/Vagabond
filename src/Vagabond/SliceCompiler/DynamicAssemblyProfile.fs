@@ -4,6 +4,18 @@ open System
 open System.Reflection
 open System.Text.RegularExpressions
 
+open Microsoft.FSharp.Reflection
+
+/// Determines dynamic type parsing behaviour
+/// to Vagabond slices
+type TypeParseBehaviour =
+    /// Include new type to current slice
+    | InCurrentSlice
+    /// Include type in every slice
+    | InEverySlice
+    /// Erase type from all slices
+    | InNoSlice 
+
 /// customizes slicing behaviour on given dynamic assembly
 type IDynamicAssemblyProfile =
 
@@ -13,17 +25,18 @@ type IDynamicAssemblyProfile =
     /// a short description of the profile
     abstract Description : string
         
-    /// Specifies if type is to be included in every iteration of the slice
-    abstract AlwaysIncludeType: Type -> bool
+    /// Specifies slice parse behaviour for provided type.
+    abstract GetTypeParseBehaviour : Type -> TypeParseBehaviour
 
-    /// Specifies if type is to be erased from slices
-    abstract EraseType : Type -> bool
-
-    /// Specifies if static constructor is to be erased
+    /// Specifies if static constructor is to be erased.
     abstract EraseStaticConstructor : Type -> bool
 
-    /// Specifies if static field is to be pickled
-    abstract PickleStaticField : FieldInfo * isErasedCtor : bool -> bool
+    /// <summary>
+    ///     Specifies if static field value is to be pickled for remote party.
+    /// </summary>
+    /// <param name="field">Field to be checked.</param>
+    /// <param name="isErasedCctor">Specifies if static constructor has been erased for declaring type.</param>
+    abstract PickleStaticField : field:FieldInfo * isErasedCctor:bool -> bool
 
 
 /// Default dynamic assembly profile; no erasure, no static initialization.
@@ -31,9 +44,7 @@ type internal DefaultDynamicAssemblyProfile () =
     interface IDynamicAssemblyProfile with
         member __.IsMatch _ = raise <| new NotSupportedException()
         member __.Description = "The default dynamic assembly profile."
-
-        member __.AlwaysIncludeType _ = false
-        member __.EraseType _ = false
+        member __.GetTypeParseBehaviour _ = InCurrentSlice
         member __.EraseStaticConstructor _ = false
         member __.PickleStaticField (_,_) = false
 
@@ -44,21 +55,28 @@ type FsiDynamicAssemblyProfile () =
 
     interface IDynamicAssemblyProfile with
         member __.IsMatch (a : Assembly) =
-            let an = a.GetName() in an.Name = fsiAssemblyName
+            let an = a.GetName() 
+            an.Name = fsiAssemblyName && 
+                an.Version.ToString() = "0.0.0.0" &&
+                    a.GetType("FSI_0001") <> null 
 
         member __.Description = "F# Interactive dynamic assembly profile."
 
-        member __.AlwaysIncludeType (t : Type) = 
-            t.Name.StartsWith("$") && t.Namespace = null
+        member __.GetTypeParseBehaviour (t : Type) =
+            // Need to keep all '$ArrayType$844' type declarations in every compiled slice.
+            // Everything else is appended normally to current slice.
+            if t.Name.StartsWith("$") && t.Namespace = null then InEverySlice
+            else
+                InCurrentSlice
 
-        member __.EraseType (t : Type) =
-            t.Name.StartsWith("$") && 
-                match t.Namespace with
-                | null -> false
-                | ns -> ns.StartsWith("<StartupCode$")
-
-        member __.EraseStaticConstructor (t : Type) =
-            Microsoft.FSharp.Reflection.FSharpType.IsModule t
-
-        member __.PickleStaticField (f : FieldInfo, isErasedCctor) =
-            isErasedCctor && not <| f.FieldType.Name.StartsWith("$")
+        member __.EraseStaticConstructor (t : Type) = false
+        member __.PickleStaticField (f : FieldInfo, _ : bool) =
+            // all static fields declared in types nested inside modules are to be pickled.
+            let rec isModuleType (t : Type) =
+                if FSharpType.IsModule t then true
+                else
+                    match t.DeclaringType with
+                    | null -> false
+                    | dt -> isModuleType dt
+        
+            isModuleType f.DeclaringType

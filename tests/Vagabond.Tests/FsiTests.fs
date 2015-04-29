@@ -84,7 +84,13 @@ module FsiTests =
             | None -> invalidOp "No fsi session is running."
             | Some fsi -> fsi
 
-    let eval (expr : string) = FsiSession.Value.TryEvalExpression expr
+    let defineQuotationEvaluator (fsi : FsiEvaluationSession) =
+        fsi.EvalInteraction """
+            open Microsoft.FSharp.Quotations
+            open Microsoft.FSharp.Linq.RuntimeHelpers
+
+            let eval (e : Expr<'T>) = LeafExpressionConverter.EvaluateQuotation e :?> 'T
+        """
 
 
     [<TestFixtureSetUp>]
@@ -190,13 +196,11 @@ module FsiTests =
     let ``07. Nested module definitions`` () =
 
         let code = """
-
-        module NestedModule =
+            module NestedModule =
                 
-            type NestedType = Value of int
+                type NestedType = Value of int
 
-            let x = Value 41
-
+                let x = Value 41
         """
             
         let fsi = FsiSession.Value
@@ -211,11 +215,11 @@ module FsiTests =
     let ``09. Class Definitions`` () =
             
         let code = """
-        type Cell<'T> (x : 'T) =
-            let x = ref x
-            member __.Value
-                with get () = !x
-                and set y = x := y
+            type Cell<'T> (x : 'T) =
+                let x = ref x
+                member __.Value
+                    with get () = !x
+                    and set y = x := y
         """
 
         let fsi = FsiSession.Value
@@ -229,26 +233,26 @@ module FsiTests =
     let ``10. Asynchronous workflows`` () =
 
         let code = """
-
-        type Bar<'T> = Bar of 'T
+            type Bar<'T> = Bar of 'T
    
-        let runAsync (wf : Async<'T>) =
-            client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
+            let runAsync (wf : Async<'T>) =
+                client.EvaluateThunk <| fun () -> Async.RunSynchronously wf
 
-        let n = 100
+            let n = 100
 
-        let testWorkflow = async {
+            let testWorkflow = async {
 
-            let worker i = async {
-                do printfn "processing job #%d" i
-                return Bar (i+1)
+                let worker i = async {
+                    do printfn "processing job #%d" i
+                    return Bar (i+1)
+                }
+
+                let! results = [|1..n|] |> Array.map worker |> Async.Parallel
+
+                return results
             }
+        """
 
-            let! results = [|1..n|] |> Array.map worker |> Async.Parallel
-
-            return results
-}
-"""
         let fsi = FsiSession.Value
         fsi.EvalInteraction code
         fsi.EvalInteraction "let results = runAsync testWorkflow"
@@ -259,19 +263,18 @@ module FsiTests =
     let ``11. Deploy LinqOptimizer dynamic assemblies`` () =
         
         let code = """
-
-        open Nessos.LinqOptimizer.FSharp
+            open Nessos.LinqOptimizer.FSharp
         
-        let nums = [|1..100000|]
+            let nums = [|1..100000|]
 
-        let query = 
-            nums
-            |> Query.ofSeq
-            |> Query.filter (fun num -> num % 2 = 0)
-            |> Query.map (fun num -> num * num)
-            |> Query.sum
-            |> Query.compile
-"""
+            let query = 
+                nums
+                |> Query.ofSeq
+                |> Query.filter (fun num -> num % 2 = 0)
+                |> Query.map (fun num -> num * num)
+                |> Query.sum
+                |> Query.compile
+        """
 
         let fsi = FsiSession.Value
         fsi.EvalInteraction code
@@ -283,30 +286,30 @@ module FsiTests =
     let ``12 Remotely deploy an actor definition`` () =
 
         let code = """
-        open Nessos.Thespian
+            open Nessos.Thespian
 
-        type Counter =
-            | Increment of int
-            | GetCount of IReplyChannel<int>
+            type Counter =
+                | Increment of int
+                | GetCount of IReplyChannel<int>
 
-        let rec loop state (self : Actor<Counter>) =
-            async {
-                let! msg = self.Receive ()
-                match msg with
-                | Increment i -> 
-                    printfn "Increment by %d" i
-                    return! loop (i + state) self
-                | GetCount rc ->
-                    do! rc.Reply state
-                    return! loop state self
-            }
+            let rec loop state (self : Actor<Counter>) =
+                async {
+                    let! msg = self.Receive ()
+                    match msg with
+                    | Increment i -> 
+                        printfn "Increment by %d" i
+                        return! loop (i + state) self
+                    | GetCount rc ->
+                        do! rc.Reply state
+                        return! loop state self
+                }
 
-        let deployActor (behaviour : Actor<'T> -> Async<unit>) : ActorRef<'T> = 
-            client.EvaluateThunk(fun () ->
-                printfn "deploying actor..."
-                let actor = Actor.bind behaviour |> Actor.Publish
-                actor.Ref)
-"""
+            let deployActor (behaviour : Actor<'T> -> Async<unit>) : ActorRef<'T> = 
+                client.EvaluateThunk(fun () ->
+                    printfn "deploying actor..."
+                    let actor = Actor.bind behaviour |> Actor.Publish
+                    actor.Ref)
+        """
 
         let fsi = FsiSession.Value
 
@@ -322,12 +325,11 @@ module FsiTests =
     let ``13. Add reference to external library`` () =
             
         let code = """
-            
-        module StaticAssemblyTest
+            module StaticAssemblyTest
 
-            type Test<'T> = TestCtor of 'T
+                type Test<'T> = TestCtor of 'T
 
-            let value = TestCtor (42, "42")
+                let value = TestCtor (42, "42")
         """
 
         let scs = new SimpleSourceCodeServices()
@@ -351,18 +353,18 @@ module FsiTests =
     let ``14. Execute code from F# script file`` () =
             
         let code = """
-        module Script
+            module Script
             
-            type ScriptType<'T> = ScriptCtor of 'T
+                type ScriptType<'T> = ScriptCtor of 'T
 
-            let map f (ScriptCtor x) = ScriptCtor (f x)
+                let map f (ScriptCtor x) = ScriptCtor (f x)
 
-            let rec factorial n =
-                if n <= 1 then 1
-                else
-                    n * factorial (n-1)
+                let rec factorial n =
+                    if n <= 1 then 1
+                    else
+                        n * factorial (n-1)
 
-            let value = ScriptCtor 10
+                let value = ScriptCtor 10
         """
 
         let workDir = Path.GetTempPath()
@@ -383,11 +385,11 @@ module FsiTests =
         let fsi = FsiSession.Value
             
         let code = """
-        let cell = ref 0
-        for i in 1 .. 100 do
-            cell := client.EvaluateThunk <| fun () -> cell.Value + 1
+            let cell = ref 0
+            for i in 1 .. 100 do
+                cell := client.EvaluateThunk <| fun () -> cell.Value + 1
 
-        cell.Value
+            cell.Value
         """
 
         fsi.EvalExpression code |> shouldEqual 100
@@ -398,22 +400,22 @@ module FsiTests =
         let fsi = FsiSession.Value
             
         let type1 = """
-        type Foo<'T>(x : 'T) =
-            member __.Value = x
+            type Foo<'T>(x : 'T) =
+                member __.Value = x
         """
 
         let type2 = """
-        type Bar<'T, 'S>(x : 'T, y : 'S) =
-            inherit Foo<'T>(x)
+            type Bar<'T, 'S>(x : 'T, y : 'S) =
+                inherit Foo<'T>(x)
                 
-            member __.Value2 = y
+                member __.Value2 = y
         """
 
         let type3 = """
-        type Baz(x : int, y : string) =
-            inherit Bar<int, string>(x,y)
+            type Baz(x : int, y : string) =
+                inherit Bar<int, string>(x,y)
 
-            member __.Pair = x,y
+                member __.Pair = x,y
         """
 
         fsi.EvalInteraction type1
@@ -430,15 +432,15 @@ module FsiTests =
         let fsi = FsiSession.Value
 
         let interfaceCode = """
-        type IFoo =
-            abstract GetEncoding<'T> : 'T -> int
+            type IFoo =
+                abstract GetEncoding<'T> : 'T -> int
 
-        let eval (foo : IFoo) (x : 'T) = foo.GetEncoding x
+            let eval (foo : IFoo) (x : 'T) = foo.GetEncoding x
         """
         let implementationCode = """
-        type Foo () =
-            interface IFoo with
-                member __.GetEncoding<'T> (x : 'T) = 42
+            type Foo () =
+                interface IFoo with
+                    member __.GetEncoding<'T> (x : 'T) = 42
         """
 
         fsi.EvalInteraction interfaceCode
@@ -449,17 +451,17 @@ module FsiTests =
     [<Test>]
     let ``18. Binary Trees`` () =
         let code = """
-        type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
+            type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
 
-        let rec init = function 0 -> Leaf | n -> Node(n, init (n-1), init (n-1))
-        let rec map f = function Leaf -> Leaf | Node(a,l,r) -> Node(f a, map f l, map f r)
-        let rec reduce id f = function Leaf -> id | Node(a,l,r) -> f (f (reduce id f l) a) (reduce id f r)
+            let rec init = function 0 -> Leaf | n -> Node(n, init (n-1), init (n-1))
+            let rec map f = function Leaf -> Leaf | Node(a,l,r) -> Node(f a, map f l, map f r)
+            let rec reduce id f = function Leaf -> id | Node(a,l,r) -> f (f (reduce id f l) a) (reduce id f r)
 
-        let tree = client.EvaluateThunk <| fun () -> init 5
+            let tree = client.EvaluateThunk <| fun () -> init 5
 
-        let tree' = client.EvaluateThunk <| fun () -> map (fun x -> 2. ** float x) tree
+            let tree' = client.EvaluateThunk <| fun () -> map (fun x -> 2. ** float x) tree
 
-        let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
+            let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
         """
 
         let fsi = FsiSession.Value
@@ -474,14 +476,14 @@ module FsiTests =
             let fsi = FsiSession.Value
 
             let code = """
-            open MathNet.Numerics
-            open MathNet.Numerics.LinearAlgebra
+                open MathNet.Numerics
+                open MathNet.Numerics.LinearAlgebra
 
-            let getRandomDeterminant () =
-                let m = Matrix<double>.Build.Random(200,200) 
-                m.LU().Determinant
+                let getRandomDeterminant () =
+                    let m = Matrix<double>.Build.Random(200,200) 
+                    m.LU().Determinant
 
-            client.EvaluateThunk getRandomDeterminant
+                client.EvaluateThunk getRandomDeterminant
             """
 
             fsi.EvalInteraction code
@@ -496,8 +498,8 @@ module FsiTests =
             fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
 
             let code' = """
-            let useNativeMKL () = Control.UseNativeMKL()
-            client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
+                let useNativeMKL () = Control.UseNativeMKL()
+                client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
             """
 
             fsi.EvalInteraction code'
@@ -519,3 +521,55 @@ module FsiTests =
     let ``21. Concurrent calls to client`` () =
         let fsi = FsiSession.Value
         fsi.EvalInteraction "[|1..20|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"
+
+    [<Test>]
+    let ``22. Simple quotation literal`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)"
+
+    [<Test>]
+    let ``23. Quotation literal references fsi code`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction "let rec f n = if n <= 1 then n else f(n-2) + f(n-1)"
+        fsi.EvalInteraction "client.EvaluateThunk(fun () -> <@ f 10 @>)"
+
+    [<Test>]
+    let ``24. Parametric quotation evaluation`` () =
+        let fsi = FsiSession.Value
+        defineQuotationEvaluator fsi
+        fsi.EvalInteraction "let incr x = eval <@ x + 1 @>"
+        fsi.EvalExpression "client.EvaluateThunk(fun () -> incr 41)" |> shouldEqual 42
+
+    [<Test>]
+    let ``24. Spliced quotation evaluation`` () =
+        let fsi = FsiSession.Value
+        defineQuotationEvaluator fsi
+        fsi.EvalInteraction """
+            let rec expand n =
+                if n = 0 then <@ 0 @>
+                else <@ %(expand (n-1)) + 1 @>
+        """
+
+        fsi.EvalExpression "client.EvaluateThunk(fun () -> let e = expand 10 in eval <@ %e + 32 @>)" |> shouldEqual 42
+
+    [<Test>]
+    let ``25. Cross slice quotation reference`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction "let x = client.EvaluateThunk(fun () -> 1 + 1)"
+        try fsi.EvalInteraction "client.EvaluateDelegate (fun () -> <@ x @>)"
+        with e -> Assert.Inconclusive("This is an expected failure due to restrictions in quotation literal representation in MSIL.")
+
+    [<Test>]
+    let ``26. Class static field pickling`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction """
+            type Foo () =
+                static let mutable count = 0
+                do count <- count + 1
+                static member Count = count
+        """
+
+        fsi.EvalInteraction "let x = new Foo ()"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 1
+        fsi.EvalInteraction "let y = new Foo ()"
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 2

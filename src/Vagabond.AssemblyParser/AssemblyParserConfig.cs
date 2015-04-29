@@ -30,14 +30,14 @@ namespace Nessos.Vagabond.AssemblyParser
     public interface IAssemblyParserConfig
     {
         /// <summary>
-        /// Specifies if specified MemberInfo should be made public.
+        /// Specifies if provided MemberInfo should be made public.
         /// </summary>
         /// <param name="member">Member under test.</param>
         /// <returns></returns>
         bool MakePublic(MemberInfo member);
 
         /// <summary>
-        /// Specified if specified MemberInfo should be erased.
+        /// Specifies if provided MemberInfo should be erased.
         /// </summary>
         /// <param name="member">Member under test.</param>
         /// <returns></returns>

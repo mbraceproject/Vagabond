@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title>FsiDynamicAssemblyProfile - Vagabond</title>
+    <title>TypeParseBehaviour - Vagabond</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <meta name="description" content=""/>
     <meta name="author" content="Eirik Tsarpalis"/>
@@ -35,32 +35,72 @@
 
 
 
-<h1>FsiDynamicAssemblyProfile</h1>
+<h1>TypeParseBehaviour</h1>
 <div class="xmldoc">
-<p>Dynamic Assembly profile for F# Interactive</p>
+<p>Determines dynamic type parsing behaviour
+to Vagabond slices</p>
 </div>
-  <h3>Constructors</h3>
+  <h3>Union Cases</h3>
   <table class="table table-bordered member-list">
     <thead>
-      <tr><td>Constructor</td><td>Description</td></tr>
+      <tr><td>Union Case</td><td>Description</td></tr>
     </thead>
     <tbody>
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '38', 38)" onmouseover="showTip(event, '38', 38)">
-            new()
+          <code onmouseout="hideTip(event, '53', 53)" onmouseover="showTip(event, '53', 53)">
+            InCurrentSlice
           </code>
-          <div class="tip" id="38">
-            <strong>Signature:</strong> unit -&gt; FsiDynamicAssemblyProfile<br />
+          <div class="tip" id="53">
+            <strong>Signature:</strong> <br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L52-52" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L13-13" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          
+          <p>Include new type to current slice</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '54', 54)" onmouseover="showTip(event, '54', 54)">
+            InEverySlice
+          </code>
+          <div class="tip" id="54">
+            <strong>Signature:</strong> <br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L15-15" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Include type in every slice</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '55', 55)" onmouseover="showTip(event, '55', 55)">
+            InNoSlice
+          </code>
+          <div class="tip" id="55">
+            <strong>Signature:</strong> <br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L17-17" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Erase type from all slices</p>
+
         </td>
       </tr>
     </tbody>

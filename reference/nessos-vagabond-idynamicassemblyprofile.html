@@ -49,35 +49,15 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '48', 48)" onmouseover="showTip(event, '48', 48)">
-            AlwaysIncludeType(arg1)
-          </code>
-          <div class="tip" id="48">
-            <strong>Signature:</strong> Type -&gt; bool<br />
-              <strong>Modifiers:</strong> abstract<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L17-17" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Specifies if type is to be included in every iteration of the slice</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
             Description
           </code>
-          <div class="tip" id="49">
+          <div class="tip" id="48">
             <strong>Signature:</strong> string<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L14-14" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L26-26" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -88,20 +68,40 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
+          <code onmouseout="hideTip(event, '49', 49)" onmouseover="showTip(event, '49', 49)">
             EraseStaticConstructor(arg1)
           </code>
-          <div class="tip" id="50">
+          <div class="tip" id="49">
             <strong>Signature:</strong> Type -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L23-23" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L32-32" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Specifies if static constructor is to be erased</p>
+          <p>Specifies if static constructor is to be erased.</p>
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '50', 50)" onmouseover="showTip(event, '50', 50)">
+            GetTypeParseBehaviour(arg1)
+          </code>
+          <div class="tip" id="50">
+            <strong>Signature:</strong> Type -&gt; TypeParseBehaviour<br />
+              <strong>Modifiers:</strong> abstract<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L29-29" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Specifies slice parse behaviour for provided type.</p>
 
         </td>
       </tr>
@@ -109,35 +109,15 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '51', 51)" onmouseover="showTip(event, '51', 51)">
-            EraseType(arg1)
-          </code>
-          <div class="tip" id="51">
-            <strong>Signature:</strong> Type -&gt; bool<br />
-              <strong>Modifiers:</strong> abstract<br />
-                      </div>
-        </td>
-        <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L20-20" class="github-link">
-              <img src="../content/img/github.png" class="normal" />
-              <img src="../content/img/github-blue.png" class="hover" />
-            </a>
-          <p>Specifies if type is to be erased from slices</p>
-
-        </td>
-      </tr>
-      <tr>
-        <td class="member-name">
-
-          <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
             IsMatch(arg1)
           </code>
-          <div class="tip" id="52">
+          <div class="tip" id="51">
             <strong>Signature:</strong> Assembly -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L11-11" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L23-23" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -148,20 +128,20 @@
       <tr>
         <td class="member-name">
 
-          <code onmouseout="hideTip(event, '53', 53)" onmouseover="showTip(event, '53', 53)">
-            PickleStaticField(arg1, isErasedCtor)
+          <code onmouseout="hideTip(event, '52', 52)" onmouseover="showTip(event, '52', 52)">
+            PickleStaticField(field, isErasedCctor)
           </code>
-          <div class="tip" id="53">
-            <strong>Signature:</strong> (FieldInfo * isErasedCtor:bool) -&gt; bool<br />
+          <div class="tip" id="52">
+            <strong>Signature:</strong> (field:FieldInfo * isErasedCctor:bool) -&gt; bool<br />
               <strong>Modifiers:</strong> abstract<br />
                       </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L26-26" class="github-link">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/SliceCompiler/DynamicAssemblyProfile.fs#L39-39" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
-          <p>Specifies if static field is to be pickled</p>
+          <p>Specifies if static field value is to be pickled for remote party.</p>
 
         </td>
       </tr>

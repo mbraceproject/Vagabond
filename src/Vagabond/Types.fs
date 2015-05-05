@@ -6,6 +6,7 @@ open System.Reflection
 open System.Runtime.Serialization
 
 open Nessos.FsPickler
+open Nessos.FsPickler.Hashing
 
 /// Specifies what assemblies are to be loaded 
 /// locally by the runtime if possible.
@@ -51,7 +52,7 @@ type DataDependency =
     /// Data dependency pickled in-memory
     | Pickled of pickle:Pickle<obj>
     /// Data dependency pickled to file; reserved for large data bindings
-    | Persisted of size:int64
+    | Persisted of HashResult
 
 /// Data dependency information
 type DataDependencyInfo =

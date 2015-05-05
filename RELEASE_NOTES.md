@@ -1,3 +1,4 @@
+* 0.6.5 - Expose hashcodes for pickled static properties.
 * 0.6.4 - Improve quotation literal support; improve static field support.
 * 0.6.3 - Improve cyclic dependency error reporting.
 * 0.6.2 - Ignored assemblies bugfix.

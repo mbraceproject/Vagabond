@@ -54,7 +54,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     let data =
         match hashResult with
         // file size exceeds threshold; declare persisted to file
-        | Choice1Of2 hash when hash.Length > state.DataPersistThreshold -> Persisted hash.Length
+        | Choice1Of2 hash when hash.Length > state.DataPersistThreshold -> Persisted hash
         // pickle in metadata
         | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled pickle
         // pickle serialization exception

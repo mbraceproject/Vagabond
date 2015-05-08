@@ -1,5 +1,7 @@
 ﻿module internal Nessos.Vagabond.AssemblyManagementTypes
 
+open System.Reflection
+
 open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.AssemblyCache
 
@@ -11,6 +13,8 @@ type DataExportState =
     {
         /// Assembly path for slice
         AssemblyPath : string
+        /// Data FieldInfo
+        FieldInfo : FieldInfo
         /// Last data dependency info
         Info : DataDependencyInfo
         /// Hashcode or serialization exception for last exported value
@@ -42,4 +46,6 @@ type VagabondState =
         AssemblyCache : AssemblyCache
         /// Native assembly manager
         NativeAssemblyManager : NativeAssemblyManager
+        /// Static field bindings loaded in local AppDomain
+        StaticBindings : (FieldInfo * HashResult) []
     }

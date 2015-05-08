@@ -5,6 +5,7 @@ open System.IO
 open System.Reflection
 
 open Nessos.FsPickler
+open Nessos.FsPickler.Hashing
 
 open Nessos.Vagabond.Utils
 open Nessos.Vagabond.AssemblyNaming
@@ -274,6 +275,18 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) : Async<VagabondAssembly list> = async {
         return! controller.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, Seq.toList ids, ch))
     }
+
+    /// Gets hash information for all Vagabond managed static bindings in current AppDomain.
+    member __.StaticBindings : (FieldInfo * HashResult) [] = controller.StaticBindings
+
+    /// <summary>
+    ///     Try get a Vagabond static bindings that matches provided object hash.
+    /// </summary>
+    /// <param name="hash">Input object hash.</param>
+    member __.TryGetBindingByHash(hash : HashResult) : FieldInfo option =
+        match controller.StaticBindings |> Array.tryFind (fun (_,h) -> h = hash) with
+        | None -> None
+        | Some(f,_) -> Some f
 
 
 /// <summary>

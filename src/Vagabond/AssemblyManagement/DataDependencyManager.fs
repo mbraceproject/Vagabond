@@ -30,6 +30,13 @@ let unpicklePersistedBinding (state : VagabondState) (path : string) =
         else fs :> _
     state.Serializer.Deserialize<obj>(stream)
 
+/// update static binding manifest with new bindings
+let updateStaticBindings (bindings : (FieldInfo * HashResult) []) (newBindings : seq<FieldInfo * HashResult>) =
+    let dict = new Dictionary<FieldInfo, HashResult> ()
+    for f,h in bindings do dict.Add(f,h)
+    for f,h in newBindings do dict.[f] <- h
+    dict |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toArray
+
 /// export data dependency for locally generated slice
 let exportDataDependency (state : VagabondState) (assemblyPath : string) 
                             (id : DataDependencyId) (current : DataExportState option) (field : FieldInfo) : DataExportState =
@@ -56,7 +63,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
         // file size exceeds threshold; declare persisted to file
         | Choice1Of2 hash when hash.Length > state.DataPersistThreshold -> Persisted hash
         // pickle in metadata
-        | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled pickle
+        | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled (hash, pickle)
         // pickle serialization exception
         | Choice2Of2 e -> Errored (e.ToString(), state.Serializer.PickleTyped e)
 
@@ -74,7 +81,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
             Some (id, persistedPath)
         | _ -> None
 
-    { AssemblyPath = assemblyPath ; Hash = hashResult ; Info = dependencyInfo ; PersistFile = persistFile }
+    { AssemblyPath = assemblyPath ; FieldInfo = field ; Hash = hashResult ; Info = dependencyInfo ; PersistFile = persistFile }
 
 /// export data dependencies given controller state for provided compiled dynamic assembly slice
 let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice) =
@@ -87,7 +94,14 @@ let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice
     let persisted = exportState |> Array.choose (fun de -> de.PersistFile)
     let dependencies = exportState |> Array.map (fun de -> de.Info)
     let va = VagabondAssembly.CreateManaged(slice.Assembly, true, dependencies, persisted)
-    { state with DataExportState = state.DataExportState.Add(assemblyPath, exportState) }, va
+
+    { state with 
+        DataExportState = state.DataExportState.Add(assemblyPath, exportState)
+        StaticBindings =
+            exportState 
+            |> Seq.choose (fun dei -> match dei.Hash with Choice1Of2 h -> Some(dei.FieldInfo, h) | _ -> None)
+            |> updateStaticBindings state.StaticBindings
+    }, va
 
 
 /// import data dependency for locally loaded assembly slice
@@ -101,34 +115,37 @@ let importDataDependency (state : VagabondState) (va : VagabondAssembly)
         | Some gen -> gen < di.Generation
 
     // return current generation if update not required
-    if not shouldUpdate then Option.get current else
+    if not shouldUpdate then Option.get current, None else
 
-    let updateValue (value : obj) =
+    let updateValue hash (value : obj) =
         let field = state.Serializer.UnPickleTyped di.FieldInfo
         field.SetValue(null, value)
+        di.Generation, Some(field, hash)
 
     match di.Data, persistPath with
     // unpickle from metadata
-    | Pickled pickle, _ ->
+    | Pickled (hash,pickle), _ ->
         let value = state.Serializer.UnPickleTyped pickle
-        updateValue value
+        updateValue hash value
     | Persisted _, None -> invalidOp <| sprintf "Assembly '%O' missing data initializer for value '%s'." va.FullName di.Name
     // unpickle from file
-    | Persisted _, Some path ->
+    | Persisted hash, Some path ->
         let value = unpicklePersistedBinding state path
-        updateValue value
-    | Errored _, _ -> ()
-
-    di.Generation
+        updateValue hash value
+    | Errored _, _ -> di.Generation, None
 
 /// import data dependencies to local AppDomain
 let importDataDependencies (state : VagabondState) (va : VagabondAssembly) =
     if Array.isEmpty va.Metadata.DataDependencies then state else
 
     let persisted = va.PersistedDataDependencies |> Map.ofArray
-    let importState =
+    let importState, updatedBindings =
         match state.DataImportState.TryFind va.Image with
         | None -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va None (persisted.TryFind dd.Id) dd)
         | Some gens -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va (Some gens.[dd.Id]) (persisted.TryFind dd.Id) dd)
+        |> Array.unzip
 
-    { state with DataImportState = state.DataImportState.Add(va.Image, importState) }
+    { state with 
+        DataImportState = state.DataImportState.Add(va.Image, importState) 
+        StaticBindings = updateStaticBindings state.StaticBindings (Array.choose id updatedBindings)
+    }

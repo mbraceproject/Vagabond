@@ -50,9 +50,9 @@ type DataDependency =
     /// Data dependency failed to serialize
     | Errored of message:string * Pickle<exn>
     /// Data dependency pickled in-memory
-    | Pickled of pickle:Pickle<obj>
+    | Pickled of hash:HashResult * pickle:Pickle<obj>
     /// Data dependency pickled to file; reserved for large data bindings
-    | Persisted of HashResult
+    | Persisted of hash:HashResult
 
 /// Data dependency information
 type DataDependencyInfo =

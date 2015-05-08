@@ -7,6 +7,7 @@ open System.Reflection
 open Microsoft.FSharp.Control
 
 open Nessos.FsPickler
+open Nessos.FsPickler.Hashing
 
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
@@ -26,6 +27,7 @@ type VagabondMessage =
     | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
     | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
     | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly list>
+    | GetStaticBindings of ReplyChannel<(FieldInfo * HashResult) []>
 
 /// A mailboxprocessor wrapper for handling vagabond state
 type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded : bool, 
@@ -55,6 +57,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
             AssemblyExportState = Map.empty
             AssemblyImportState = Map.empty
+            StaticBindings = [||]
 
             NativeAssemblyManager = nativeAssemblyManager
 
@@ -152,6 +155,10 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
         | GetRegisteredNativeDependencies rc ->
             rc.Reply state.NativeAssemblyManager.LoadedNativeAssemblies
             return state
+
+        | GetStaticBindings rc ->
+            rc.Reply state.StaticBindings
+            return state
     }
 
     let cts = new System.Threading.CancellationTokenSource()
@@ -170,3 +177,4 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
     member __.PostAndAsyncReply msgB = actor.PostAndAsyncReply msgB
     member __.PostAndReply msgB = actor.PostAndReply msgB
     member __.NativeDependencies = actor.PostAndReply GetRegisteredNativeDependencies
+    member __.StaticBindings = actor.PostAndReply GetStaticBindings

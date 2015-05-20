@@ -41,9 +41,9 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
     let typeNameConverter = mkTypeNameConverter tyConv (fun () -> compilerState.Value)
 
-    let defaultPickler = FsPickler.CreateBinary(typeConverter = typeNameConverter)
+    let serializer = FsPickler.CreateBinary(typeConverter = typeNameConverter)
 
-    let assemblyCache = new AssemblyCache(cacheDirectory, defaultPickler)
+    let assemblyCache = new AssemblyCache(cacheDirectory, serializer)
     let nativeAssemblyManager = new NativeAssemblyManager(cacheDirectory)
 
     let initState =
@@ -61,7 +61,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
             NativeAssemblyManager = nativeAssemblyManager
 
-            Serializer = defaultPickler
+            Serializer = serializer
             AssemblyCache = assemblyCache
         }
         
@@ -171,7 +171,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
     member __.CacheDirectory = assemblyCache.CacheDirectory
     member __.AssemblyCache = assemblyCache
 
-    member __.DefaultPickler = defaultPickler
+    member __.Serializer = serializer
     member __.TypeNameConverter = typeNameConverter
 
     member __.PostAndAsyncReply msgB = actor.PostAndAsyncReply msgB

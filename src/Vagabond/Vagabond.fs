@@ -56,8 +56,8 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
 
     /// Unique identifier for the slice compiler
     member __.UUId = controller.CompilerState.CompilerId
-    /// Returns the pickler used by the slice compiler
-    member __.Pickler = controller.DefaultPickler
+    /// Gets the serializer instance used by the slice compiler
+    member __.Serializer = controller.Serializer
     /// FsPickler type name converter for use with other formats
     member __.TypeConverter = controller.TypeNameConverter
     /// Cache directory used by Vagabond

@@ -127,8 +127,8 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             Dependencies =
                 [
-                    "Mono.Cecil", "0.9.5.4"
-                    "FsPickler", "1.0.16"
+                    "Mono.Cecil", RequireExactly "0.9.6.1"
+                    "FsPickler", "1.2.1"
                 ]
             Tags = tags
             OutputPath = "bin"

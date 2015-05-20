@@ -21,14 +21,14 @@ type VagabondConfig private () =
         Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
     static member Instance = manager
-    static member Pickler = VagabondConfig.Instance.Pickler
+    static member Serializer = manager.Serializer
 
 /// Actor configuration tools
 type Actor private () =
 
     static do
         let _ = System.Threading.ThreadPool.SetMinThreads(100, 100) 
-        defaultSerializer <- new FsPicklerMessageSerializer(VagabondConfig.Pickler)
+        defaultSerializer <- new FsPicklerMessageSerializer(VagabondConfig.Serializer)
         Nessos.Thespian.Default.ReplyReceiveTimeout <- Timeout.Infinite
         TcpListenerPool.RegisterListener(IPEndPoint.any)
 

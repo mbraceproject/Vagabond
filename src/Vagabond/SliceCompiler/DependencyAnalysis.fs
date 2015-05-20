@@ -42,7 +42,7 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
     let typeGatherer =
         {
             new IObjectVisitor with
-                member __.Visit<'T> (value : 'T) =
+                member __.Visit<'T> (_, value : 'T) =
                     match box value with
                     | null -> ()
                     | :? Assembly as a -> assemblies.Add a |> ignore

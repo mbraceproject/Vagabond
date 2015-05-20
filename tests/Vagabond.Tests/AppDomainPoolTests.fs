@@ -216,12 +216,12 @@ module ``AppDomain Pool Tests`` =
 
         member __.Evaluate(dependencies : VagabondAssembly [], plambda : Pickle<unit -> 'T>) : Pickle<Choice<'T, exn>> =
             let _ = VagabondConfig.Instance.LoadVagabondAssemblies dependencies
-            let lambda = VagabondConfig.Instance.Pickler.UnPickleTyped plambda
+            let lambda = VagabondConfig.Instance.Serializer.UnPickleTyped plambda
             let _ = Interlocked.Increment &taskCount
             let result = try lambda () |> Choice1Of2 with e -> Choice2Of2 e
             let _ = Interlocked.Decrement &taskCount
             lastUsed <- DateTime.Now
-            VagabondConfig.Instance.Pickler.PickleTyped result         
+            VagabondConfig.Instance.Serializer.PickleTyped result         
         
         interface IAppDomainManager with
             member __.Initialize (config : IAppDomainConfiguration) =
@@ -241,7 +241,7 @@ module ``AppDomain Pool Tests`` =
             let mgr = vpm.RequestAppDomain(pkgs |> Seq.map (fun pkg -> pkg.Id))
             let p = VagabondConfig.Pickler.PickleTyped f
             let presult = mgr.Evaluate(pkgs, p)
-            match vg.Pickler.UnPickleTyped presult with
+            match vg.Serializer.UnPickleTyped presult with
             | Choice1Of2 v -> v
             | Choice2Of2 e -> raise e
 

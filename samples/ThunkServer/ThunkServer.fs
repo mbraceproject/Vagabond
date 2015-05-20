@@ -121,7 +121,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         use receiver = Receiver.create<ActorRef<ServerMsg>> () |> Actor.Publish
         let! awaiter = receiver.ReceiveEvent |> Async.AwaitEvent |> Async.StartChild
 
-        let argument = VagabondConfig.Pickler.Pickle receiver.Ref |> System.Convert.ToBase64String
+        let argument = VagabondConfig.Serializer.Pickle receiver.Ref |> System.Convert.ToBase64String
         let proc = Process.Start(ThunkClient.Executable, argument)
 
         let! serverRef = awaiter

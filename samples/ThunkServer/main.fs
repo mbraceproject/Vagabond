@@ -14,7 +14,7 @@ let main args =
     let receiver =
         if args.Length > 0 then 
             let bytes = args.[0] |> System.Convert.FromBase64String 
-            VagabondConfig.Pickler.UnPickle<ActorRef<ActorRef<ServerMsg>>> bytes |> Some
+            VagabondConfig.Serializer.UnPickle<ActorRef<ActorRef<ServerMsg>>> bytes |> Some
         else
             None
 

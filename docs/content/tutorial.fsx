@@ -52,12 +52,12 @@ let response = vmanager.LoadVagabondAssembly vagabondAssembly
 ## Communication
 
 Once all required dependencies have been loaded, communication can be 
-established by using the ``.Pickler`` property found in both the server
-and client instances. These give an instance of ``FsPickler`` that is
+established by using the ``.Serializer`` property found in both the server
+and client instances. These give an ``FsPickler`` serializer instance that is
 capable of serializing and deserializing objects depending on dynamic assemblies.
 
 *)
 
-let pickler = vmanager.Pickler
+let serializer = vmanager.Serializer
 
-let bytes = pickler.Pickle(value)
+let bytes = serializer.Pickle(value)

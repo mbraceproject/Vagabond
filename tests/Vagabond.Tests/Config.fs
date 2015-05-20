@@ -28,7 +28,7 @@ type VagabondConfig private () =
         manager <- Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
 
     static member Instance = manager
-    static member Pickler = manager.Pickler
+    static member Pickler = manager.Serializer
 
 /// Actor configuration tools
 type Actor private () =

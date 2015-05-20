@@ -11,7 +11,7 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.AssemblyNaming
 
 /// Contains methods for caching assemblies and vagabond metadata to specified folder.
-type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
+type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     do
         if not <| Directory.Exists cacheDirectory then
             raise <| new DirectoryNotFoundException(cacheDirectory)
@@ -52,7 +52,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
         let metadataPath = getMetadataPath cachePath
         if File.Exists metadataPath then
             use fs = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.None)
-            let md = pickler.Deserialize<VagabondMetadata>(fs)
+            let md = serializer.Deserialize<VagabondMetadata>(fs)
             Some md
         else
             None
@@ -60,7 +60,7 @@ type AssemblyCache (cacheDirectory : string, pickler : FsPicklerSerializer) =
     /// writes vagabond metadata to cachePath
     let writeMetadata cachePath (md : VagabondMetadata) =
         use fs = new FileStream(getMetadataPath cachePath, FileMode.Create, FileAccess.Write, FileShare.None)
-        pickler.Serialize<VagabondMetadata>(fs, md)
+        serializer.Serialize<VagabondMetadata>(fs, md)
 
     /// read vagabond metadata from cachePath
     let readMetadata cachePath =

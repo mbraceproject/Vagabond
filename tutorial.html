@@ -105,8 +105,8 @@ What follows is a brief overview of the basic API.</p>
 <h2><a name="Communication" class="anchor" href="#Communication">Communication</a></h2>
 
 <p>Once all required dependencies have been loaded, communication can be 
-established by using the <code>.Pickler</code> property found in both the server
-and client instances. These give an instance of <code>FsPickler</code> that is
+established by using the <code>.Serializer</code> property found in both the server
+and client instances. These give an <code>FsPickler</code> serializer instance that is
 capable of serializing and deserializing objects depending on dynamic assemblies.</p>
 
 <table class="pre"><tr><td class="lines"><pre class="fssnip">
@@ -116,9 +116,9 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 </pre>
 </td>
 <td class="snippet"><pre class="fssnip">
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs24', 34)" onmouseover="showTip(event, 'fs24', 34)" class="i">pickler</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 35)" onmouseover="showTip(event, 'fs9', 35)" class="i">vmanager</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs25', 36)" onmouseover="showTip(event, 'fs25', 36)" class="i">Pickler</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs24', 34)" onmouseover="showTip(event, 'fs24', 34)" class="i">serializer</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 35)" onmouseover="showTip(event, 'fs9', 35)" class="i">vmanager</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs25', 36)" onmouseover="showTip(event, 'fs25', 36)" class="i">Serializer</span>
 
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs26', 37)" onmouseover="showTip(event, 'fs26', 37)" class="i">bytes</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs24', 38)" onmouseover="showTip(event, 'fs24', 38)" class="i">pickler</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs27', 39)" onmouseover="showTip(event, 'fs27', 39)" class="f">Pickle</span>(<span onmouseout="hideTip(event, 'fs12', 40)" onmouseover="showTip(event, 'fs12', 40)" class="i">value</span>)
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs26', 37)" onmouseover="showTip(event, 'fs26', 37)" class="i">bytes</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs24', 38)" onmouseover="showTip(event, 'fs24', 38)" class="i">serializer</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs27', 39)" onmouseover="showTip(event, 'fs27', 39)" class="f">Pickle</span>(<span onmouseout="hideTip(event, 'fs12', 40)" onmouseover="showTip(event, 'fs12', 40)" class="i">value</span>)
 </pre>
 </td>
 </tr>
@@ -147,10 +147,10 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <div class="tip" id="fs21">member VagabondManager.GetVagabondAssembly : assembly:Assembly -&gt; VagabondAssembly<br />member VagabondManager.GetVagabondAssembly : id:AssemblyId * ?loadPolicy:AssemblyLoadPolicy -&gt; VagabondAssembly</div>
 <div class="tip" id="fs22">val response : AssemblyLoadInfo<br /><br />Full name: Tutorial.response</div>
 <div class="tip" id="fs23">member VagabondManager.LoadVagabondAssembly : id:AssemblyId * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo<br />member VagabondManager.LoadVagabondAssembly : va:VagabondAssembly * ?loadPolicy:AssemblyLoadPolicy -&gt; AssemblyLoadInfo</div>
-<div class="tip" id="fs24">val pickler : Nessos.FsPickler.BinarySerializer<br /><br />Full name: Tutorial.pickler</div>
-<div class="tip" id="fs25">property VagabondManager.Pickler: Nessos.FsPickler.BinarySerializer</div>
+<div class="tip" id="fs24">val serializer : Nessos.FsPickler.BinarySerializer<br /><br />Full name: Tutorial.serializer</div>
+<div class="tip" id="fs25">property VagabondManager.Serializer: Nessos.FsPickler.BinarySerializer</div>
 <div class="tip" id="fs26">val bytes : byte []<br /><br />Full name: Tutorial.bytes</div>
-<div class="tip" id="fs27">member Nessos.FsPickler.FsPicklerSerializer.Pickle : value:&#39;T * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []<br />member Nessos.FsPickler.FsPicklerSerializer.Pickle : valueType:Type * value:obj * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []<br />member Nessos.FsPickler.FsPicklerSerializer.Pickle : pickler:Nessos.FsPickler.Pickler * value:obj * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []<br />member Nessos.FsPickler.FsPicklerSerializer.Pickle : pickler:Nessos.FsPickler.Pickler&lt;&#39;T&gt; * value:&#39;T * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []</div>
+<div class="tip" id="fs27">member Nessos.FsPickler.FsPicklerSerializer.Pickle : value:&#39;T * ?pickler:Nessos.FsPickler.Pickler&lt;&#39;T&gt; * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []</div>
 
         </div>
         <div class="span3">

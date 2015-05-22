@@ -43,13 +43,15 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
         {
             new IObjectVisitor with
                 member __.Visit<'T> (p : Pickler<'T>, value : 'T) =
-                    traverseType p.Type
-                    if p.Kind > Kind.Value then
-                        match box value with
-                        | null -> ()
-                        | :? Assembly as a -> assemblies.Add a |> ignore
-                        | :? Type as t -> traverseType t
-                        | o -> traverseType <| o.GetType()
+                    if p.Kind > Kind.Primitive then
+                        traverseType p.Type
+                        if p.Kind > Kind.Value then
+                            match box value with
+                            | null -> ()
+                            | :? Assembly as a -> assemblies.Add a |> ignore
+                            | :? Type as t -> traverseType t
+                            | :? MemberInfo as m when m.DeclaringType <> null -> traverseType m.DeclaringType
+                            | o -> traverseType <| o.GetType()
 
                     true
         }

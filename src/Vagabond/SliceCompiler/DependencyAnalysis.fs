@@ -28,7 +28,7 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
     let assemblies = new HashSet<Assembly> ()
 
     let rec traverseType (t : Type) =
-        if t = null then ()
+        if t = null || types.Contains t then ()
         elif t.IsGenericType && not t.IsGenericTypeDefinition then
             types.Add(t.GetGenericTypeDefinition()) |> ignore
             for ga in t.GetGenericArguments() do
@@ -42,12 +42,16 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
     let typeGatherer =
         {
             new IObjectVisitor with
-                member __.Visit<'T> (_, value : 'T) =
-                    match box value with
-                    | null -> ()
-                    | :? Assembly as a -> assemblies.Add a |> ignore
-                    | :? Type as t -> traverseType t
-                    | o -> traverseType <| o.GetType()
+                member __.Visit<'T> (p : Pickler<'T>, value : 'T) =
+                    traverseType p.Type
+                    if p.Kind > Kind.Value then
+                        match box value with
+                        | null -> ()
+                        | :? Assembly as a -> assemblies.Add a |> ignore
+                        | :? Type as t -> traverseType t
+                        | o -> traverseType <| o.GetType()
+
+                    true
         }
 
     do FsPickler.VisitObject(typeGatherer, graph)

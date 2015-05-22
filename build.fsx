@@ -128,7 +128,7 @@ Target "NuGet" (fun _ ->
             Dependencies =
                 [
                     "Mono.Cecil", RequireExactly "0.9.6.1"
-                    "FsPickler", "1.2.1"
+                    "FsPickler", "1.2.2"
                 ]
             Tags = tags
             OutputPath = "bin"

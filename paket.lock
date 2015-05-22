@@ -11,7 +11,7 @@ NUGET
       FSharpVSPowerTools.Core (1.8.0)
     FSharpVSPowerTools.Core (1.8.0)
       FSharp.Compiler.Service (>= 0.0.87)
-    FsPickler (1.2.1)
+    FsPickler (1.2.2)
     LinqOptimizer.FSharp (0.6.3)
     MathNet.Numerics (3.7.0)
       TaskParallelLibrary (>= 1.0.2856) - framework: >= net35 < net40

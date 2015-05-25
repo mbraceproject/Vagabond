@@ -1,3 +1,4 @@
+* 0.6.8 - Update dependency traversal logic using FsPickler visitor re-implementation.
 * 0.6.7 - Update FsPickler to its latest version.
 * 0.6.6 - Expose static binding information in VagabondManager.
 * 0.6.5 - Expose hashcodes for pickled static properties.

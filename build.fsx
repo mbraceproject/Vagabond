@@ -18,12 +18,6 @@ open Fake.AssemblyInfoFile
 // --------------------------------------------------------------------------------------
 
 let project = "Vagabond"
-let authors = ["Nessos Information Technologies, Eirik Tsarpalis"]
-let summary = "A library that facilitates the distribution of code in the .NET framework."
-
-let description = summary
-
-let tags = "F# fsharp dynamic code distribution cecil"
 
 let gitHome = "https://github.com/nessos"
 let gitName = "Vagabond"
@@ -114,36 +108,14 @@ let addAssembly reqXml (target : string) assembly =
     }
 
 Target "NuGet" (fun _ ->
-    // Format the description to fit on a single line (remove \r\n and double-svaces)
-    let description = description.Replace("\r", "").Replace("\n", "").Replace("  ", " ")
-    let nugetvath = "packages/NuGet.CommandLine/tools/NuGet.exe"
-    NuGet (fun p -> 
-        { p with   
-            Authors = authors
-            Project = project
-            Summary = summary
-            Description = description
+    Paket.Pack(fun config ->
+        { config with 
             Version = release.NugetVersion
             ReleaseNotes = String.concat "\n" release.Notes
-            Dependencies =
-                [
-                    "Mono.Cecil", RequireExactly "0.9.6.1"
-                    "FsPickler", "1.2.2"
-                ]
-            Tags = tags
             OutputPath = "bin"
-            ToolPath = nugetvath
-            AccessKey = getBuildParamOrDefault "nugetkey" ""
-            Publish = hasBuildParam "nugetkey"
-            References = [ "Vagabond.dll" ]
-            Files =
-                [
-                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.AssemblyParser.dll"
-                    yield! addAssembly true @"lib\net45" @"..\bin\Vagabond.dll"
-                ]
-            
-            })
-        ("nuget/" + project + ".nuspec")
+            WorkingDir = "nuget"
+        }
+    )
 )
 
 // Doc generation

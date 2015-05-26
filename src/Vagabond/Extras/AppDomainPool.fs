@@ -4,6 +4,9 @@ open System
 open System.Collections.Generic
 open System.Reflection
 open System.Runtime.Serialization
+open System.Runtime.Remoting
+open System.Security
+open System.Security.Permissions
 open System.Threading
 open System.Threading.Tasks
 
@@ -45,11 +48,12 @@ type IAppDomainManager =
 module private Impl =
 
     /// initialize a new AppDomain with given friendly name
-    let initAppDomain (name : string) =
+    let initAppDomain permissions (name : string) =
         let currentDomain = AppDomain.CurrentDomain
         let appDomainSetup = currentDomain.SetupInformation
+        let permissions = defaultArg permissions currentDomain.PermissionSet
         let evidence = new Security.Policy.Evidence(currentDomain.Evidence)
-        AppDomain.CreateDomain(name, evidence, appDomainSetup)
+        AppDomain.CreateDomain(name, evidence, appDomainSetup, permissions)
 
     let ctorFlags = BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance
 
@@ -81,14 +85,10 @@ module private Impl =
         }
     with
         /// Initialize an AppDomain instance with given Vagabond dependencies
-        static member Init (config : IAppDomainConfiguration, ?dependencies : seq<AssemblyId>) =
+        static member Init (config : IAppDomainConfiguration, permissions : PermissionSet option, dependencies : seq<AssemblyId>) =
             let id = Guid.NewGuid().ToString()
-            let dependencies = 
-                match dependencies with
-                | None -> Map.empty
-                | Some ds -> ds |> Seq.map (fun d -> d.FullName, d) |> Map.ofSeq
-
-            let appDomain = initAppDomain id
+            let dependencies = dependencies |> Seq.map (fun d -> d.FullName, d) |> Map.ofSeq
+            let appDomain = initAppDomain permissions id
             let manager = initAppDomainObject<'Manager> appDomain
             do manager.Initialize config
 
@@ -111,6 +111,8 @@ module private Impl =
             MinConcurrentDomains : int
             /// Max tasks allowed per domain
             MaxTasksPerDomain : int option
+            /// AppDomain permission set
+            Permissions : PermissionSet option
             /// User-specified configuration for the AppDomain
             Configuration : IAppDomainConfiguration
             /// Unload threshold: minimum timespan needed for unloading unused domains
@@ -118,8 +120,8 @@ module private Impl =
         }
     with
         /// Initialize a new AppDomain with provided dependencies and add to state
-        member s.AddNew(?dependencies) =
-            let adli = AppDomainLoadInfo<'Manager>.Init (s.Configuration, ?dependencies = dependencies)
+        member s.AddNew(dependencies) =
+            let adli = AppDomainLoadInfo<'Manager>.Init (s.Configuration, dependencies = dependencies, permissions = s.Permissions)
             adli, s.AddDomain adli
 
         /// Add existing or updated AppDomain info to state
@@ -127,11 +129,12 @@ module private Impl =
             { s with DomainPool = s.DomainPool.Add(adli.Id, adli) }
 
         /// Initialize a new AppDomain pool state
-        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option) =
+        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
             let mutable empty = {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
+                Permissions = permissions
                 Configuration = config
                 MaxTasksPerDomain = maxTasks
                 UnloadThreshold = threshold
@@ -139,7 +142,7 @@ module private Impl =
 
             // populate pool with minimum allowed number of domains
             for _ in 1 .. minimumConcurrentDomains do
-                empty <- empty.AddNew() |> snd
+                empty <- empty.AddNew [] |> snd
 
             empty
 
@@ -274,10 +277,10 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
                              and 'Manager :> MarshalByRefObject 
                              and 'Manager : (new : unit -> 'Manager)>
 
-    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration, threshold : TimeSpan option, maxTasks : int option) =
+    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration, threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
 
     let cts = new CancellationTokenSource()
-    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks)
+    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks, permissions)
     let mbox = MailboxProcessor.Start(behaviour (Some state))
     let getState () = mbox.PostAndReply GetState
 
@@ -343,17 +346,18 @@ type AppDomainPool =
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
+    /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
     static member Create<'Manager when 'Manager :> IAppDomainManager 
                                    and 'Manager :> MarshalByRefObject 
                                    and 'Manager : (new : unit -> 'Manager)>
-        (configuration : IAppDomainConfiguration, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+        (configuration : IAppDomainConfiguration, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
 
         let minimumConcurrentDomains = defaultArg minimumConcurrentDomains 3
         let maximumConcurrentDomains = defaultArg maximumConcurrentDomains 20
         if minimumConcurrentDomains < 0 then invalidArg "minimumConcurrentDomains" "Must be non-negative."
         if maximumConcurrentDomains < minimumConcurrentDomains then invalidArg "minimumConcurrentDomains" "should be greater or equal to 'minimumConcurrentDomains'."
         if maxTasksPerDomain |> Option.exists (fun mtpd -> mtpd <= 0) then invalidArg "maxTasksPerDomain" "should be positive."
-        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, configuration, threshold, maxTasksPerDomain)
+        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, configuration, threshold, maxTasksPerDomain, permissions)
 
 
     /// <summary>
@@ -363,17 +367,18 @@ type AppDomainPool =
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
+    /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
     static member Create<'Manager, 'Config 
                                 when 'Manager :> IAppDomainManager 
                                  and 'Manager :> MarshalByRefObject 
                                  and 'Manager : (new : unit -> 'Manager)
                                  and 'Config :> IAppDomainConfiguration
                                  and 'Config : (new : unit -> 'Config)>
-        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
 
         AppDomainPool.Create<'Manager>(activate<'Config>(), 
             ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, 
-            ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain)
+            ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain, ?permissions = permissions)
 
 
 //
@@ -384,15 +389,23 @@ type AppDomainPool =
 [<AutoOpen>]
 module private EvaluatorImpl =
     
+    
     // BinaryFormatter, the .NET default in remoting is not to be trusted when serializing closures
     // use FsPickler instead and pass Pickle<'T> values to the marshalled objects
     let pickler = lazy(FsPickler.CreateBinary())
 
     type ResultPickle = Pickle<Exn<obj>>
 
+    [<AbstractClass>]
+    type ImmortalMarshalByRefObject () =
+        inherit MarshalByRefObject ()
+        [<SecurityPermissionAttribute(SecurityAction.Demand, Flags = SecurityPermissionFlag.Infrastructure)>]
+        override __.InitializeLifetimeService() = null
+        member o.Disconnect () = ignore <| RemotingServices.Disconnect o
+
     /// Marshalled task completion source for async computation over AppDomains
     type MarshalledTaskCompletionSource<'T> () =
-        inherit MarshalByRefObject ()
+        inherit ImmortalMarshalByRefObject ()
         let tcs = new TaskCompletionSource<'T> ()
         /// Set a value as task result
         member __.SetResult(t : 'T) = tcs.SetResult t
@@ -405,7 +418,7 @@ module private EvaluatorImpl =
 
     /// Marshalled cancellation token source for use over AppDomains
     type MarshalledCancellationTokenSource () =
-        inherit MarshalByRefObject ()
+        inherit ImmortalMarshalByRefObject ()
         let cts = new CancellationTokenSource()
         /// Cancel the cancellation token source
         member __.Cancel() = cts.Cancel()
@@ -420,7 +433,7 @@ module private EvaluatorImpl =
 
     /// AppDomain managing object
     type AppDomainEvaluatorManager() =
-        inherit MarshalByRefObject()
+        inherit ImmortalMarshalByRefObject()
 
         let mutable taskCount = 0
         let mutable lastUsed = DateTime.Now
@@ -453,7 +466,9 @@ module private EvaluatorImpl =
                         with ex -> pickler.Value.PickleTyped (Error ex)
 
                     mtcs.SetResult presult
-                finally fini ()
+                finally 
+                    mcts.Disconnect()
+                    fini ()
 
             let setCancelled _ = try mtcs.SetCanceled() finally fini ()
 
@@ -482,11 +497,14 @@ module private EvaluatorImpl =
         let! ct = Async.CancellationToken
         let pworkflow = pickler.Value.PickleTyped(async { let! r = f in return box r })
         let mtcs = new MarshalledTaskCompletionSource<ResultPickle>()
-        let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
-        use d = ct.Register (fun () -> mcts.Cancel ())
-        let! presult = Async.AwaitTask(mtcs.Task)
-        let result = pickler.Value.UnPickleTyped presult
-        return result.Value :?> 'T
+        try
+            let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
+            use d = ct.Register (fun () -> mcts.Cancel ())
+            let! presult = Async.AwaitTask(mtcs.Task)
+            let result = pickler.Value.UnPickleTyped presult
+            return result.Value :?> 'T
+        finally
+            mtcs.Disconnect()
     }
         
 
@@ -502,10 +520,11 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
-    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
+    /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
+    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
         let config = new AppDomainEvaluatorConfiguration(?initializer = appDomainInitializer)
         let pool = AppDomainPool.Create<AppDomainEvaluatorManager>(config, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain,
-                            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains)
+                            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, ?permissions = permissions)
 
         new AppDomainEvaluatorPool(pool)
 

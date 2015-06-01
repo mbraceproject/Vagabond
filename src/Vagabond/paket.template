@@ -4,6 +4,8 @@ description
     A library that facilitates the distribution of code in the .NET framework.
 authors
     Eirik Tsarpalis
+copyright
+	Copyright 2015
 summary
     A library that facilitates the distribution of code in the .NET framework.
 licenseurl https://github.com/nessos/Vagabond/blob/master/License.md

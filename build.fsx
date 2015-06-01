@@ -4,14 +4,13 @@
 
 #I "packages/FAKE/tools"
 #r "packages/FAKE/tools/FakeLib.dll"
-//#load "packages/SourceLink.Fake/tools/SourceLink.fsx"
+
 open System
 open System.IO
 open Fake 
 open Fake.Git
 open Fake.ReleaseNotesHelper
 open Fake.AssemblyInfoFile
-//open SourceLink
 
 // --------------------------------------------------------------------------------------
 // Information about the project to be used at NuGet and in AssemblyInfo files
@@ -93,20 +92,6 @@ FinalTarget "CloseTestRunner" (fun _ ->
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
-let addAssembly reqXml (target : string) assembly =
-    let includeFile force file =
-        let file = file
-        if File.Exists (Path.Combine("nuget", file)) then [(file, Some target, None)]
-        elif force then raise <| new FileNotFoundException(file)
-        else []
-
-    seq {
-        yield! includeFile true assembly
-        yield! includeFile reqXml <| Path.ChangeExtension(assembly, "xml")
-        yield! includeFile false <| Path.ChangeExtension(assembly, "pdb")
-        yield! includeFile false <| assembly + ".config"
-    }
-
 Target "NuGet" (fun _ ->
     Paket.Pack(fun config ->
         { config with 
@@ -114,9 +99,9 @@ Target "NuGet" (fun _ ->
             ReleaseNotes = String.concat "\n" release.Notes
             OutputPath = "bin"
             WorkingDir = "nuget"
-        }
-    )
-)
+        }))
+
+Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = "bin/" }))
 
 // Doc generation
 
@@ -161,5 +146,8 @@ Target "Default" DoNothing
   ==> "GenerateDocs"
   ==> "ReleaseDocs"
   ==> "Release"
+
+"NuGet" 
+  ==> "NuGetPush"
 
 RunTargetOrDefault "Default"

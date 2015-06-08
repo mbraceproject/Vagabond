@@ -127,21 +127,17 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
 
     try
         if va.Metadata.IsManagedAssembly then
-            match state.AssemblyImportState.TryFind va.Id with
-            // dynamic assembly slice generated in local process
-            | None when state.CompilerState.IsLocalDynamicAssemblySlice va.Id -> 
-                let state, va = exportAssembly state policy va.Id
-                state, Loaded (va.Id, true, va.Metadata)
+            let state, loadInfo = getAssemblyLoadInfo state policy va.Id
+            match loadInfo with
             // assembly not in state or loaded in AppDomain, attempt to load now
-            | None 
-            | Some (NotLoaded _) 
-            | Some (LoadFault _)
-            | Some (Loaded(_, false, _)) -> 
+            | NotLoaded _ 
+            | LoadFault _
+            | Loaded(_, false, _) -> 
                 loadAssembly va
                 let state' = importDataDependencies state va
                 success state' <| Loaded(va.Id, true, va.Metadata)
             // assembly already in AppDomain, update data dependencies if necessary
-            | Some(Loaded(id, true, _)) ->
+            | Loaded(id, true, _) ->
                 let state' = importDataDependencies state va
                 success state' <| Loaded(id, true, va.Metadata)
         else

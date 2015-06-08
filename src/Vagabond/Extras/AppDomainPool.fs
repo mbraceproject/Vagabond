@@ -130,7 +130,7 @@ module private Impl =
 
         /// Initialize a new AppDomain pool state
         static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
-            let mutable empty = {
+            let empty = {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
@@ -141,10 +141,8 @@ module private Impl =
             }
 
             // populate pool with minimum allowed number of domains
-            for _ in 1 .. minimumConcurrentDomains do
-                empty <- empty.AddNew [] |> snd
-
-            empty
+            let newDomains = Array.Parallel.init minimumConcurrentDomains (fun _ -> AppDomainLoadInfo<'Manager>.Init(config, permissions, []))
+            (empty, newDomains) ||> Array.fold (fun s adli -> s.AddDomain adli)
 
     /// try locating an AppDomain from pool that is compatible with supplied dependencies.
     let tryGetMatchingAppDomain (state : AppDomainPoolInfo<'M>) (dependencies : AssemblyId []) : AppDomainLoadInfo<'M> option * AppDomainPoolInfo<'M> =

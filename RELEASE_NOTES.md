@@ -1,3 +1,4 @@
+* 0.6.11 - Initialize AppDomain pool in parallel.
 * 0.6.10 - Improve Assembly import logic.
 * 0.6.9 - Fix bug in AppDomain evaluator asynchronous operations.
 * 0.6.8 - Update dependency traversal logic using FsPickler visitor re-implementation.

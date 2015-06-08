@@ -273,19 +273,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : IDynamicAss
     /// <param name="importer">Assembly importer implementation.</param>
     /// <param name="ids">Assembly id's to be imported.</param>
     member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) : Async<VagabondAssembly list> = async {
-        let ids = ids |> Seq.distinct |> Seq.toList
-        // do not import assembly id's that already exist in the current context.
-        let loadedIds, missingIds =
-            __.GetAssemblyLoadInfo(ids, loadPolicy = AssemblyLoadPolicy.RequireIdentical)
-            |> List.partition (function Loaded(_,_,md) when not md.IsDynamicAssemblySlice -> true | _ -> false)
-
-        let loadedAssemblies = __.GetVagabondAssemblies(loadedIds |> Seq.map (fun l -> l.Id), AssemblyLoadPolicy.RequireIdentical)
-        let! importedAssemblies = controller.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, (missingIds |> List.map (fun l -> l.Id)), ch))
-
-        // preserve original input ordering
-        let ordered = ids |> Seq.mapi (fun i id -> id, i) |> dict
-        let concatted = Seq.append loadedAssemblies importedAssemblies |> Seq.sortBy (fun va -> ordered.[va.Id]) |> Seq.toList
-        return concatted
+        return! controller.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, Seq.toList ids, ch))
     }
 
     /// Gets hash information for all Vagabond managed static bindings in current AppDomain.

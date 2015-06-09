@@ -18,100 +18,89 @@ open Nessos.Vagabond.DataDependencyManagement
 /// creates an exportable assembly package for given Assembly Id
 ///
 
-let exportAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
+let tryExportAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (id : AssemblyId) =
     // first, look up unmanaged assembly state
     match state.NativeAssemblyManager.TryFind id with
-    | Some va -> state, va
+    | Some va -> state, Some va
     | None ->
 
     // check if slice of a local dynamic assembly
     match state.CompilerState.TryFindSliceInfo id.FullName with
-    // is dynamic assembly slice which requires static initialization
-    | Some (_, sliceInfo) when sliceInfo.RequiresStaticInitialization -> exportDataDependencies state sliceInfo
-    | Some(_, sliceInfo) -> state, VagabondAssembly.CreateManaged(sliceInfo.Assembly, true, [||], [||])
-    | None ->
-
-    // look up export state
-    match state.AssemblyExportState.TryFind id with
-    | Some va -> state, va
-    | None ->
-
-    // assembly not a local dynamic assembly slice, need to lookup cache and AppDomain in that order; 
-    // this is because cache contains vagabond metadata while AppDomain does not.
-    match state.AssemblyCache.TryGetCachedAssembly id with
-    | Some va -> state, va
-    | None ->
-
-    // finally, attempt to resolve from AppDomain
-    let localAssembly =
-        if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
-        else tryGetLoadedAssembly id.FullName
-
-    match localAssembly with
-    | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
-        let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
-        raise <| VagabondException(msg)
-
-    | Some asmb -> 
-        let va = VagabondAssembly.CreateManaged(asmb, false, [||], [||])
-        { state with AssemblyExportState = state.AssemblyExportState.Add(va.Id, va) } , va
+    // is local dynamic assembly slice, handle separately
+    | Some (_, sliceInfo) -> 
+        let state, va = exportDataDependencies state sliceInfo
+        state, Some va
 
     | None ->
-        let msg = sprintf "could not retrieve assembly '%s' from local environment." id.FullName
-        raise <| VagabondException(msg)
 
+    match state.AssemblyLoadState.TryFind id with
+    | Some (ExportedSlice _) -> invalidOp <| sprintf "internal error: invalid vagabond state for assembly '%s'." id.FullName
+    | Some (LoadedAssembly va | ImportedAssembly va | ImportedSlice va) -> state, Some va
+    | None ->
+        // attempt resolving from AppDomain
+        let localAssembly =
+            if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
+            else tryGetLoadedAssembly id.FullName
+
+        match localAssembly with
+        | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> id ->
+            let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
+            raise <| new VagabondException(msg)
+
+        | Some asmb -> 
+            let va = VagabondAssembly.CreateManaged(asmb, false, [||], [||])
+            { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }, Some va
+
+        | None when policy.HasFlag AssemblyLookupPolicy.VagabondCache ->
+            let va = state.AssemblyCache.TryGetCachedAssembly id
+            state, va
+
+        | None -> state, None
 
 ///
 /// assembly load status implementation
 ///
 
-let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLoadPolicy) (id : AssemblyId) =
+let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLookupPolicy) (id : AssemblyId) =
 
-    match state.AssemblyImportState.TryFind id with
-    | Some (Loaded _ as loadState) -> state, loadState
     // dynamic assembly slice generated in local process
-    | None when state.CompilerState.IsLocalDynamicAssemblySlice id -> 
-        let state, va = exportAssembly state policy id
-        state, Loaded (id, true, va.Metadata)
-
-    | _ ->
-        // look up assembly cache
-        match state.AssemblyCache.TryGetCachedAssembly id with
-        | Some va -> state, Loaded(id, false, va.Metadata)
+    if state.CompilerState.IsLocalDynamicAssemblySlice id then
+        let state, va = tryExportAssembly state policy id
+        state, Loaded (id, true, Option.get(va).Metadata)
+    else
+        match state.AssemblyLoadState.TryFind id with
+        | Some (ExportedSlice _) -> invalidOp <| sprintf "internal error: invalid vagabond state for assembly '%s'." id.FullName
+        | Some (ImportedAssembly va | ImportedSlice va | LoadedAssembly va) -> state, Loaded(id, true, va.Metadata)
         | None ->
-            // Attempt resolving locally
+            // attempt resolving from AppDomain
             let localAssembly =
-                if id.CanBeResolvedLocally policy then
-                    tryLoadAssembly id.FullName
-                else
-                    tryGetLoadedAssembly id.FullName
+                if id.CanBeResolvedLocally policy then tryLoadAssembly id.FullName
+                else tryGetLoadedAssembly id.FullName 
 
-            let info =
-                match localAssembly with
-                // if specified, check if loaded assembly has identical image hash
-                | Some a when policy.HasFlag AssemblyLoadPolicy.RequireIdentical && a.AssemblyId <> id ->
-                    let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
-                    LoadFault(id, VagabondException(msg))
+            match localAssembly with
+            // if specified, check if loaded assembly has identical image hash
+            | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> id ->
+                let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
+                state, LoadFault(id, VagabondException(msg))
 
-                | Some a -> Loaded(id, true, { IsManagedAssembly = true ; IsDynamicAssemblySlice = false ; DataDependencies = [||] })
-                | None -> NotLoaded id
+            | Some a ->
+                let va = VagabondAssembly.CreateManaged(a, false, [||], [||])
+                let state = { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }
+                state, Loaded(id, true, va.Metadata)
 
-            let state = { state with AssemblyImportState = state.AssemblyImportState.Add(id, info) }
+            | None when policy.HasFlag AssemblyLookupPolicy.VagabondCache ->
+                match state.AssemblyCache.TryGetCachedAssembly id with
+                | None -> state, NotLoaded id
+                | Some va -> state, Loaded(id, false, va.Metadata)
 
-            state, info
+            | None -> state, NotLoaded id
 
 
 //
 // assembly import protocol implementation
 //
 
-let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : VagabondAssembly) =
-
-    // update state with success
-    let success state info = 
-        let state = { state with AssemblyImportState = state.AssemblyImportState.Add(va.Id, info) }
-        state, info
-
+let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : VagabondAssembly) =
     // load assembly to the current AppDomain
     let loadAssembly (va : VagabondAssembly) =
         let assembly = System.Reflection.Assembly.LoadFrom va.Image
@@ -120,29 +109,56 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLoadPolicy) (va : Vag
             let msg = sprintf "Expected assembly '%s', but was '%s'." va.FullName assembly.FullName
             raise <| VagabondException(msg)
 
-        elif policy.HasFlag AssemblyLoadPolicy.RequireIdentical && assembly.AssemblyId <> va.Id then
+        elif policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && assembly.AssemblyId <> va.Id then
             let msg = sprintf "an incompatible version of '%s' has been loaded." va.FullName
             raise <| VagabondException(msg)
 
-
     try
         if va.Metadata.IsManagedAssembly then
-            let state, loadInfo = getAssemblyLoadInfo state policy va.Id
-            match loadInfo with
-            // assembly not in state or loaded in AppDomain, attempt to load now
-            | NotLoaded _ 
-            | LoadFault _
-            | Loaded(_, false, _) -> 
-                loadAssembly va
-                let state' = importDataDependencies state va
-                success state' <| Loaded(va.Id, true, va.Metadata)
-            // assembly already in AppDomain, update data dependencies if necessary
-            | Loaded(id, true, _) ->
-                let state' = importDataDependencies state va
-                success state' <| Loaded(id, true, va.Metadata)
+            // dynamic assembly slice generated in local process
+            if state.CompilerState.IsLocalDynamicAssemblySlice va.Id then
+                let state, va = tryExportAssembly state policy va.Id
+                let va = Option.get va
+                state, Loaded (va.Id, true, va.Metadata)
+            else
+                match state.AssemblyLoadState.TryFind va.Id with
+                | Some (ExportedSlice _) -> invalidOp <| sprintf "internal error: invalid vagabond state for assembly '%s'." va.Id.FullName
+                // loaded static assembly, return as-is
+                | Some (LoadedAssembly va | ImportedAssembly va) -> state, Loaded(va.Id, true, va.Metadata)
+                // loaded dynamic assembly slice, update data dependencies as necessary
+                | Some (ImportedSlice curr) ->
+                    let state = importDataDependencies state (Some curr) va
+                    state, Loaded(va.Id, true, va.Metadata)
+                | None ->
+                    // attempt resolving from AppDomain first
+                    let localAssembly =
+                        if va.Id.CanBeResolvedLocally policy then tryLoadAssembly va.Id.FullName
+                        else tryGetLoadedAssembly va.Id.FullName 
+
+                    match localAssembly with
+                    // if specified, check if loaded assembly has identical image hash
+                    | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> va.Id ->
+                        let msg = sprintf "an incompatible version of '%s' has been loaded." va.Id.FullName
+                        state, LoadFault(va.Id, VagabondException(msg))
+
+                    | Some a ->
+                        let va = VagabondAssembly.CreateManaged(a, false, [||], [||])
+                        let state = { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }
+                        state, Loaded(va.Id, true, va.Metadata)
+
+                    | None ->
+                        // proceed with loading Vagabond assembly
+                        do loadAssembly va
+                        let state =
+                            if va.Metadata.IsDynamicAssemblySlice then
+                                importDataDependencies state None va
+                            else
+                                { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, ImportedAssembly va) }
+
+                        state, Loaded(va.Id, true, va.Metadata)
         else
             // add assembly to unmanaged dependency state
             let result = state.NativeAssemblyManager.Load va
-            success state result
+            state, result
 
     with e -> state, LoadFault(va.Id, e)

@@ -19,11 +19,11 @@ open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
 type VagabondMessage =
-    | ImportAssemblies of IAssemblyImporter * AssemblyId [] * ReplyChannel<VagabondAssembly []>
-    | ExportAssemblies of IAssemblyExporter * VagabondAssembly [] * ReplyChannel<unit>
-    | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
-    | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
-    | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
+    | ImportAssemblies of IAssemblyDownloader * AssemblyId [] * ReplyChannel<VagabondAssembly []>
+    | ExportAssemblies of IAssemblyUploader * VagabondAssembly [] * ReplyChannel<unit>
+    | LoadAssembly of AssemblyLookupPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
+    | TryGetVagabondAssembly of AssemblyLookupPolicy * AssemblyId * ReplyChannel<VagabondAssembly option>
+    | GetAssemblyLoadInfo of AssemblyLookupPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly [] * ReplyChannel<DynamicAssemblySlice []>
     | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
     | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly []>
@@ -52,11 +52,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
             DataPersistThreshold = dataPersistThreshold
 
             CompilerState = !compilerState
-            DataExportState = Map.empty
-            DataImportState = Map.empty
-
-            AssemblyExportState = Map.empty
-            AssemblyImportState = Map.empty
+            AssemblyLoadState = Map.empty
             StaticBindings = [||]
 
             NativeAssemblyManager = nativeAssemblyManager
@@ -73,7 +69,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
                 let! vas =
                     ids
                     |> Seq.distinct
-                    |> Seq.map(fun id -> state.AssemblyCache.Import(importer, id))
+                    |> Seq.map(fun id -> state.AssemblyCache.Download(importer, id))
                     |> Async.Parallel
 
                 rc.Reply vas
@@ -88,7 +84,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
                 return!
                     assemblies
                     |> Seq.distinctBy(fun va -> va.Id)
-                    |> Seq.map (fun va -> state.AssemblyCache.Export(exporter, va))
+                    |> Seq.map (fun va -> state.AssemblyCache.Upload(exporter, va))
                     |> Async.Parallel
                     |> Async.Ignore
 
@@ -113,9 +109,9 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
                 rc.ReplyWithError e
                 return state
 
-        | GetVagabondAssembly (policy, id, rc) ->
+        | TryGetVagabondAssembly (policy, id, rc) ->
             try
-                let state', va = exportAssembly state policy id
+                let state', va = tryExportAssembly state policy id
                 rc.Reply va
                 return state'
 

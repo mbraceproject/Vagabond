@@ -1,3 +1,4 @@
+* 0.7.0 - Refinements to the API, changes in the Assembly loading logic.
 * 0.6.12 - Changes to assembly loading logic.
 * 0.6.11 - Initialize AppDomain pool in parallel.
 * 0.6.10 - Improve Assembly import logic.

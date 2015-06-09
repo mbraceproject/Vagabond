@@ -127,7 +127,7 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             }
 
     /// Import assembly of given id to cache
-    member __.Import(importer : IAssemblyImporter, id : AssemblyId) = async {
+    member __.Download(importer : IAssemblyDownloader, id : AssemblyId) = async {
         let cachePath = getCachedAssemblyPath cacheDirectory id
         if not <| File.Exists cachePath then
             let! imgReader = importer.GetImageReader id
@@ -175,7 +175,7 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     }
 
     /// Exports assembly of given id from cache
-    member __.Export(exporter : IAssemblyExporter, va : VagabondAssembly) = async {
+    member __.Upload(exporter : IAssemblyUploader, va : VagabondAssembly) = async {
         // 1. Write image if not found in remote party
         let! writer = exporter.TryGetImageWriter va.Id
         match writer with

@@ -8,16 +8,17 @@ open System.Runtime.Serialization
 open Nessos.FsPickler
 open Nessos.FsPickler.Hashing
 
-/// Specifies what assemblies are to be loaded 
-/// locally by the runtime if possible.
-type AssemblyLoadPolicy =
-    | None = 0
-    /// Only signed assemblies should be looked up by runtime
-    | ResolveStrongNames = 1
-    /// All assembly names can be looked up by runtime
-    | ResolveAll = 2
-    /// If assembly is to be resolved locally, then it should have identical image hash.
-    | RequireIdentical = 4
+/// Specifies how assemblies are to be
+/// looked up from the local vagabond context.
+type AssemblyLookupPolicy =
+    /// Resolve assemblies from the Vagabond cache directory.
+    | VagabondCache = 1
+    /// Resolve assemblies from the CLR context.
+    | Runtime = 2
+    /// Restrict CLR assembly resolution to strong names.
+    | RuntimeRequireStrongNames = 4
+    /// Require CLR loaded assemblies to carry identical hash.
+    | RuntimeRequireIdenticalHash = 8
 
 /// Vagabond unique assembly identifier
 [<StructuralComparison>]
@@ -127,7 +128,7 @@ with
         | Loaded (id,_,_) -> id
 
 /// Abstract assembly image exporting API
-type IAssemblyExporter =
+type IAssemblyUploader =
     /// Asynchronously returns a write stream for assembly image of given id. Returns 'None' if image already exists.
     abstract TryGetImageWriter : id:AssemblyId -> Async<Stream option>
     /// Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.
@@ -140,7 +141,7 @@ type IAssemblyExporter =
     abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<unit>
 
 /// Abstract assembly image importing API
-type IAssemblyImporter =
+type IAssemblyDownloader =
     /// Asynchronously returns a read stream for assembly image of given id.
     abstract GetImageReader : id:AssemblyId -> Async<Stream>
     /// Asynchronously returns a read stream for assembly debug symbols of given id.

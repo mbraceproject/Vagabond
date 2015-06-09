@@ -85,18 +85,20 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
 
 /// export data dependencies given controller state for provided compiled dynamic assembly slice
 let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice) =
+    let assemblyId = slice.Assembly.AssemblyId
     let assemblyPath = slice.Assembly.Location
     let exportState =
-        match state.DataExportState.TryFind assemblyPath with
+        match state.AssemblyLoadState.TryFind assemblyId with
         | None -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id None fI)
-        | Some deps -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id (Some deps.[id]) fI)
+        | Some (ExportedSlice deps) -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id (Some deps.[id]) fI)
+        | Some _ -> invalidOp <| sprintf "internal error: assembly '%s' not local slice." assemblyId.FullName
 
     let persisted = exportState |> Array.choose (fun de -> de.PersistFile)
     let dependencies = exportState |> Array.map (fun de -> de.Info)
     let va = VagabondAssembly.CreateManaged(slice.Assembly, true, dependencies, persisted)
 
     { state with 
-        DataExportState = state.DataExportState.Add(assemblyPath, exportState)
+        AssemblyLoadState = state.AssemblyLoadState.Add(assemblyId, ExportedSlice exportState)
         StaticBindings =
             exportState 
             |> Seq.choose (fun dei -> match dei.Hash with Choice1Of2 h -> Some(dei.FieldInfo, h) | _ -> None)
@@ -105,26 +107,26 @@ let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice
 
 
 /// import data dependency for locally loaded assembly slice
-let importDataDependency (state : VagabondState) (va : VagabondAssembly) 
-                            (current : DataGeneration option) (persistPath : string option) (di : DataDependencyInfo) =
+let importDataDependency (state : VagabondState) (va : VagabondAssembly) (current : DataDependencyInfo option)
+                            (persistPath : string option) (di : DataDependencyInfo) =
 
     // determine if data dependency requires updating
     let shouldUpdate =
         match current with
         | None -> true
-        | Some gen -> gen < di.Generation
+        | Some di' -> di'.Generation < di.Generation
 
     // return current generation if update not required
-    if not shouldUpdate then Option.get current, None else
+    if not shouldUpdate then None else
 
     let updateValue hash (value : obj) =
         let field = state.Serializer.UnPickleTyped di.FieldInfo
         field.SetValue(null, value)
-        di.Generation, Some(field, hash)
+        Some(field, hash)
 
     match di.Data, persistPath with
     // unpickle from metadata
-    | Pickled (hash,pickle), _ ->
+    | Pickled (hash, pickle), _ ->
         let value = state.Serializer.UnPickleTyped pickle
         updateValue hash value
     | Persisted _, None -> invalidOp <| sprintf "Assembly '%O' missing data initializer for value '%s'." va.FullName di.Name
@@ -132,20 +134,22 @@ let importDataDependency (state : VagabondState) (va : VagabondAssembly)
     | Persisted hash, Some path ->
         let value = unpicklePersistedBinding state path
         updateValue hash value
-    | Errored _, _ -> di.Generation, None
+    | Errored _, _ -> None
 
 /// import data dependencies to local AppDomain
-let importDataDependencies (state : VagabondState) (va : VagabondAssembly) =
-    if Array.isEmpty va.Metadata.DataDependencies then state else
+let importDataDependencies (state : VagabondState) (current : VagabondAssembly option) (va : VagabondAssembly) =
+    if Array.isEmpty va.Metadata.DataDependencies then 
+        { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, ImportedSlice va) }
+    else
+        let persisted = va.PersistedDataDependencies |> Map.ofArray
+        let updatedBindings =
+            match current with
+            | None -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va None (persisted.TryFind dd.Id) dd)
+            | Some curr -> 
+                (va.Metadata.DataDependencies, curr.Metadata.DataDependencies)
+                ||> Array.map2 (fun dd dd' -> importDataDependency state va (Some dd') (persisted.TryFind dd.Id) dd)
 
-    let persisted = va.PersistedDataDependencies |> Map.ofArray
-    let importState, updatedBindings =
-        match state.DataImportState.TryFind va.Image with
-        | None -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va None (persisted.TryFind dd.Id) dd)
-        | Some gens -> va.Metadata.DataDependencies |> Array.map (fun dd -> importDataDependency state va (Some gens.[dd.Id]) (persisted.TryFind dd.Id) dd)
-        |> Array.unzip
-
-    { state with 
-        DataImportState = state.DataImportState.Add(va.Image, importState) 
-        StaticBindings = updateStaticBindings state.StaticBindings (Array.choose id updatedBindings)
-    }
+        { state with 
+            AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, ImportedSlice va) 
+            StaticBindings = updateStaticBindings state.StaticBindings (Array.choose id updatedBindings)
+        }

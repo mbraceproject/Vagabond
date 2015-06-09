@@ -26,11 +26,11 @@ type VagabondManager with
     /// </summary>
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="assemblies">Assemblies to be exported.</param>
-    member v.SubmitDependencies(receiver : IRemoteAssemblyReceiver, dependencies : seq<AssemblyId>) = async {
-        let dependencies = dependencies |> Seq.distinct |> Seq.toArray
+    member v.SubmitDependencies(receiver : IRemoteAssemblyReceiver, dependencies : seq<VagabondAssembly>) = async {
+        let dependencies = dependencies |> Seq.distinctBy (fun va -> va.Id) |> Seq.toArray
 
         // Step 1. submit assembly identifiers to receiver; get back loaded state
-        let! info = receiver.GetLoadedAssemblyInfo dependencies
+        let! info = receiver.GetLoadedAssemblyInfo (dependencies |> Array.map (fun va -> va.Id))
         
         // Step 2. detect dependencies that require uploading
         let tryGetMissingAssembly (info : AssemblyLoadInfo) =
@@ -67,16 +67,9 @@ type VagabondManager with
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="obj">Object, whose dependent assemblies are to be exported.</param>
     /// <param name="permitCompilation">Compile dynamic assemblies in the background, as required. Defaults to false.</param>
-    /// <param name="includeNativeAssemblies">Include declared native assemblies if specified. Defaults to true.</param>
-    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool, ?includeNativeAssemblies:bool) = async {
-        let includeNativeAssemblies = defaultArg includeNativeAssemblies true
-        let managedDependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation) |> Array.map (fun a -> a.AssemblyId)
-        let dependencies =
-            if includeNativeAssemblies then 
-                let unmanaged = v.NativeDependencies |> Array.map (fun um -> um.Id)
-                Array.append unmanaged managedDependencies
-            else managedDependencies
-
+    /// <param name="includeNativeDependencies">Include declared native assemblies if specified. Defaults to true.</param>
+    member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool, ?includeNativeDependencies:bool) = async {
+        let dependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation, ?includeNativeDependencies = includeNativeDependencies)
         return! v.SubmitDependencies(receiver, dependencies)
     }
 
@@ -86,7 +79,7 @@ type VagabondManager with
     /// </summary>
     /// <param name="publisher">The remote publisher</param>
     /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-    member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy : AssemblyLoadPolicy) = async {
+    member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy : AssemblyLookupPolicy) = async {
 
         // step 1. download dependencies required by publisher
         let! dependencies = publisher.GetRequiredAssemblyInfo()

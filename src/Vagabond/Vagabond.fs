@@ -15,7 +15,7 @@ open Nessos.Vagabond.Control
 /// Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states
 [<AutoSerializable(false)>]
 type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLoadPolicy,
+                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLookupPolicy,
                                 ?compressDataFiles : bool, ?dataPersistTreshold : int64) =
 
     static do registerAssemblyResolutionHandler ()
@@ -41,13 +41,13 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
         | Some ps -> Seq.toArray ps
         | None -> [| new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile |]
 
-    let mutable _loadPolicy = defaultArg loadPolicy <| AssemblyLoadPolicy.ResolveStrongNames
+    let mutable _loadPolicy = defaultArg loadPolicy (AssemblyLookupPolicy.RuntimeRequireStrongNames ||| AssemblyLookupPolicy.VagabondCache)
 
     let controller = new VagabondController(uuid, cacheDirectory, profiles, requireLoadedInAppDomain, compressDataFiles, 
                                                         dataPersistTreshold, isIgnoredAssembly, ?tyConv = typeConverter)
     do controller.Start()
 
-    static let checkIsDynamic(a : Assembly) = 
+    static let ensureDynamic (a : Assembly) = 
         if a.IsDynamic then () 
         else invalidArg a.FullName "Vagabond: not a dynamic assembly"
 
@@ -86,54 +86,22 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     /// Returns all unmanaged dependencies registered to Vagabond instance.
     member __.NativeDependencies : VagabondAssembly [] = controller.NativeDependencies
 
+
+    /// Gets hash information for all Vagabond managed static bindings in current AppDomain.
+    member __.StaticBindings : (FieldInfo * HashResult) [] = controller.StaticBindings
+
+    /// <summary>
+    ///     Try get a Vagabond static bindings that matches provided object hash.
+    /// </summary>
+    /// <param name="hash">Input object hash.</param>
+    member __.TryGetBindingByHash(hash : HashResult) : FieldInfo option =
+        match controller.StaticBindings |> Array.tryFind (fun (_,h) -> h = hash) with
+        | None -> None
+        | Some(f,_) -> Some f
+
     //
     //  #region Assembly compilation
     //
-
-    /// <summary>
-    ///     Compiles slices for given dynamic assembly, if required.
-    /// </summary>
-    /// <param name="assembly">Dynamic assembly to be compiled.</param>
-    member __.CompileDynamicAssemblySlice (assembly : Assembly) : Assembly [] =
-        do checkIsDynamic assembly
-        compile [|assembly|] |> Array.map (fun a -> a.Assembly)
-
-    /// <summary>
-    ///     Returns a list of dynamic assemblies that require slice compilation
-    ///     for the given object graph to be exportable.
-    /// </summary>
-    /// <param name="obj">Serializable object graph to be traversed for dependencies.</param>
-    member __.ResolveDynamicAssembliesRequiringCompilation(obj : obj) : Assembly [] =
-        let dependencies = computeDependencies obj
-        getDynamicDependenciesRequiringCompilation controller.CompilerState dependencies
-
-    /// <summary>
-    ///     Returns all assembly slices of given dynamic assembly.
-    /// </summary>
-    /// <param name="assembly">Dynamic assembly to be resolved.</param>
-    member __.GetDynamicAssemblySlices(assembly : Assembly) : Assembly [] =
-        do checkIsDynamic assembly
-        match controller.CompilerState.DynamicAssemblies.TryFind assembly.FullName with
-        | None -> [||]
-        | Some info -> info.GeneratedSlices |> Seq.map (function KeyValue(_,s) -> s.Assembly) |> Seq.toArray
-
-    /// <summary>
-    ///     Returns a collection of all assemblies that the given object depends on.
-    ///     Dynamic assemblies are substituted for their corresponding static slices.
-    /// </summary>
-    /// <param name="obj">Serializable object graph to be traversed for dependencies.</param>
-    /// <param name="permitCompilation">Compile new slices as required. Defaults to false.</param>
-    member __.ComputeObjectDependencies(obj : obj, ?permitCompilation : bool) : Assembly [] =
-        let allowCompilation = defaultArg permitCompilation false
-
-        let dependencies = computeDependencies obj
-
-        if allowCompilation then
-            let assemblies = getDynamicDependenciesRequiringCompilation controller.CompilerState dependencies
-            let _ = compile assemblies in ()
-
-        remapDependencies isIgnoredAssembly requireLoadedInAppDomain controller.CompilerState dependencies
-        |> List.toArray
 
     /// <summary>
     ///     Checks if assembly id is a locally generated dynamic assembly slice.
@@ -143,66 +111,80 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
         controller.CompilerState.IsLocalDynamicAssemblySlice id
 
     /// <summary>
-    ///     Returns the dynamic assembly slice corresponding to the given type, if exists.
+    ///     Compiles a new slice for given dynamic assembly, if required.
     /// </summary>
-    /// <param name="t">input type.</param>
-    member __.TryGetSliceOfType(t : Type) : Assembly option =
-        let t = if t.IsGenericType && not t.IsGenericTypeDefinition then t.GetGenericTypeDefinition() else t
-        match controller.CompilerState.DynamicAssemblies.TryFind t.Assembly.FullName with
-        | None -> None
-        | Some dyn -> dyn.TryGetSlice t |> Option.map (fun s -> s.Assembly)
+    /// <param name="assembly">Dynamic assembly to be compiled.</param>
+    member __.CompileDynamicAssemblySlice (assembly : Assembly) : VagabondAssembly [] =
+        do ensureDynamic assembly
+        let slices = compile [|assembly|]
+        __.GetVagabondAssemblies(slices |> Array.map (fun s -> s.Assembly.AssemblyId))
 
-        
     /// <summary>
-    ///     Gets vagabond assembly metadata for given assembly id.
+    ///     Returns a collection of all assemblies that the given object depends on.
+    ///     Dynamic assemblies are substituted for their corresponding static slices.
     /// </summary>
-    /// <param name="id">assembly id</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
-    member __.GetVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) : VagabondAssembly =
-        let loadPolicy = defaultArg loadPolicy _loadPolicy
-        controller.PostAndReply(fun ch -> GetVagabondAssembly(loadPolicy, id, ch))
+    /// <param name="obj">Serializable object graph to be traversed for dependencies.</param>
+    /// <param name="permitCompilation">Compile new slices as required. Defaults to true.</param>
+    /// <param name="includeNativeDependencies">Include native dependencies to set. Defaults to false.</param>
+    member __.ComputeObjectDependencies(graph : obj, ?permitCompilation : bool, ?includeNativeDependencies : bool) : VagabondAssembly [] =
+        let permitCompilation = defaultArg permitCompilation true
+        let includeNativeDependencies = defaultArg includeNativeDependencies false
+
+        let dependencies = computeDependencies graph
+
+        if permitCompilation then
+            let assemblies = getDynamicDependenciesRequiringCompilation controller.CompilerState dependencies
+            let _ = compile assemblies in ()
+
+        let assemblies = remapDependencies isIgnoredAssembly requireLoadedInAppDomain controller.CompilerState dependencies
+        let vagabondAssemblies = __.GetVagabondAssemblies(assemblies |> Seq.map (fun a -> a.AssemblyId) |> Seq.toArray)
+
+        if includeNativeDependencies then
+            Array.append vagabondAssemblies controller.NativeDependencies
+        else
+            vagabondAssemblies
 
     //
     //  #region Vagabond Assemblies
     //
 
     /// <summary>
-    ///    Gets vagabond assembly metadata for given assembly ids.
+    ///     Attempt fetching a local VagabondAssembly associated with provided assembly identifier.
+    /// </summary>
+    /// <param name="id">assembly identifier.</param>
+    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
+    member __.TryGetVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly option =
+        let loadPolicy = defaultArg loadPolicy _loadPolicy
+        controller.PostAndReply(fun ch -> TryGetVagabondAssembly(loadPolicy, id, ch))
+
+    /// <summary>
+    ///     Fetches a local VagabondAssembly associated with provided assembly identifier.
+    /// </summary>
+    /// <param name="id">assembly identifier.</param>
+    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
+    member __.GetVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly =
+        let loadPolicy = defaultArg loadPolicy _loadPolicy
+        match controller.PostAndReply(fun ch -> TryGetVagabondAssembly(loadPolicy, id, ch)) with
+        | Some va -> va
+        | None -> raise <| new VagabondException(sprintf "Could not locate assembly '%s' in current context." id.FullName)
+
+    /// <summary>
+    ///    Returns vagabond assemblies corresponding 
     /// </summary>
     /// <param name="ids">assembly ids.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : VagabondAssembly [] =
+    member __.GetVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly [] =
         ids
         |> Seq.distinct
         |> Seq.map (fun id -> __.GetVagabondAssembly(id, ?loadPolicy = loadPolicy))
         |> Seq.toArray
-            
-
-    /// <summary>
-    ///     Gets vagabond assembly metadata for given static assembly.
-    /// </summary>
-    /// <param name="assembly">Given assembly.</param>
-    member __.GetVagabondAssembly(assembly : Assembly) : VagabondAssembly =
-        __.GetVagabondAssembly(assembly.AssemblyId)
-
-    /// <summary>
-    ///     Gets vagabond assembly metadata for given static assemblies.
-    /// </summary>
-    /// <param name="assemblies">Inputs assemblies.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetVagabondAssemblies(assemblies : seq<Assembly>, ?loadPolicy : AssemblyLoadPolicy) : VagabondAssembly [] =
-        assemblies
-        |> Seq.distinct
-        |> Seq.map (fun asm -> __.GetVagabondAssembly(asm.AssemblyId, ?loadPolicy = loadPolicy))
-        |> Seq.toArray
-
 
     /// <summary>
     ///     Gets the local assembly load info for given assembly id.
     /// </summary>
     /// <param name="id">Given assembly id.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetAssemblyLoadInfo(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
+    member __.GetAssemblyLoadInfo(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
         let loadPolicy = defaultArg loadPolicy _loadPolicy
         controller.PostAndReply(fun ch -> GetAssemblyLoadInfo(loadPolicy, id, ch))
 
@@ -211,7 +193,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     /// </summary>
     /// <param name="ids">Given assembly ids.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo [] =
+    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
         ids
         |> Seq.distinct
         |> Seq.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
@@ -226,7 +208,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     /// </summary>
     /// <param name="va">Input assembly package.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssembly(va : VagabondAssembly, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
+    member __.LoadVagabondAssembly(va : VagabondAssembly, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
         let loadPolicy = defaultArg loadPolicy _loadPolicy
         controller.PostAndReply(fun ch -> LoadAssembly(loadPolicy, va, ch))
 
@@ -235,67 +217,33 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     /// </summary>
     /// <param name="vas">Input assembly packages.</param>
     /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo [] =
+    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
         vas
         |> Seq.map (fun va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy))
         |> Seq.toArray
 
-//    /// <summary>
-//    ///     Attempt loading vagabond assembly of given id to the local AppDomain.
-//    /// </summary>
-//    /// <param name="id">input assembly id.</param>
-//    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-//    member __.LoadVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo =
-//        match __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy) with
-//        | Loaded _ as li -> li
-//        | li ->
-//            match controller.AssemblyCache.TryGetCachedAssembly id with
-//            | None -> li
-//            | Some va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy)
-//
-//    /// <summary>
-//    ///     Attempt loading vagabond assemblies of given id's to the local AppDomain.
-//    /// </summary>
-//    /// <param name="id">input assembly id.</param>
-//    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-//    member __.LoadVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLoadPolicy) : AssemblyLoadInfo list =
-//        ids
-//        |> Seq.map (fun id -> __.LoadVagabondAssembly(id, ?loadPolicy = loadPolicy))
-//        |> Seq.toList
-
     //
-    // #region Assembly import/export API
+    // #region Assembly upload/download API
     //
 
     /// <summary>
-    ///     Export provided assemblies using provided exporter
+    ///     Upload provided assemblies using provided uploader implementation.
     /// </summary>
-    /// <param name="exporter">Assembly exporter implementation.</param>
-    /// <param name="assemblies">Assemblies to be exported.</param>
-    member __.ExportAssemblies(exporter : IAssemblyExporter, assemblies : seq<VagabondAssembly>) : Async<unit> = async {
-        return! controller.PostAndAsyncReply(fun ch -> ExportAssemblies(exporter, Seq.toArray assemblies, ch))
+    /// <param name="uploader">Assembly uploader implementation.</param>
+    /// <param name="assemblies">Assemblies to be uploaded.</param>
+    member __.UploadAssemblies(uploader : IAssemblyUploader, assemblies : seq<VagabondAssembly>) : Async<unit> = async {
+        return! controller.PostAndAsyncReply(fun ch -> ExportAssemblies(uploader, Seq.toArray assemblies, ch))
     }
 
     /// <summary>
-    ///     Import provided assemblies to cache using provided importer.
+    ///     Download provided assemblies to cache using provided downloader implementation.
+    ///     Files will be stored in Vagabond cache directory but not loaded in local application domain.
     /// </summary>
-    /// <param name="importer">Assembly importer implementation.</param>
-    /// <param name="ids">Assembly id's to be imported.</param>
-    member __.ImportAssemblies(importer : IAssemblyImporter, ids : seq<AssemblyId>) : Async<VagabondAssembly []> = async {
-        return! controller.PostAndAsyncReply(fun ch -> ImportAssemblies(importer, toArray ids, ch))
+    /// <param name="downloader">Assembly downloader implementation.</param>
+    /// <param name="ids">Assembly ids to be downloaded.</param>
+    member __.DownloadAssemblies(downloader : IAssemblyDownloader, ids : seq<AssemblyId>) : Async<VagabondAssembly []> = async {
+        return! controller.PostAndAsyncReply(fun ch -> ImportAssemblies(downloader, toArray ids, ch))
     }
-
-    /// Gets hash information for all Vagabond managed static bindings in current AppDomain.
-    member __.StaticBindings : (FieldInfo * HashResult) [] = controller.StaticBindings
-
-    /// <summary>
-    ///     Try get a Vagabond static bindings that matches provided object hash.
-    /// </summary>
-    /// <param name="hash">Input object hash.</param>
-    member __.TryGetBindingByHash(hash : HashResult) : FieldInfo option =
-        match controller.StaticBindings |> Array.tryFind (fun (_,h) -> h = hash) with
-        | None -> None
-        | Some(f,_) -> Some f
 
 
 /// <summary>
@@ -322,7 +270,7 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10 KiB.
     /// </param>
     static member Initialize(?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy, 
+                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLookupPolicy, 
                                     ?compressDataFiles : bool, ?dataPersistTreshold : int64) : VagabondManager =
         new VagabondManager(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
                         ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, 
@@ -348,7 +296,7 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10KiB.
     /// </param>
     static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>,
-                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLoadPolicy,
+                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLookupPolicy,
                                 ?compressDataFiles : bool, ?dataPersistTreshold : int64) : VagabondManager =
         let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
         let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)

@@ -105,12 +105,11 @@ type Assembly with
 type AssemblyId with
     /// checks if provided assembly can be resolved from local environment
     /// based on the provided load policy
-    member id.CanBeResolvedLocally (policy : AssemblyLoadPolicy) =
-        if policy.HasFlag AssemblyLoadPolicy.ResolveAll then true
-        elif policy.HasFlag AssemblyLoadPolicy.ResolveStrongNames then 
+    member id.CanBeResolvedLocally (policy : AssemblyLookupPolicy) =
+        if policy.HasFlag AssemblyLookupPolicy.RuntimeRequireStrongNames then
             id.IsStrongAssembly
-        else
-            false
+        else 
+            policy.HasFlag AssemblyLookupPolicy.Runtime
         
     /// Gets a unique assembly file name based on provided assembly id
     member id.GetFileName() =

@@ -31,9 +31,9 @@ type VagabondManager with
         let symbols = va.Symbols |> Option.map (fun _ -> new MemoryStream())
         let persisted = ref Map.empty<DataDependencyId, MemoryStream>
 
-        let exporter =
+        let uploader =
             {
-                new IAssemblyExporter with
+                new IAssemblyUploader with
                     member x.TryGetImageWriter(id: AssemblyId) = async {
                         return Some (imageBuf :> _)
                     }
@@ -55,7 +55,7 @@ type VagabondManager with
                     member x.WriteMetadata(id: AssemblyId, metadata: VagabondMetadata) = async.Zero()
             }
 
-        v.ExportAssemblies(exporter, [|va|]) |> Async.RunSync
+        v.UploadAssemblies(uploader, [|va|]) |> Async.RunSync
 
         let persisted = persisted.Value |> Map.toSeq |> Seq.map (fun (id,m) -> id, m.ToArray()) |> Seq.toArray
 
@@ -80,9 +80,9 @@ type VagabondManager with
     /// <param name="raw">raw assembly input.</param>
     member v.CacheRawAssembly(ea : ExportableAssembly) : VagabondAssembly =
         let persisted = ea.PersistedDataRaw |> Map.ofArray
-        let importer =
+        let downloader =
             {
-                new IAssemblyImporter with
+                new IAssemblyDownloader with
                     member __.GetImageReader(id: AssemblyId) = async { return new MemoryStream(ea.ImageRaw) :> _ }
                     member __.TryGetSymbolReader _ = async { return ea.SymbolsRaw |> Option.map (fun s -> new MemoryStream(s) :> _) }
                     
@@ -93,7 +93,7 @@ type VagabondManager with
                     member __.ReadMetadata(id: AssemblyId) = async { return ea.Metadata }
             }
 
-        v.ImportAssemblies(importer, [ea.Id]) |> Async.RunSync |> fun x -> x.[0]
+        v.DownloadAssemblies(downloader, [ea.Id]) |> Async.RunSync |> fun x -> x.[0]
 
     /// <summary>
     ///     Import raw assemblies to cache.

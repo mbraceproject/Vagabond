@@ -237,10 +237,9 @@ module ``AppDomain Pool Tests`` =
         static member Eval (vpm : AppDomainPool<AppDomainVagabondLambdaLoader>) (f : unit -> 'T) =
             let vg = VagabondConfig.Instance
             let deps = vg.ComputeObjectDependencies(f, true)
-            let pkgs = vg.GetVagabondAssemblies(deps)
-            let mgr = vpm.RequestAppDomain(pkgs |> Seq.map (fun pkg -> pkg.Id))
+            let mgr = vpm.RequestAppDomain(deps |> Seq.map (fun deps -> deps.Id))
             let p = VagabondConfig.Pickler.PickleTyped f
-            let presult = mgr.Evaluate(pkgs, p)
+            let presult = mgr.Evaluate(deps, p)
             match vg.Serializer.UnPickleTyped presult with
             | Choice1Of2 v -> v
             | Choice2Of2 e -> raise e

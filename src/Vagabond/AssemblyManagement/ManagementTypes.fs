@@ -23,6 +23,16 @@ type DataExportState =
         PersistFile : (DataDependencyId * string) option
     }
 
+type AssemblyLoadState =
+    /// Assembly loaded from ambient domain
+    | LoadedAssembly of VagabondAssembly
+    /// Assembly slice exported from local process
+    | ExportedSlice of DataExportState []
+    /// Static assembly imported via Vagabond
+    | ImportedAssembly of VagabondAssembly
+    /// Dynamic Assembly slice imported via Vagabond
+    | ImportedSlice of VagabondAssembly
+
 /// Immutable Vagabond state object
 type VagabondState =
     {
@@ -32,14 +42,8 @@ type VagabondState =
         DataPersistThreshold : int64
         /// Dynamic assembly compiler state
         CompilerState : DynamicAssemblyCompilerState
-        /// Locally compiled dynamic assembly data export state
-        DataExportState : Map<string, DataExportState []>
-        /// Local data import state
-        DataImportState : Map<string, DataGeneration []>
-        /// Assembly export state
-        AssemblyExportState : Map<AssemblyId, VagabondAssembly>
-        /// Imported assembly load state
-        AssemblyImportState : Map<AssemblyId, AssemblyLoadInfo>
+        /// Vagabond Assembly load state
+        AssemblyLoadState : Map<AssemblyId, AssemblyLoadState>
         /// Vagabond Serializer instance
         Serializer : FsPicklerSerializer
         /// Assembly Cache instance

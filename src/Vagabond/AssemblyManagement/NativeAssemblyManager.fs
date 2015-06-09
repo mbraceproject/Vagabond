@@ -46,4 +46,4 @@ type internal NativeAssemblyManager(path : string) =
         else None
 
     /// Gets loaded native assemblies
-    member __.LoadedNativeAssemblies = installed |> Seq.map (function KeyValue(_,v) -> v) |> Seq.toList
+    member __.LoadedNativeAssemblies = installed |> Seq.map (function KeyValue(_,v) -> v) |> Seq.toArray

@@ -85,7 +85,7 @@ and DynamicAssemblyCompilerState =
         /// Unique compiler identifier
         CompilerId : Guid
         /// User-supplied dynamic assembly profiles
-        Profiles : IDynamicAssemblyProfile list
+        Profiles : IDynamicAssemblyProfile []
         /// Output directory used for slices
         OutputDirectory : string
         /// List of currently compiled dynamic assemblies, indexed by qualified name

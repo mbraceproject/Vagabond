@@ -177,14 +177,15 @@ let computeDependencies (obj:obj) : Dependencies =
 /// determines the assemblies that require slice compilation based on given dependency input
 let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
     dependencies
-    |> List.filter(fun (a,types) ->
+    |> Seq.filter(fun (a,types) ->
         if a.IsDynamic then
             match state.DynamicAssemblies.TryFind a.FullName with
             | Some info -> types |> Seq.exists(fun t -> not <| info.TypeIndex.ContainsKey t.FullName)
             | None -> true
         else
             false)
-    |> List.map fst
+    |> Seq.map fst
+    |> Seq.toArray
 
 
 /// reassigns assemblies so that the correct assembly slices are matched

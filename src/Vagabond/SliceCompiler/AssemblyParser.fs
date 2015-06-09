@@ -104,7 +104,7 @@ let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly :
         match state.DynamicAssemblies.TryFind assembly.FullName with
         | None -> 
             let profile =
-                match state.Profiles |> List.tryFind(fun p -> p.IsMatch assembly) with
+                match state.Profiles |> Array.tryFind(fun p -> p.IsMatch assembly) with
                 | Some p -> p
                 | None -> new DefaultDynamicAssemblyProfile() :> _
             DynamicAssemblyState.Init(assembly, profile)

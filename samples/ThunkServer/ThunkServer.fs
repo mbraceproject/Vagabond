@@ -16,8 +16,8 @@ open Nessos.Vagabond.ExportableAssembly
 #nowarn "1571"
 
 type internal ServerMsg =
-    | GetAssemblyLoadState of AssemblyId list * IReplyChannel<AssemblyLoadInfo list>
-    | LoadAssemblies of ExportableAssembly list * IReplyChannel<AssemblyLoadInfo list>
+    | GetAssemblyLoadState of AssemblyId [] * IReplyChannel<AssemblyLoadInfo []>
+    | LoadAssemblies of ExportableAssembly [] * IReplyChannel<AssemblyLoadInfo []>
     | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
 
 type ThunkServer private () =
@@ -27,7 +27,7 @@ type ThunkServer private () =
 
         match msg with
         | GetAssemblyLoadState (ids, rc) ->
-            let replies = ids |> List.map VagabondConfig.Instance.GetAssemblyLoadInfo
+            let replies = VagabondConfig.Instance.GetAssemblyLoadInfo ids
             do! rc.Reply replies
 
         | LoadAssemblies (rvas, rc) ->
@@ -68,8 +68,8 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     let assemblyUploader =
         {
             new IRemoteAssemblyReceiver with
-                member __.GetLoadedAssemblyInfo(ids : AssemblyId list) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
-                member __.PushAssemblies(vas : VagabondAssembly list) = async {
+                member __.GetLoadedAssemblyInfo(ids : AssemblyId []) = server.PostWithReply(fun ch -> GetAssemblyLoadState(ids, ch))
+                member __.PushAssemblies(vas : VagabondAssembly []) = async {
                     let rvas = VagabondConfig.Instance.CreateRawAssemblies(vas)
                     return! server.PostWithReply(fun ch -> LoadAssemblies(rvas,ch))
                 }
@@ -107,7 +107,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     /// Register a native assembly for instance
     member __.RegisterNativeDependency(path : string) = VagabondConfig.Instance.RegisterNativeDependency path |> ignore
     /// Gets registered native assemblies for instance
-    member __.NativeAssemblies = VagabondConfig.Instance.NativeDependencies |> List.map (fun d -> d.Image)
+    member __.NativeAssemblies = VagabondConfig.Instance.NativeDependencies |> Array.map (fun d -> d.Image)
 
     /// Gets or sets the server executable location.
     static member Executable

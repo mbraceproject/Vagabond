@@ -19,18 +19,18 @@ open Nessos.Vagabond.AssemblyCache
 open Nessos.Vagabond.AssemblyManagement
 
 type VagabondMessage =
-    | ImportAssemblies of IAssemblyImporter * AssemblyId list * ReplyChannel<VagabondAssembly list>
-    | ExportAssemblies of IAssemblyExporter * VagabondAssembly list * ReplyChannel<unit>
+    | ImportAssemblies of IAssemblyImporter * AssemblyId [] * ReplyChannel<VagabondAssembly []>
+    | ExportAssemblies of IAssemblyExporter * VagabondAssembly [] * ReplyChannel<unit>
     | LoadAssembly of AssemblyLoadPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
     | GetVagabondAssembly of AssemblyLoadPolicy * AssemblyId * ReplyChannel<VagabondAssembly>
     | GetAssemblyLoadInfo of AssemblyLoadPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
-    | CompileDynamicAssemblySlice of Assembly list * ReplyChannel<DynamicAssemblySlice list>
+    | CompileDynamicAssemblySlice of Assembly [] * ReplyChannel<DynamicAssemblySlice []>
     | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
-    | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly list>
+    | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly []>
     | GetStaticBindings of ReplyChannel<(FieldInfo * HashResult) []>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile list, requireLoaded : bool, 
+type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile [], requireLoaded : bool, 
                             compressDataFiles : bool, dataPersistThreshold : int64, isIgnoredAssembly : Assembly -> bool, ?tyConv : ITypeNameConverter) =
 
     do 
@@ -76,7 +76,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
                     |> Seq.map(fun id -> state.AssemblyCache.Import(importer, id))
                     |> Async.Parallel
 
-                rc.Reply(Array.toList vas)
+                rc.Reply vas
                 return state
 
             with e ->
@@ -101,12 +101,12 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
         | CompileDynamicAssemblySlice (assemblies, rc) ->
             try
-                let compState, result = compileDynamicAssemblySlices isIgnoredAssembly requireLoaded state.CompilerState assemblies
+                let compState, result = compileDynamicAssemblySlices isIgnoredAssembly requireLoaded state.CompilerState (Array.toList assemblies)
 
                 // note: it is essential that the compiler state ref cell is updated *before*
                 // a reply is given; this is to eliminate a certain class of race conditions.
                 compilerState := compState
-                do rc.Reply result
+                do rc.Reply (result |> Exn.map Array.ofList)
                 return { state with CompilerState = compState }
 
             with e ->

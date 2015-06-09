@@ -22,5 +22,5 @@ module ``Generic Vagabond API tests`` =
         info'.Id |> shouldEqual info.Id
         let instance' = Vagabond.Initialize()
         let loadInfo = instance'.LoadVagabondAssembly info
-        let info'' = instance'.NativeDependencies.Head
+        let info'' = instance'.NativeDependencies.[0]
         info''.Id |> shouldEqual info.Id

@@ -31,7 +31,7 @@ let getAssemblyPath (path : string) (name : string) =
 
 
 /// create an initial, empty compiler state
-let initCompilerState (uuid : Guid) (profiles : IDynamicAssemblyProfile list) (outDirectory : string) =
+let initCompilerState (uuid : Guid) (profiles : IDynamicAssemblyProfile []) (outDirectory : string) =
     {
         CompilerId = uuid
         Profiles = profiles

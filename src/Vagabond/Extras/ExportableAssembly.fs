@@ -71,8 +71,8 @@ type VagabondManager with
     ///     Copies raw vagabond assembly data to in-memory records.
     /// </summary>
     /// <param name="vas">Input vagabond assemblies.</param>
-    member v.CreateRawAssemblies(vas : seq<VagabondAssembly>) : ExportableAssembly list =
-        vas |> Seq.map v.CreateRawAssembly |> Seq.toList
+    member v.CreateRawAssemblies(vas : seq<VagabondAssembly>) : ExportableAssembly [] =
+        vas |> Seq.map v.CreateRawAssembly |> Seq.toArray
 
     /// <summary>
     ///     Import a raw assembly to cache.
@@ -93,11 +93,11 @@ type VagabondManager with
                     member __.ReadMetadata(id: AssemblyId) = async { return ea.Metadata }
             }
 
-        v.ImportAssemblies(importer, [ea.Id]) |> Async.RunSync |> List.head
+        v.ImportAssemblies(importer, [ea.Id]) |> Async.RunSync |> fun x -> x.[0]
 
     /// <summary>
     ///     Import raw assemblies to cache.
     /// </summary>
     /// <param name="ras">raw assembly inputs.</param>
-    member v.CacheRawAssemblies(ras : seq<ExportableAssembly>) : VagabondAssembly list =
-        ras |> Seq.map (fun ra -> v.CacheRawAssembly ra) |> Seq.toList
+    member v.CacheRawAssemblies(ras : seq<ExportableAssembly>) : VagabondAssembly [] =
+        ras |> Seq.map (fun ra -> v.CacheRawAssembly ra) |> Seq.toArray

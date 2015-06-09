@@ -8,16 +8,16 @@ open Nessos.Vagabond.AssemblyNaming
 /// Defines an abstract assembly load target; to be used by VagabondServer.
 type IRemoteAssemblyReceiver =
     /// receives the assembly load state of the remote party for the given id's.
-    abstract GetLoadedAssemblyInfo : AssemblyId list -> Async<AssemblyLoadInfo list>
+    abstract GetLoadedAssemblyInfo : AssemblyId [] -> Async<AssemblyLoadInfo []>
     /// upload a set of assembly packages to the remote party.
-    abstract PushAssemblies : VagabondAssembly list -> Async<AssemblyLoadInfo list>
+    abstract PushAssemblies : VagabondAssembly [] -> Async<AssemblyLoadInfo []>
 
 /// Defines an abstract assembly exporter; to be used by VagabondClient.
 type IRemoteAssemblyPublisher =
     /// receives a collection of dependencies required by remote publisher.
-    abstract GetRequiredAssemblyInfo : unit -> Async<(AssemblyId * VagabondMetadata) list>
+    abstract GetRequiredAssemblyInfo : unit -> Async<(AssemblyId * VagabondMetadata) []>
     /// request assembly packages from publisher.
-    abstract PullAssemblies : AssemblyId list -> Async<VagabondAssembly list>
+    abstract PullAssemblies : AssemblyId [] -> Async<VagabondAssembly []>
 
 type VagabondManager with
             
@@ -27,7 +27,7 @@ type VagabondManager with
     /// <param name="receiver">User provided assembly submit operation.</param>
     /// <param name="assemblies">Assemblies to be exported.</param>
     member v.SubmitDependencies(receiver : IRemoteAssemblyReceiver, dependencies : seq<AssemblyId>) = async {
-        let dependencies = Seq.toList dependencies
+        let dependencies = dependencies |> Seq.distinct |> Seq.toArray
 
         // Step 1. submit assembly identifiers to receiver; get back loaded state
         let! info = receiver.GetLoadedAssemblyInfo dependencies
@@ -45,7 +45,7 @@ type VagabondManager with
                 if requireUpdate then Some va
                 else None
 
-        let missingAssemblies = info |> List.choose tryGetMissingAssembly
+        let missingAssemblies = info |> Array.choose tryGetMissingAssembly
         let! loadResults = receiver.PushAssemblies missingAssemblies
 
         // Step 3. check load results; if client replies with fault, fail.
@@ -57,7 +57,7 @@ type VagabondManager with
             | Loaded (_, _, md) ->
                 md.DataDependencies |> Array.filter(fun md -> match md.Data with Errored _ -> true | _ -> false) |> Some
 
-        let dataErrors = loadResults |> List.choose gatherErrors |> Array.concat
+        let dataErrors = loadResults |> Array.choose gatherErrors |> Array.concat
         return dataErrors
     }
 
@@ -70,11 +70,11 @@ type VagabondManager with
     /// <param name="includeNativeAssemblies">Include declared native assemblies if specified. Defaults to true.</param>
     member v.SubmitObjectDependencies(receiver : IRemoteAssemblyReceiver, obj:obj, ?permitCompilation:bool, ?includeNativeAssemblies:bool) = async {
         let includeNativeAssemblies = defaultArg includeNativeAssemblies true
-        let managedDependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation) |> List.map (fun a -> a.AssemblyId)
-        let dependencies = 
+        let managedDependencies = v.ComputeObjectDependencies(obj, ?permitCompilation = permitCompilation) |> Array.map (fun a -> a.AssemblyId)
+        let dependencies =
             if includeNativeAssemblies then 
-                let unmanaged = v.NativeDependencies |> List.map (fun um -> um.Id)
-                List.append unmanaged managedDependencies
+                let unmanaged = v.NativeDependencies |> Array.map (fun um -> um.Id)
+                Array.append unmanaged managedDependencies
             else managedDependencies
 
         return! v.SubmitDependencies(receiver, dependencies)
@@ -104,7 +104,7 @@ type VagabondManager with
                     let requiresUpdate = (remoteMD.DataDependencies, localMD.DataDependencies) ||> Array.exists2 (fun r l -> l.Generation < r.Generation)
                     if requiresUpdate then Some id else None
 
-        let missing = dependencies |> List.choose tryCheckLoadStatus
+        let missing = dependencies |> Array.choose tryCheckLoadStatus
 
         if missing.Length > 0 then
             // step 3. download missing dependencies
@@ -118,5 +118,5 @@ type VagabondManager with
                 | LoadFault(id, e) -> raise <| new VagabondException(sprintf "failed to load assembly '%s'" id.FullName, e)
                 | Loaded _ -> ()
 
-            List.iter checkLoadResult loadResults
+            Array.iter checkLoadResult loadResults
     }

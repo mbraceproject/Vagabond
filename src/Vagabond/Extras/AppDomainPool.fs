@@ -130,7 +130,7 @@ module private Impl =
 
         /// Initialize a new AppDomain pool state
         static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
-            let empty = {
+            {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
@@ -139,10 +139,6 @@ module private Impl =
                 MaxTasksPerDomain = maxTasks
                 UnloadThreshold = threshold
             }
-
-            // populate pool with minimum allowed number of domains
-            let newDomains = Array.Parallel.init minimumConcurrentDomains (fun _ -> AppDomainLoadInfo<'Manager>.Init(config, permissions, []))
-            (empty, newDomains) ||> Array.fold (fun s adli -> s.AddDomain adli)
 
     /// try locating an AppDomain from pool that is compatible with supplied dependencies.
     let tryGetMatchingAppDomain (state : AppDomainPoolInfo<'M>) (dependencies : AssemblyId []) : AppDomainLoadInfo<'M> option * AppDomainPoolInfo<'M> =
@@ -230,7 +226,7 @@ module private Impl =
     type AppDomainPoolMsg<'Manager when 'Manager :> IAppDomainManager 
                                      and 'Manager :> MarshalByRefObject 
                                      and 'Manager : (new : unit -> 'Manager)> =
-
+        | PopulateInitialDomains
         | GetDomain of dependencies : AssemblyId [] * ReplyChannel<'Manager>
         | GetState of ReplyChannel<AppDomainPoolInfo<'Manager>>
         | Dispose of ReplyChannel<unit>
@@ -251,6 +247,21 @@ module private Impl =
 
         | Some state ->
             match msg with
+            | PopulateInitialDomains ->
+                let N = state.MinConcurrentDomains - state.DomainPool.Count
+                if N > 0 then
+                    try
+                        let state = ref state
+                        do for i = 1 to N do
+                            let _, state' = state.Value.AddNew []
+                            state := state'
+
+                        return! behaviour (Some !state) self
+
+                    with _ -> return! behaviour gstate self
+                else
+                    return! behaviour gstate self
+                
             | GetDomain(dependencies, rc) ->
                 match Exn.protect2 getMatchingAppDomain state dependencies with
                 | Success(state2, adli) -> rc.Reply adli.Manager ; return! behaviour (Some state2) self
@@ -280,6 +291,7 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
     let cts = new CancellationTokenSource()
     let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks, permissions)
     let mbox = MailboxProcessor.Start(behaviour (Some state))
+    do mbox.Post PopulateInitialDomains
     let getState () = mbox.PostAndReply GetState
 
     // initialize a collector workflow if requested

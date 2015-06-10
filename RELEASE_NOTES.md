@@ -1,3 +1,4 @@
+* 0.7.4 - Use sequential, asynchronous initialization in AppDomain pool.
 * 0.7.3 - Add GZipStream compression implementation.
 * 0.7.2 - Revert changes to AppDomain pool.
 * 0.7.1 - Expose data compression abstractions; Tie AppDomain pool API to Vagabond.

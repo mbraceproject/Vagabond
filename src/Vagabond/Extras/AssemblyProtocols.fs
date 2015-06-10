@@ -78,8 +78,8 @@ type VagabondManager with
     ///     Receive dependencies as supplied by the remote assembly publisher.
     /// </summary>
     /// <param name="publisher">The remote publisher</param>
-    /// <param name="loadPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
-    member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?loadPolicy : AssemblyLookupPolicy) = async {
+    /// <param name="lookupPolicy">Specifies local assembly resolution policy. Defaults to strong names only.</param>
+    member v.ReceiveDependencies(publisher : IRemoteAssemblyPublisher, ?lookupPolicy : AssemblyLookupPolicy) = async {
 
         // step 1. download dependencies required by publisher
         let! dependencies = publisher.GetRequiredAssemblyInfo()
@@ -88,7 +88,7 @@ type VagabondManager with
         let tryCheckLoadStatus (id : AssemblyId, remoteMD : VagabondMetadata) =
             if v.IsLocalDynamicAssemblySlice id then None
             else
-                match v.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy) with
+                match v.GetAssemblyLoadInfo(id, ?lookupPolicy = lookupPolicy) with
                 | NotLoaded id
                 | LoadFault (id,_) -> Some id
                 // local state missing required metadata
@@ -102,7 +102,7 @@ type VagabondManager with
         if missing.Length > 0 then
             // step 3. download missing dependencies
             let! assemblies = publisher.PullAssemblies missing
-            let loadResults = v.LoadVagabondAssemblies(assemblies, ?loadPolicy = loadPolicy)
+            let loadResults = v.LoadVagabondAssemblies(assemblies, ?lookupPolicy = lookupPolicy)
 
             let checkLoadResult (info : AssemblyLoadInfo) =
                 match info with

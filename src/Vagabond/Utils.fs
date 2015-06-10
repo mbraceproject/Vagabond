@@ -283,6 +283,12 @@ module internal Utils =
 
             b.ToString ()
 
+    type AssemblyName with
+        /// Is signed assembly
+        member an.IsStrongAssembly =
+            let pkt = an.GetPublicKeyToken() 
+            pkt <> null && pkt <> [||]
+
     module Map =
         
         /// <summary>

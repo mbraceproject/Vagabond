@@ -14,37 +14,11 @@ open Nessos.Vagabond.Control
 
 /// Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states
 [<AutoSerializable(false)>]
-type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain, ?loadPolicy : AssemblyLookupPolicy,
-                                ?compressDataFiles : bool, ?dataPersistTreshold : int64) =
-
+type VagabondManager internal (config : VagabondConfiguration) =
     static do registerAssemblyResolutionHandler ()
 
     let uuid = Guid.NewGuid()
-    let cacheDirectory = 
-        match cacheDirectory with 
-        | Some d when Directory.Exists d -> d
-        | Some d -> raise <| new DirectoryNotFoundException(d)
-        | None -> 
-            let subdir = sprintf "vagabond-%s" <| uuid.ToString("N")
-            let path = Path.Combine(Path.GetTempPath(), subdir)
-            let _ = Directory.CreateDirectory(path)
-            path
-
-    let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
-    let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
-    let compressDataFiles = defaultArg compressDataFiles true
-    let dataPersistTreshold = defaultArg dataPersistTreshold (10L * 1024L)
-
-    let profiles =
-        match profiles with
-        | Some ps -> Seq.toArray ps
-        | None -> [| new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile |]
-
-    let mutable _loadPolicy = defaultArg loadPolicy (AssemblyLookupPolicy.RuntimeRequireStrongNames ||| AssemblyLookupPolicy.VagabondCache)
-
-    let controller = new VagabondController(uuid, cacheDirectory, profiles, requireLoadedInAppDomain, compressDataFiles, 
-                                                        dataPersistTreshold, isIgnoredAssembly, ?tyConv = typeConverter)
+    let controller = new VagabondController(uuid, config)
     do controller.Start()
 
     static let ensureDynamic (a : Assembly) = 
@@ -64,12 +38,10 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     member __.TypeConverter = controller.TypeNameConverter
     /// Cache directory used by Vagabond
     member __.CachePath = controller.CacheDirectory
-
     /// Gets or sets the default load policy for the instance
-    member __.DefaultLoadPolicy
-        with get () = _loadPolicy
-        and set p = _loadPolicy <- p
-
+    member __.DefaultLoadPolicy = config.AssemblyLookupPolicy
+    /// Vagabond Configuration record
+    member __.Configuration = config
 
     /// <summary>
     ///     Includes an unmanaged assembly dependency to the vagabond instance.
@@ -136,7 +108,7 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
             let assemblies = getDynamicDependenciesRequiringCompilation controller.CompilerState dependencies
             let _ = compile assemblies in ()
 
-        let assemblies = remapDependencies isIgnoredAssembly requireLoadedInAppDomain controller.CompilerState dependencies
+        let assemblies = remapDependencies config.IsIgnoredAssembly config.AssemblyLookupPolicy controller.CompilerState dependencies
         let vagabondAssemblies = __.GetVagabondAssemblies(assemblies |> Seq.map (fun a -> a.AssemblyId) |> Seq.toArray)
 
         if includeNativeDependencies then
@@ -152,19 +124,19 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     ///     Attempt fetching a local VagabondAssembly associated with provided assembly identifier.
     /// </summary>
     /// <param name="id">assembly identifier.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
-    member __.TryGetVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly option =
-        let loadPolicy = defaultArg loadPolicy _loadPolicy
-        controller.PostAndReply(fun ch -> TryGetVagabondAssembly(loadPolicy, id, ch))
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
+    member __.TryGetVagabondAssembly(id : AssemblyId, ?lookupPolicy : AssemblyLookupPolicy) : VagabondAssembly option =
+        let lookupPolicy = defaultArg lookupPolicy config.AssemblyLookupPolicy
+        controller.PostAndReply(fun ch -> TryGetVagabondAssembly(lookupPolicy, id, ch))
 
     /// <summary>
     ///     Fetches a local VagabondAssembly associated with provided assembly identifier.
     /// </summary>
     /// <param name="id">assembly identifier.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
-    member __.GetVagabondAssembly(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly =
-        let loadPolicy = defaultArg loadPolicy _loadPolicy
-        match controller.PostAndReply(fun ch -> TryGetVagabondAssembly(loadPolicy, id, ch)) with
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to strong names only.</param>
+    member __.GetVagabondAssembly(id : AssemblyId, ?lookupPolicy : AssemblyLookupPolicy) : VagabondAssembly =
+        let lookupPolicy = defaultArg lookupPolicy config.AssemblyLookupPolicy
+        match controller.PostAndReply(fun ch -> TryGetVagabondAssembly(lookupPolicy, id, ch)) with
         | Some va -> va
         | None -> raise <| new VagabondException(sprintf "Could not locate assembly '%s' in current context." id.FullName)
 
@@ -172,31 +144,31 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     ///    Returns vagabond assemblies corresponding 
     /// </summary>
     /// <param name="ids">assembly ids.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetVagabondAssemblies(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLookupPolicy) : VagabondAssembly [] =
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.GetVagabondAssemblies(ids : seq<AssemblyId>, ?lookupPolicy : AssemblyLookupPolicy) : VagabondAssembly [] =
         ids
         |> Seq.distinct
-        |> Seq.map (fun id -> __.GetVagabondAssembly(id, ?loadPolicy = loadPolicy))
+        |> Seq.map (fun id -> __.GetVagabondAssembly(id, ?lookupPolicy = lookupPolicy))
         |> Seq.toArray
 
     /// <summary>
     ///     Gets the local assembly load info for given assembly id.
     /// </summary>
     /// <param name="id">Given assembly id.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetAssemblyLoadInfo(id : AssemblyId, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
-        let loadPolicy = defaultArg loadPolicy _loadPolicy
-        controller.PostAndReply(fun ch -> GetAssemblyLoadInfo(loadPolicy, id, ch))
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.GetAssemblyLoadInfo(id : AssemblyId, ?lookupPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
+        let lookupPolicy = defaultArg lookupPolicy config.AssemblyLookupPolicy
+        controller.PostAndReply(fun ch -> GetAssemblyLoadInfo(lookupPolicy, id, ch))
 
     /// <summary>
     ///     Gets the local assembly load info for given assembly ids.
     /// </summary>
     /// <param name="ids">Given assembly ids.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.GetAssemblyLoadInfo(ids : seq<AssemblyId>, ?lookupPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
         ids
         |> Seq.distinct
-        |> Seq.map (fun id -> __.GetAssemblyLoadInfo(id, ?loadPolicy = loadPolicy))
+        |> Seq.map (fun id -> __.GetAssemblyLoadInfo(id, ?lookupPolicy = lookupPolicy))
         |> Seq.toArray
 
     //
@@ -207,19 +179,19 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
     ///     Loads vagabond assembly to the local AppDomain.
     /// </summary>
     /// <param name="va">Input assembly package.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssembly(va : VagabondAssembly, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
-        let loadPolicy = defaultArg loadPolicy _loadPolicy
-        controller.PostAndReply(fun ch -> LoadAssembly(loadPolicy, va, ch))
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.LoadVagabondAssembly(va : VagabondAssembly, ?lookupPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo =
+        let lookupPolicy = defaultArg lookupPolicy config.AssemblyLookupPolicy
+        controller.PostAndReply(fun ch -> LoadAssembly(lookupPolicy, va, ch))
 
     /// <summary>
     ///     Loads vagabond assemblies to the local AppDomain.
     /// </summary>
     /// <param name="vas">Input assembly packages.</param>
-    /// <param name="loadPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
-    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?loadPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
+    /// <param name="lookupPolicy">Specifies assembly resolution policy. Defaults to resolving strong names only.</param>
+    member __.LoadVagabondAssemblies(vas : seq<VagabondAssembly>, ?lookupPolicy : AssemblyLookupPolicy) : AssemblyLoadInfo [] =
         vas
-        |> Seq.map (fun va -> __.LoadVagabondAssembly(va, ?loadPolicy = loadPolicy))
+        |> Seq.map (fun va -> __.LoadVagabondAssembly(va, ?lookupPolicy = lookupPolicy))
         |> Seq.toArray
 
     //
@@ -252,6 +224,12 @@ type VagabondManager internal (?cacheDirectory : string, ?profiles : seq<IDynami
 type Vagabond =
 
     /// <summary>
+    ///     Initializes a Vagabond instance given supplied configuration object.
+    /// </summary>
+    /// <param name="config">Configuration record with which to initialize the instance.</param>
+    static member Initialize(config:VagabondConfiguration) = new VagabondManager(config)
+
+    /// <summary>
     ///     Initializes a new Vagabond instance.
     /// </summary>
     /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
@@ -262,19 +240,50 @@ type Vagabond =
     ///     Demand all transitive dependencies be loadable in current AppDomain.
     ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
     /// </param>
-    /// <param name="loadPolicy">Default assembly load policy.</param>
-    /// <param name="compressDataFiles">Compress data files generated by Vagabond. Defaults to true.</param>
+    /// <param name="lookupPolicy">Default assembly load policy.</param>
+    /// <param name="dataCompressionAlgorithm">Data compress algorithm used by Vagabond. Defaults to no compression.</param>
     /// <param name="dataPersistThreshold">
     ///     Specifies persist threshold for data dependencies in bytes.
     ///     Objects exceeding the threshold will be persisted to files,
     ///     while all-others will be pickled in-memory. Defaults to 10 KiB.
     /// </param>
     static member Initialize(?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLookupPolicy, 
-                                    ?compressDataFiles : bool, ?dataPersistTreshold : int64) : VagabondManager =
-        new VagabondManager(?cacheDirectory = cacheDirectory, ?profiles = profiles, ?isIgnoredAssembly = isIgnoredAssembly, 
-                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, 
-                        ?compressDataFiles = compressDataFiles, ?dataPersistTreshold = dataPersistTreshold)
+                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?lookupPolicy : AssemblyLookupPolicy, 
+                                    ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
+
+        let cacheDirectory = 
+            match cacheDirectory with 
+            | Some d when Directory.Exists d -> d
+            | Some d -> raise <| new DirectoryNotFoundException(d)
+            | None -> 
+                let subdir = sprintf "vagabond-%s" <| Guid.NewGuid().ToString("N")
+                let path = Path.Combine(Path.GetTempPath(), subdir)
+                let _ = Directory.CreateDirectory(path)
+                path
+
+        let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+        let dataPersistTreshold = defaultArg dataPersistTreshold (10L * 1024L)
+
+        let profiles =
+            match profiles with
+            | Some ps -> Seq.toArray ps
+            | None -> [| new FsiDynamicAssemblyProfile() :> IDynamicAssemblyProfile |]
+
+        let lookupPolicy = defaultArg lookupPolicy (AssemblyLookupPolicy.ResolveRuntimeStrongNames ||| AssemblyLookupPolicy.ResolveVagabondCache)
+
+        let config =
+            {
+                CacheDirectory = cacheDirectory
+                AssemblyLookupPolicy = lookupPolicy
+                DataPersistThreshold = dataPersistTreshold
+                DynamicAssemblyProfiles = profiles
+                TypeConverter = typeConverter
+                IsIgnoredAssembly = isIgnoredAssembly
+                DataCompressionAlgorithm = dataCompressionAlgorithm
+            }
+
+        new VagabondManager(config)
 
 
     /// <summary>
@@ -288,21 +297,21 @@ type Vagabond =
     ///     Demand all transitive dependencies be loadable in current AppDomain.
     ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
     /// </param>
-    /// <param name="loadPolicy">Default assembly load policy.</param>
-    /// <param name="compressDataFiles">Compress data files generated by Vagabond. Defaults to true.</param>
+    /// <param name="lookupPolicy">Default assembly load policy.</param>
+    /// <param name="dataCompressionAlgorithm">Data compress algorithm used by Vagabond. Defaults to no compression.</param>
     /// <param name="dataPersistThreshold">
     ///     Specifies persist threshold for data dependencies in bytes.
     ///     Objects exceeding the threshold will be persisted to files,
     ///     while all-others will be pickled in-memory. Defaults to 10KiB.
     /// </param>
     static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>,
-                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?loadPolicy : AssemblyLookupPolicy,
-                                ?compressDataFiles : bool, ?dataPersistTreshold : int64) : VagabondManager =
-        let traversedIgnored = traverseDependencies (fun _ -> false) false None ignoredAssemblies
+                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?lookupPolicy : AssemblyLookupPolicy,
+                                ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
+        let traversedIgnored = traverseDependencies (fun _ -> false) AssemblyLookupPolicy.None None ignoredAssemblies
         let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
-        new VagabondManager(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
-                        ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?loadPolicy = loadPolicy, 
-                        ?compressDataFiles = compressDataFiles, ?dataPersistTreshold = dataPersistTreshold)
+        Vagabond.Initialize(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
+                                ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?lookupPolicy = lookupPolicy, 
+                                ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
 
     /// <summary>
     ///     Returns all type instances that appear in given object graph.
@@ -315,44 +324,35 @@ type Vagabond =
     /// </summary>
     /// <param name="obj">object graph to be traversed</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
-    static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?requireLoadedInAppDomain) : Assembly list =
-        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+    /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
+    static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?policy:AssemblyLookupPolicy) : Assembly list =
+        let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
         computeDependencies obj 
         |> Seq.map fst
-        |> traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None
+        |> traverseDependencies isIgnoredAssembly policy None
 
     /// <summary>
     ///     Resolves all assembly dependencies of given assembly.
     /// </summary>
     /// <param name="assembly">assembly to be traversed</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
-    static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool) : Assembly list = 
-        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+    /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
+    static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly list = 
+        let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
-        traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None [assembly]
+        traverseDependencies isIgnoredAssembly policy None [assembly]
 
     /// <summary>
     ///     Resolves all assembly dependencies of given assemblies.
     /// </summary>
     /// <param name="assemblies">Starting assembly dependencies.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
-    static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool) : Assembly list = 
-        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
+    /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
+    static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly list = 
+        let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
-        traverseDependencies isIgnoredAssembly requireLoadedInAppDomain None assemblies
+        traverseDependencies isIgnoredAssembly policy None assemblies
 
 
     /// <summary>

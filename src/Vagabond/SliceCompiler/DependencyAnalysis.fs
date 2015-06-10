@@ -86,18 +86,23 @@ let private isIgnoredAssembly =
 
 
 /// locally resolve an assembly by qualified name
-let private tryResolveAssembly ignoreF requireLoaded (state : DynamicAssemblyCompilerState option) (fullName : string) =
+let private tryResolveAssembly (ignoreF : Assembly -> bool) (policy : AssemblyLookupPolicy) (state : DynamicAssemblyCompilerState option) (fullName : string) =
     match state |> Option.bind (fun s -> s.TryFindSliceInfo fullName) with
     | Some (_,info) -> Some info.Assembly
     | None ->
-        match tryLoadAssembly fullName with
+        let localAssembly =
+            if AssemblyId.OfFullName(fullName).CanBeResolvedLocally policy then
+                tryLoadAssembly fullName
+            else
+                tryGetLoadedAssembly fullName
+
+        match localAssembly with
         | Some a when isIgnoredAssembly a || ignoreF a -> None
         | Some _ as r -> r
-        | None when requireLoaded -> 
+        | None when policy.HasFlag AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain -> 
             let msg = sprintf "could not locate dependency '%s'. Try adding an explicit reference." fullName
             raise <| new VagabondException(msg)
         | None -> None
-
 
 /// recursively traverse assembly dependency graph
 let traverseDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerState option) (assemblies : seq<Assembly>) =
@@ -127,7 +132,8 @@ let traverseDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerS
 
 /// parse a collection of assemblies, identify the dynamic assemblies that require slice compilation
 /// the dynamic assemblies are then parsed to Cecil and sorted topologically for correct compilation order.
-let parseDynamicAssemblies ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
+let parseDynamicAssemblies (ignoreF : Assembly -> bool) (policy : AssemblyLookupPolicy) 
+                            (state : DynamicAssemblyCompilerState) (assemblies : seq<Assembly>) =
 
     let isDynamicAssemblyRequiringCompilation (a : Assembly) =
         if a.IsDynamic then
@@ -144,7 +150,7 @@ let parseDynamicAssemblies ignoreF requireLoaded (state : DynamicAssemblyCompile
             // parse dynamic assembly
             let ((_,_,dependencies,_) as sliceData) = parseDynamicAssemblySlice state a
 
-            let dependencies = dependencies |> List.choose (tryResolveAssembly ignoreF requireLoaded (Some state))
+            let dependencies = dependencies |> List.choose (tryResolveAssembly ignoreF policy (Some state))
 
             let graph' = graph.Add(a.AssemblyId, (a, dependencies, sliceData))
                 
@@ -189,7 +195,7 @@ let getDynamicDependenciesRequiringCompilation (state : DynamicAssemblyCompilerS
 
 
 /// reassigns assemblies so that the correct assembly slices are matched
-let remapDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
+let remapDependencies ignoreF policy (state : DynamicAssemblyCompilerState) (dependencies : Dependencies) =
     let remap (a : Assembly, ts : seq<Type>) =
         if a.IsDynamic then
             match state.DynamicAssemblies.TryFind a.FullName with
@@ -205,4 +211,4 @@ let remapDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerStat
                 Seq.map remapType ts
         else Seq.singleton a
 
-    dependencies |> Seq.collect remap |> traverseDependencies ignoreF requireLoaded (Some state)
+    dependencies |> Seq.collect remap |> traverseDependencies ignoreF policy (Some state)

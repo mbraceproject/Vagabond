@@ -43,7 +43,7 @@ let tryExportAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (i
             else tryGetLoadedAssembly id.FullName
 
         match localAssembly with
-        | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> id ->
+        | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeResolutionRequireIdenticalHash && a.AssemblyId <> id ->
             let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
             raise <| new VagabondException(msg)
 
@@ -51,7 +51,7 @@ let tryExportAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (i
             let va = VagabondAssembly.CreateManaged(asmb, false, [||], [||])
             { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }, Some va
 
-        | None when policy.HasFlag AssemblyLookupPolicy.VagabondCache ->
+        | None when policy.HasFlag AssemblyLookupPolicy.ResolveVagabondCache ->
             let va = state.AssemblyCache.TryGetCachedAssembly id
             state, va
 
@@ -79,7 +79,7 @@ let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLookupPolicy) 
 
             match localAssembly with
             // if specified, check if loaded assembly has identical image hash
-            | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> id ->
+            | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeResolutionRequireIdenticalHash && a.AssemblyId <> id ->
                 let msg = sprintf "an incompatible version of '%s' has been loaded." id.FullName
                 state, LoadFault(id, VagabondException(msg))
 
@@ -88,7 +88,7 @@ let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLookupPolicy) 
                 let state = { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }
                 state, Loaded(id, true, va.Metadata)
 
-            | None when policy.HasFlag AssemblyLookupPolicy.VagabondCache ->
+            | None when policy.HasFlag AssemblyLookupPolicy.ResolveVagabondCache ->
                 match state.AssemblyCache.TryGetCachedAssembly id with
                 | None -> state, NotLoaded id
                 | Some va -> state, Loaded(id, false, va.Metadata)
@@ -109,7 +109,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : V
             let msg = sprintf "Expected assembly '%s', but was '%s'." va.FullName assembly.FullName
             raise <| VagabondException(msg)
 
-        elif policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && assembly.AssemblyId <> va.Id then
+        elif policy.HasFlag AssemblyLookupPolicy.RuntimeResolutionRequireIdenticalHash && assembly.AssemblyId <> va.Id then
             let msg = sprintf "an incompatible version of '%s' has been loaded." va.FullName
             raise <| VagabondException(msg)
 
@@ -137,7 +137,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : V
 
                     match localAssembly with
                     // if specified, check if loaded assembly has identical image hash
-                    | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeRequireIdenticalHash && a.AssemblyId <> va.Id ->
+                    | Some a when policy.HasFlag AssemblyLookupPolicy.RuntimeResolutionRequireIdenticalHash && a.AssemblyId <> va.Id ->
                         let msg = sprintf "an incompatible version of '%s' has been loaded." va.Id.FullName
                         state, LoadFault(va.Id, VagabondException(msg))
 

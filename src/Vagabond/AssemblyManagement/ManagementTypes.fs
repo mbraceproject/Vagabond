@@ -36,10 +36,8 @@ type AssemblyLoadState =
 /// Immutable Vagabond state object
 type VagabondState =
     {
-        /// Use Gzip compression for persisted data files.
-        CompressDataFiles : bool
-        /// Size threshold in bytes after which a data dependency will be persisted to file.
-        DataPersistThreshold : int64
+        /// User-supplied vagabond configuration object
+        Configuration : VagabondConfiguration
         /// Dynamic assembly compiler state
         CompilerState : DynamicAssemblyCompilerState
         /// Vagabond Assembly load state

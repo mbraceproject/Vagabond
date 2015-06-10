@@ -130,7 +130,7 @@ module private Impl =
 
         /// Initialize a new AppDomain pool state
         static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
-            let empty = {
+            let mutable empty = {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
@@ -303,7 +303,8 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
     /// <param name="dependencies">Assembly dependencies required of AppDomain.</param>
     member __.RequestAppDomain(dependencies : seq<AssemblyId>) : 'Manager =
         let conflict =
-            dependencies 
+            dependencies
+            |> Seq.distinct
             |> Seq.groupBy(fun d -> d.FullName)
             |> Seq.tryPick(fun (name,ids) -> if Seq.length ids > 1 then Some name else None)
 
@@ -336,6 +337,7 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
 /// Provides an AppDomain pooling mechanism for use by Vagabond.
 /// AppDomains are managed based what assembly dependencies are required for execution.
 type AppDomainPool =
+
     /// <summary>
     ///     Creates a new AppDomain pool instance.
     /// </summary>
@@ -424,9 +426,11 @@ module private EvaluatorImpl =
         member __.CancellationToken = cts.Token
 
     /// AppDomain configuration that carries a pickled initializer
-    type AppDomainEvaluatorConfiguration(?initializer : unit -> unit) =
+    type AppDomainEvaluatorConfiguration(config : VagabondConfiguration, ?initializer : VagabondManager -> unit) =
+        let pConfig = config |> pickler.Value.PickleTyped
         let pInitializer = initializer |> Option.map pickler.Value.PickleTyped 
         member __.Initializer = pInitializer
+        member __.Config = config
         interface IAppDomainConfiguration
 
     /// AppDomain managing object
@@ -435,6 +439,7 @@ module private EvaluatorImpl =
 
         let mutable taskCount = 0
         let mutable lastUsed = DateTime.Now
+        let mutable vagabond = Unchecked.defaultof<VagabondManager>
 
         let init () =
             let _ = Interlocked.Increment &taskCount
@@ -444,8 +449,19 @@ module private EvaluatorImpl =
             let _ = Interlocked.Decrement &taskCount
             lastUsed <- DateTime.Now
 
+        let loadAssemblies(dependencies : Pickle<VagabondAssembly[]>) =
+            let dependencies = pickler.Value.UnPickleTyped dependencies
+            let loadInfo = vagabond.LoadVagabondAssemblies(dependencies)
+            for lastUsed in loadInfo do
+                match lastUsed with
+                | LoadFault(id, (:? VagabondException as e)) -> raise e
+                | LoadFault(id, e) -> raise <| new VagabondException(sprintf "Could not load Vagabond assembly '%s'." id.FullName, e)
+                | NotLoaded id -> raise <| new VagabondException(sprintf "Could not load Vagabond assembly '%s'." id.FullName)
+                | Loaded _ -> ()
+
         /// Synchronously executes a computation in remote AppDomain
-        member e.EvaluateSync(pFunc : Pickle<unit -> obj>) : ResultPickle =
+        member e.EvaluateSync(dependencies : Pickle<VagabondAssembly[]>, pFunc : Pickle<unit -> obj>) : ResultPickle =
+            loadAssemblies dependencies
             let func = pickler.Value.UnPickleTyped pFunc
             init ()
             try
@@ -454,7 +470,8 @@ module private EvaluatorImpl =
             finally fini ()
 
         /// Asynchronously executes a computation in remote AppDomain
-        member e.EvaluateAsync(mtcs : MarshalledTaskCompletionSource<ResultPickle>, pWorkflow : Pickle<Async<obj>>) : MarshalledCancellationTokenSource =
+        member e.EvaluateAsync(dependencies : Pickle<VagabondAssembly[]>, mtcs : MarshalledTaskCompletionSource<ResultPickle>, pWorkflow : Pickle<Async<obj>>) : MarshalledCancellationTokenSource =
+            loadAssemblies dependencies
             let mcts = new MarshalledCancellationTokenSource()
             let workflow = pickler.Value.UnPickleTyped pWorkflow
             let setResult (result : Exn<obj>) =
@@ -480,23 +497,28 @@ module private EvaluatorImpl =
             member e.Initialize(config : IAppDomainConfiguration) =
                 match config with
                 | :? AppDomainEvaluatorConfiguration as c ->
-                    c.Initializer |> Option.iter (fun init -> pickler.Value.UnPickleTyped(init)())
+                    vagabond <- Vagabond.Initialize(c.Config)
+                    c.Initializer |> Option.iter (fun init -> pickler.Value.UnPickleTyped(init) vagabond)
                 | _ -> ()
 
             member e.Finalize () = ()
             member e.TaskCount = taskCount
             member e.LastUsed = lastUsed
 
-    let evalSync (mgr : AppDomainEvaluatorManager) (f : unit -> 'T) : 'T =
-        let result = (fun () -> f () :> obj) |> pickler.Value.PickleTyped |> mgr.EvaluateSync |> pickler.Value.UnPickleTyped
+    let evalSync (mgr : AppDomainEvaluatorManager) (dependencies : VagabondAssembly []) (f : unit -> 'T) : 'T =
+        let pFunc = pickler.Value.PickleTyped (fun () -> f () :> obj) 
+        let pDependencies = pickler.Value.PickleTyped dependencies
+        let pResult = mgr.EvaluateSync(pDependencies, pFunc)
+        let result = pickler.Value.UnPickleTyped pResult
         result.Value :?> 'T
 
-    let evalAsync (mgr : AppDomainEvaluatorManager) (f : Async<'T>) : Async<'T> = async {
+    let evalAsync (mgr : AppDomainEvaluatorManager) (dependencies : VagabondAssembly []) (f : Async<'T>) : Async<'T> = async {
         let! ct = Async.CancellationToken
         let pworkflow = pickler.Value.PickleTyped(async { let! r = f in return box r })
         let mtcs = new MarshalledTaskCompletionSource<ResultPickle>()
         try
-            let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
+            let pDependencies = pickler.Value.PickleTyped dependencies
+            let mcts = mgr.EvaluateAsync(pDependencies, mtcs, pworkflow)
             use d = ct.Register (fun () -> mcts.Cancel ())
             let! presult = Async.AwaitTask(mtcs.Task)
             let result = pickler.Value.UnPickleTyped presult
@@ -513,14 +535,15 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// <summary>
     ///     Creates a new AppDomainEvaluator instance.
     /// </summary>
+    /// <param name="vagabond">Vagabond instance of the master AppDomain.</param>
     /// <param name="appDomainInitializer">Initializer run on every AppDomain upon creation. Defaults to none.</param>
     /// <param name="minimumConcurrentDomains">Minimum allowed AppDomains. Defaults to 3.</param>
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
     /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
-    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
-        let config = new AppDomainEvaluatorConfiguration(?initializer = appDomainInitializer)
+    static member Create(vagabond : VagabondManager, ?appDomainInitializer : VagabondManager -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
+        let config = new AppDomainEvaluatorConfiguration(vagabond.Configuration, ?initializer = appDomainInitializer)
         let pool = AppDomainPool.Create<AppDomainEvaluatorManager>(config, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain,
                             ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, ?permissions = permissions)
 
@@ -538,18 +561,22 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// </summary>
     /// <param name="dependencies">Dependencies for operation.</param>
     /// <param name="f">Function to be executed.</param>
-    member __.Evaluate(dependencies : seq<AssemblyId>, f : unit -> 'T) : 'T =
-        let evaluator = pool.RequestAppDomain dependencies
-        evalSync evaluator f
+    member __.Evaluate(dependencies : seq<VagabondAssembly>, f : unit -> 'T) : 'T =
+        let dependencies = dependencies |> Seq.distinctBy (fun v -> v.Id) |> Seq.toArray
+        let ids = dependencies |> Array.map (fun v -> v.Id)
+        let evaluator = pool.RequestAppDomain ids
+        evalSync evaluator dependencies f
 
     /// <summary>
     ///     Asynchronously evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.
     /// </summary>
     /// <param name="dependencies">Dependencies for operation.</param>
     /// <param name="f">Asynchronous workflow to be executed.</param>
-    member __.EvaluateAsync(dependencies : seq<AssemblyId>, f : Async<'T>) : Async<'T> = async {
-        let evaluator = pool.RequestAppDomain dependencies
-        return! evalAsync evaluator f
+    member __.EvaluateAsync(dependencies : seq<VagabondAssembly>, f : Async<'T>) : Async<'T> = async {
+        let dependencies = dependencies |> Seq.distinctBy (fun v -> v.Id) |> Seq.toArray
+        let ids = dependencies |> Array.map (fun v -> v.Id)
+        let evaluator = pool.RequestAppDomain ids
+        return! evalAsync evaluator dependencies f
     }
 
     interface IDisposable with

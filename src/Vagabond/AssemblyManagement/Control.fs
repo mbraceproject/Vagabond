@@ -30,26 +30,23 @@ type VagabondMessage =
     | GetStaticBindings of ReplyChannel<(FieldInfo * HashResult) []>
 
 /// A mailboxprocessor wrapper for handling vagabond state
-type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynamicAssemblyProfile [], requireLoaded : bool, 
-                            compressDataFiles : bool, dataPersistThreshold : int64, isIgnoredAssembly : Assembly -> bool, ?tyConv : ITypeNameConverter) =
+type VagabondController (uuid : Guid, config : VagabondConfiguration) =
 
     do 
-        if not <| Directory.Exists cacheDirectory then
-            raise <| new DirectoryNotFoundException(cacheDirectory)
+        if not <| Directory.Exists config.CacheDirectory then
+            raise <| new DirectoryNotFoundException(config.CacheDirectory)
 
-    let compilerState = ref <| initCompilerState uuid profiles cacheDirectory
+    let compilerState = ref <| initCompilerState uuid config.DynamicAssemblyProfiles config.CacheDirectory
 
-    let typeNameConverter = mkTypeNameConverter tyConv (fun () -> compilerState.Value)
+    let typeNameConverter = mkTypeNameConverter config.TypeConverter (fun () -> compilerState.Value)
 
     let serializer = FsPickler.CreateBinary(typeConverter = typeNameConverter)
-
-    let assemblyCache = new AssemblyCache(cacheDirectory, serializer)
-    let nativeAssemblyManager = new NativeAssemblyManager(cacheDirectory)
+    let assemblyCache = new AssemblyCache(config.CacheDirectory, serializer)
+    let nativeAssemblyManager = new NativeAssemblyManager(config.CacheDirectory)
 
     let initState =
         {
-            CompressDataFiles = compressDataFiles
-            DataPersistThreshold = dataPersistThreshold
+            Configuration = config
 
             CompilerState = !compilerState
             AssemblyLoadState = Map.empty
@@ -97,7 +94,7 @@ type VagabondController (uuid : Guid, cacheDirectory : string, profiles : IDynam
 
         | CompileDynamicAssemblySlice (assemblies, rc) ->
             try
-                let compState, result = compileDynamicAssemblySlices isIgnoredAssembly requireLoaded state.CompilerState (Array.toList assemblies)
+                let compState, result = compileDynamicAssemblySlices config.IsIgnoredAssembly config.AssemblyLookupPolicy state.CompilerState (Array.toList assemblies)
 
                 // note: it is essential that the compiler state ref cell is updated *before*
                 // a reply is given; this is to eliminate a certain class of race conditions.

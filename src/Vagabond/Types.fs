@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.IO.Compression
 open System.Reflection
 open System.Runtime.Serialization
 
@@ -11,14 +12,19 @@ open Nessos.FsPickler.Hashing
 /// Specifies how assemblies are to be
 /// looked up from the local vagabond context.
 type AssemblyLookupPolicy =
+    /// No lookup policy.
+    | None = 0
     /// Resolve assemblies from the Vagabond cache directory.
-    | VagabondCache = 1
+    | ResolveVagabondCache = 1
     /// Resolve assemblies from the CLR context.
-    | Runtime = 2
-    /// Restrict CLR assembly resolution to strong names.
-    | RuntimeRequireStrongNames = 4
+    | ResolveRuntime = 2
+    /// Resolve assemblies that carry strong names from the CLR context.
+    | ResolveRuntimeStrongNames = 4
     /// Require CLR loaded assemblies to carry identical hash.
-    | RuntimeRequireIdenticalHash = 8
+    | RuntimeResolutionRequireIdenticalHash = 8
+    /// Require all assembly dependencies of local objects to
+    /// be loadable in application domain.
+    | RequireLocalDependenciesLoadedInAppDomain = 16
 
 /// Vagabond unique assembly identifier
 [<StructuralComparison>]
@@ -35,8 +41,6 @@ type AssemblyId =
 with
     /// Returns a System.Reflection.AssemblyName corresponding to Assembly id
     member id.GetName() = new AssemblyName(id.FullName)
-    /// Is signed assembly
-    member id.IsStrongAssembly = let pkt = id.GetName().GetPublicKeyToken() in pkt <> null && pkt <> [||]
 
     override id.ToString() = id.FullName
 
@@ -150,6 +154,32 @@ type IAssemblyDownloader =
     abstract ReadMetadata : id:AssemblyId -> Async<VagabondMetadata>
     /// Asynchronously returns a read stream for Vagabond data of given id.
     abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
+
+/// Abstract stream compression algorithm
+type ICompressionAlgorithm =
+    /// Compresses a stream
+    abstract Compress : Stream -> Stream
+    /// Decompresses a compressed stream
+    abstract Decompress : Stream -> Stream
+
+/// Vagabond configuration record
+type VagabondConfiguration =
+    {
+        /// Cache directory used by Vagabond.
+        CacheDirectory : string
+        /// Local assembly resolution policy.
+        AssemblyLookupPolicy : AssemblyLookupPolicy
+        /// Object size threshold in bytes after which data dependencies should be persisted to disk.
+        DataPersistThreshold : int64
+        /// Dynamic assembly profiles used by Vagabond
+        DynamicAssemblyProfiles : IDynamicAssemblyProfile []
+        /// FsPickler type name converter used by Vagabond serializer instance.
+        TypeConverter : ITypeNameConverter option
+        /// Predicate for ignored assemblies
+        IsIgnoredAssembly : Assembly -> bool
+        /// Data compression algorithm used by vagabond
+        DataCompressionAlgorithm : ICompressionAlgorithm option
+    }
 
 /// Exception raised by Vagabond
 [<AutoSerializable(true)>] 

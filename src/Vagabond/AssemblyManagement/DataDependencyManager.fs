@@ -4,7 +4,6 @@ open System
 open System.Collections.Generic
 open System.Reflection
 open System.IO
-open System.IO.Compression
 
 open Nessos.FsPickler
 open Nessos.FsPickler.Hashing
@@ -18,16 +17,20 @@ open Nessos.Vagabond.AssemblyManagementTypes
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
     use fs = File.OpenWrite path
     let stream =
-        if state.CompressDataFiles then new GZipStream(fs, CompressionLevel.Optimal) :> Stream
-        else fs :> _
+        match state.Configuration.DataCompressionAlgorithm with
+        | Some c -> c.Compress fs
+        | None -> fs :> _
+
     state.Serializer.Serialize(stream, value)
 
 /// unpickle value from file
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
     use fs = File.OpenRead path
     let stream =
-        if state.CompressDataFiles then new GZipStream(fs, CompressionMode.Decompress) :> Stream
-        else fs :> _
+        match state.Configuration.DataCompressionAlgorithm with
+        | Some c -> c.Compress fs
+        | None -> fs :> _
+
     state.Serializer.Deserialize<obj>(stream)
 
 /// update static binding manifest with new bindings
@@ -61,7 +64,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     let data =
         match hashResult with
         // file size exceeds threshold; declare persisted to file
-        | Choice1Of2 hash when hash.Length > state.DataPersistThreshold -> Persisted hash
+        | Choice1Of2 hash when hash.Length > state.Configuration.DataPersistThreshold -> Persisted hash
         // pickle in metadata
         | Choice1Of2 hash -> let pickle = state.Serializer.PickleTyped value in Pickled (hash, pickle)
         // pickle serialization exception

@@ -103,13 +103,24 @@ type Assembly with
     member a.AssemblyId = AssemblyIdGenerator.GetManagedAssemblyId a
 
 type AssemblyId with
+
+    static member OfFullName(fullName:string) =
+        {
+            FullName = fullName
+            ImageHash = [||]
+            Extension = ""
+        }
+
+    /// Is Strong Assembly Name
+    member id.IsStrongAssembly = id.GetName().IsStrongAssembly
+
     /// checks if provided assembly can be resolved from local environment
     /// based on the provided load policy
     member id.CanBeResolvedLocally (policy : AssemblyLookupPolicy) =
-        if policy.HasFlag AssemblyLookupPolicy.RuntimeRequireStrongNames then
+        if policy.HasFlag AssemblyLookupPolicy.ResolveRuntimeStrongNames then
             id.IsStrongAssembly
         else 
-            policy.HasFlag AssemblyLookupPolicy.Runtime
+            policy.HasFlag AssemblyLookupPolicy.ResolveRuntime
         
     /// Gets a unique assembly file name based on provided assembly id
     member id.GetFileName() =

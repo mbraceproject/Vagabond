@@ -16,21 +16,13 @@ open Nessos.Vagabond.AssemblyManagementTypes
 /// pickle value to file
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
     use fs = File.OpenWrite path
-    let stream =
-        match state.Configuration.DataCompressionAlgorithm with
-        | Some c -> c.Compress fs
-        | None -> fs :> _
-
+    let stream = state.Configuration.DataCompressionAlgorithm.Compress fs
     state.Serializer.Serialize(stream, value)
 
 /// unpickle value from file
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
     use fs = File.OpenRead path
-    let stream =
-        match state.Configuration.DataCompressionAlgorithm with
-        | Some c -> c.Compress fs
-        | None -> fs :> _
-
+    let stream = state.Configuration.DataCompressionAlgorithm.Decompress fs
     state.Serializer.Deserialize<obj>(stream)
 
 /// update static binding manifest with new bindings

@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="DynamicAssemblyProfile.fs" />
+    <Compile Include="Compression.fs" />
     <Compile Include="Types.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="SliceCompiler\SliceCompilerTypes.fs" />

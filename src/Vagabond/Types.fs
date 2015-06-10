@@ -2,7 +2,6 @@
 
 open System
 open System.IO
-open System.IO.Compression
 open System.Reflection
 open System.Runtime.Serialization
 
@@ -155,13 +154,6 @@ type IAssemblyDownloader =
     /// Asynchronously returns a read stream for Vagabond data of given id.
     abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
 
-/// Abstract stream compression algorithm
-type ICompressionAlgorithm =
-    /// Compresses a stream
-    abstract Compress : Stream -> Stream
-    /// Decompresses a compressed stream
-    abstract Decompress : Stream -> Stream
-
 /// Vagabond configuration record
 type VagabondConfiguration =
     {
@@ -178,7 +170,7 @@ type VagabondConfiguration =
         /// Predicate for ignored assemblies
         IsIgnoredAssembly : Assembly -> bool
         /// Data compression algorithm used by vagabond
-        DataCompressionAlgorithm : ICompressionAlgorithm option
+        DataCompressionAlgorithm : ICompressionAlgorithm
     }
 
 /// Exception raised by Vagabond

@@ -241,7 +241,7 @@ type Vagabond =
     ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
     /// </param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
-    /// <param name="dataCompressionAlgorithm">Data compress algorithm used by Vagabond. Defaults to no compression.</param>
+    /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
     ///     Specifies persist threshold for data dependencies in bytes.
     ///     Objects exceeding the threshold will be persisted to files,
@@ -272,6 +272,11 @@ type Vagabond =
 
         let lookupPolicy = defaultArg lookupPolicy (AssemblyLookupPolicy.ResolveRuntimeStrongNames ||| AssemblyLookupPolicy.ResolveVagabondCache)
 
+        let dataCompressionAlgorithm =
+            match dataCompressionAlgorithm with
+            | Some a -> a
+            | None -> new GzipCompression(Compression.CompressionLevel.Fastest) :> _
+
         let config =
             {
                 CacheDirectory = cacheDirectory
@@ -298,7 +303,7 @@ type Vagabond =
     ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
     /// </param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
-    /// <param name="dataCompressionAlgorithm">Data compress algorithm used by Vagabond. Defaults to no compression.</param>
+    /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
     ///     Specifies persist threshold for data dependencies in bytes.
     ///     Objects exceeding the threshold will be persisted to files,

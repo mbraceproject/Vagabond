@@ -226,7 +226,6 @@ module private Impl =
     type AppDomainPoolMsg<'Manager when 'Manager :> IAppDomainManager 
                                      and 'Manager :> MarshalByRefObject 
                                      and 'Manager : (new : unit -> 'Manager)> =
-        | PopulateInitialDomains
         | GetDomain of dependencies : AssemblyId [] * ReplyChannel<'Manager>
         | GetState of ReplyChannel<AppDomainPoolInfo<'Manager>>
         | Dispose of ReplyChannel<unit>
@@ -247,21 +246,6 @@ module private Impl =
 
         | Some state ->
             match msg with
-            | PopulateInitialDomains ->
-                let N = state.MinConcurrentDomains - state.DomainPool.Count
-                if N > 0 then
-                    try
-                        let state = ref state
-                        do for i = 1 to N do
-                            let _, state' = state.Value.AddNew []
-                            state := state'
-
-                        return! behaviour (Some !state) self
-
-                    with _ -> return! behaviour gstate self
-                else
-                    return! behaviour gstate self
-                
             | GetDomain(dependencies, rc) ->
                 match Exn.protect2 getMatchingAppDomain state dependencies with
                 | Success(state2, adli) -> rc.Reply adli.Manager ; return! behaviour (Some state2) self
@@ -291,7 +275,6 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
     let cts = new CancellationTokenSource()
     let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks, permissions)
     let mbox = MailboxProcessor.Start(behaviour (Some state))
-    do mbox.Post PopulateInitialDomains
     let getState () = mbox.PostAndReply GetState
 
     // initialize a collector workflow if requested
@@ -299,7 +282,7 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
         match threshold with
         | None -> ()
         | Some ts ->
-            let sleepInterval = min (int ts.TotalMilliseconds / 2) 10000
+            let sleepInterval = min (int ts.TotalMilliseconds / 2) 10000 |> max 100
             let rec collector () = async {
                 do! Async.Sleep sleepInterval
                 try mbox.Post AppDomainPoolMsg<'Manager>.Cleanup with _ -> ()

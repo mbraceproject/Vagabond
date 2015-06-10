@@ -49,18 +49,15 @@ module ``AppDomain Pool Tests`` =
 
     let idOf<'T> = Vagabond.ComputeAssemblyId typeof<'T>.Assembly
 
+    let idOfWith<'T> i = { idOf<'T> with ImageHash = [|i|] }
+
     let getDomainId() = System.AppDomain.CurrentDomain.FriendlyName
 
     [<TestFixtureSetUp>]
     let init() = VagabondConfig.Init()
 
     [<Test>]
-    let ``01. Domain count should be more than minimum count.`` () =
-        use manager = AppDomainPoolTester.Init()
-        manager.DomainCount |> shouldBe (fun c -> c >= minDomains)
-
-    [<Test>]
-    let ``02. Simple init and tear down an application domain.`` () =
+    let ``01. Simple init and tear down an application domain.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
         let mgr = pool.RequestAppDomain dependencies
@@ -142,13 +139,23 @@ module ``AppDomain Pool Tests`` =
                 mgr.Reset() ; mgr.AddTask())
 
     [<Test>]
-    let ``08. Should successfully dispose idle domains when passing domain threshold.`` () =
+    let ``08A. Should successfully dispose idle domains when passing domain threshold.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
         let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; Extension = ".dll" }]
         for i in 1 .. 3 * maxDomains do
             let mgr = pool.RequestAppDomain (mkDeps i)
             mgr.Reset()
+
+    [<Test>]
+    let ``08B. Domain count should contract to minimum count after threshold passed.`` () =
+        use manager = AppDomainPoolTester.Init(threshold = TimeSpan.FromMilliseconds 1.)
+        for i in 1 .. 3 * minDomains do
+            let _ = manager.RequestAppDomain [idOfWith<int> (byte i)]
+            ()
+
+        do Thread.Sleep 1000
+        manager.DomainCount |> shouldBe (fun c -> c = minDomains)
 
     [<Test>]
     let ``09. Should automatically dispose instances in pool with timespan threshold.`` () =

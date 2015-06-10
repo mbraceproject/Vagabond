@@ -185,23 +185,22 @@ module ``AppDomain Pool Tests`` =
         |> Seq.length
         |> shouldEqual maxDomains
 
-    let vagabond = lazy(Vagabond.Initialize())
 
     [<Test>]
     let ``12. AppDomainEvaluatorPool simple lambda`` () =
-        use pool = AppDomainEvaluatorPool.Create(vagabond.Value, fun _ -> printfn "Initializing AppDomain")
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         pool.Evaluate([], fun () -> 1 + 1) |> shouldEqual 2
 
     [<Test>]
     let ``13. AppDomainEvaluatorPool simple worfklow`` () =
-        use pool = AppDomainEvaluatorPool.Create(vagabond.Value, fun _ -> printfn "Initializing AppDomain")
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         pool.EvaluateAsync([], async { return getDomainId() }) 
         |> Async.RunSynchronously 
         |> shouldNotEqual (getDomainId())
 
     [<Test; ExpectedException(typeof<System.InvalidOperationException>)>]
     let ``14. AppDomainEvaluatorPool simple worfklow with exception`` () =
-        use pool = AppDomainEvaluatorPool.Create(vagabond.Value, fun _ -> printfn "Initializing AppDomain")
+        use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously |> ignore
 
 
@@ -267,7 +266,7 @@ module ``AppDomain Pool Tests`` =
 
     [<Test>]
     let ``17. AppDomain long running async execution``() =
-        use pool = AppDomainEvaluatorPool.Create(vagabond.Value, ignore)
+        use pool = AppDomainEvaluatorPool.Create(ignore)
         pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })
         |> Async.RunSynchronously
         |> shouldEqual 42

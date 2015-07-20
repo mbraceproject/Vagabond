@@ -190,11 +190,3 @@ client.NativeAssemblies
 let useNativeMKL () = Control.UseNativeMKL()
 
 client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
-
-#r "Vagabond.dll"
-open Nessos.Vagabond.AppDomainPool
-
-let pool = AppDomainEvaluatorPool.Create(ignore)
-
-System.IO.Directory.SetCurrentDirectory(__SOURCE_DIRECTORY__ + "/../../bin/")
-System.IO.Directory.GetCurrentDirectory()

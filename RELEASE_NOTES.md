@@ -1,3 +1,4 @@
+* 0.7.6 - Fix bug related to F# 4.0 quotation literals.
 * 0.7.5 - Use amortized initialization in AppDomain pool.
 * 0.7.4 - Use sequential, asynchronous initialization in AppDomain pool.
 * 0.7.3 - Add GZipStream compression implementation.

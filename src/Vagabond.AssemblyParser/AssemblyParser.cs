@@ -391,11 +391,11 @@ namespace Nessos.Vagabond.AssemblyParser
                     case OperandType.InlineTok:
                         var member = (MemberInfo)instruction.Operand;
                         if (member is Type)
-                            il.Emit(op, CreateReference((Type)instruction.Operand, method_definition));
+                            il.Emit(op, CreateTokenReference((Type)instruction.Operand, method_definition));
                         else if (member is FieldInfo)
                             il.Emit(op, CreateReference((FieldInfo)instruction.Operand, method_definition));
                         else if (member is MethodBase)
-                            il.Emit(op, CreateReference((MethodBase)instruction.Operand, method_definition));
+                            il.Emit(op, CreateTokenReference((MethodBase)instruction.Operand, method_definition));
                         else
                             throw new NotSupportedException();
                         break;
@@ -709,6 +709,35 @@ namespace Nessos.Vagabond.AssemblyParser
             method.GetParameters().Zip(reference.Parameters, ((p, pr) => MapReference(p.ParameterType, pr.ParameterType))).ToList();
 
             return reference;
+        }
+
+        // Cecil seems to be doing a bad job at handling generic type definitions; 
+        // this is a hack attempting to work around the problem.
+        // related to F# 4.0 Quotation generation (see also https://github.com/mbraceproject/MBrace.StarterKit/issues/18)
+        private TypeReference CreateTokenReference(Type type, MethodReference context)
+        {
+            var typeRef = CreateReference(type, context);
+            if (type.IsGenericTypeDefinition)
+            {
+                return ((TypeSpecification)typeRef).ElementType;
+            }
+            else
+            {
+                return typeRef;
+            }
+        }
+
+        private MethodReference CreateTokenReference(MethodBase method, MethodReference context)
+        {
+            var methRef = CreateReference(method, context);
+            if (method.IsGenericMethodDefinition)
+            {
+                return ((MethodSpecification)methRef).ElementMethod;
+            }
+            else
+            {
+                return methRef;
+            }
         }
 
         private void MapGenericArguments(MethodBase method, MethodReference reference)

@@ -4,6 +4,9 @@ open NUnit.Framework
 
 [<AutoOpen>]
 module Utils =
+
+    let isNet46OrAbove = typeof<System.Net.ServicePointManager>.GetProperty("ReusePort") <> null
+
     let shouldfail (f : unit -> 'T) =
         try let v = f () in raise <| new AssertionException(sprintf "should fail but was '%A'" v)
         with _ -> ()

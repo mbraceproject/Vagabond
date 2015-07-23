@@ -271,9 +271,9 @@ module ``AppDomain Pool Tests`` =
         |> Seq.length
         |> shouldEqual 1
 
-    [<Test>]
-    let ``17. AppDomain long running async execution``() =
-        use pool = AppDomainEvaluatorPool.Create(ignore)
-        pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })
-        |> Async.RunSynchronously
-        |> shouldEqual 42
+//    [<Test>]
+//    let ``17. AppDomain long running async execution``() =
+//        use pool = AppDomainEvaluatorPool.Create(ignore)
+//        pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })
+//        |> Async.RunSynchronously
+//        |> shouldEqual 42

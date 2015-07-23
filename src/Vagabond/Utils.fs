@@ -197,7 +197,11 @@ module internal Utils =
             let rec walk (path : 'T list) (t : 'T) =
                 match tryFindCycleInPath path [] t with
                 | Some _ as cycle -> cycle
-                | None -> d.[t] |> List.tryPick (walk (t :: path))
+                | None -> 
+                    try d.[t] |> List.tryPick (walk (t :: path))
+                    with :? KeyNotFoundException -> 
+                        printfn "Graph: %A" g
+                        reraise()
 
             g |> List.head |> fst |> walk [] |> Option.get
 

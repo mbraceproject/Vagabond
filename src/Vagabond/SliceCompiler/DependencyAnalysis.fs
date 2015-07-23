@@ -35,12 +35,13 @@ module private AssemblyInfo =
 
 /// Assembly-specific topological ordering for assembly dependencies
 let rec getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
-    match tryGetTopologicalOrdering dependencies with
+    let proj (a : Assembly) = a.AssemblyId
+    match tryGetTopologicalOrdering proj dependencies with
     | Choice1Of2 sorted -> sorted
     | Choice2Of2 cycle ->
         // tolerate a certain set of microsoft-shipped assemblies that are cyclic
-        match cycle |> List.tryFind (fun a -> a.GlobalAssemblyCache && getPublicKey a = msPkt) with
-        | Some msCyclic -> dependencies |> removeDependencies msCyclic |> getAssemblyOrdering
+        match cycle |> List.tryFind (fun a -> a.GlobalAssemblyCache) with
+        | Some msCyclic -> dependencies |> removeDependencies proj msCyclic |> getAssemblyOrdering
         | None ->
             // graph not DAG, return an appropriate exception
             let cycle = cycle |> Seq.map (fun a -> a.GetName().Name) |> String.concat ", "

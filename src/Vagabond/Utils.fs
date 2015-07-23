@@ -176,28 +176,28 @@ module internal Utils =
     type Graph<'T> = ('T * 'T list) list
 
     /// remove node and adjacent edges from given graph
-    let removeNode (node : 'T) (graph : Graph<'T>) =
-        graph |> List.choose(fun (t, ts) -> if t = node then None else Some(t, ts |> List.filter ((<>) node)))
+    let removeNode (proj : 'T -> 'K) (node : 'T) (graph : Graph<'T>) =
+        graph |> List.choose(fun (t, ts) -> if proj t = proj node then None else Some(t, ts |> List.filter (fun t -> proj t <> proj node)))
 
     /// remove adjacent edges of node from given graph
-    let removeDependencies (node : 'T) (graph : Graph<'T>) =
-        graph |> List.map(fun (t, ts) -> t, ts |> List.filter ((<>) node))
+    let removeDependencies (proj : 'T -> 'K) (node : 'T) (graph : Graph<'T>) =
+        graph |> List.map(fun (t, ts) -> t, ts |> List.filter (fun t -> proj t <> proj node))
 
     /// Attempt to compute a topological sorting for graph if DAG,
     /// If not DAG returns the reduced DAG for further debugging
-    let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, 'T list> =
+    let tryGetTopologicalOrdering<'T, 'K when 'K : comparison> (proj : 'T -> 'K) (g : Graph<'T>) : Choice<'T list, 'T list> =
         let locateCycle (g : Graph<'T>) =
-            let d = dict g
+            let d = g |> Seq.map (fun (t,ts) -> proj t, ts) |> Map.ofSeq
             let rec tryFindCycleInPath (path : 'T list) (acc : 'T list) (t : 'T) =
                 match path with
                 | [] -> None
-                | h :: tl when h = t -> Some (h :: acc)
+                | h :: tl when proj h = proj t -> Some (h :: acc)
                 | h :: tl -> tryFindCycleInPath tl (h :: acc) t
 
             let rec walk (path : 'T list) (t : 'T) =
                 match tryFindCycleInPath path [] t with
                 | Some _ as cycle -> cycle
-                | None -> d.[t] |> List.tryPick (walk (t :: path))
+                | None -> d.[proj t] |> List.tryPick (walk (t :: path))
 
             g |> List.head |> fst |> walk [] |> Option.get
 
@@ -207,7 +207,7 @@ module internal Utils =
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
             | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
             | Some (t,_) ->
-                let g0 = g |> removeNode t
+                let g0 = g |> removeNode proj t
                 aux (t :: sorted) g0
 
         aux [] g

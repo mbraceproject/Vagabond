@@ -175,6 +175,14 @@ module internal Utils =
     // toplogical sorting for DAGs
     type Graph<'T> = ('T * 'T list) list
 
+    /// remove node and adjacent edges from given graph
+    let removeNode (node : 'T) (graph : Graph<'T>) =
+        graph |> List.choose(fun (t, ts) -> if t = node then None else Some(t, ts |> List.filter ((<>) node)))
+
+    /// remove adjacent edges of node from given graph
+    let removeDependencies (node : 'T) (graph : Graph<'T>) =
+        graph |> List.map(fun (t, ts) -> t, ts |> List.filter ((<>) node))
+
     /// Attempt to compute a topological sorting for graph if DAG,
     /// If not DAG returns the reduced DAG for further debugging
     let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, 'T list> =
@@ -199,7 +207,7 @@ module internal Utils =
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
             | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
             | Some (t,_) ->
-                let g0 = g |> List.choose (fun (t0, ts) -> if t0 = t then None else Some(t0, List.filter ((<>) t) ts))
+                let g0 = g |> removeNode t
                 aux (t :: sorted) g0
 
         aux [] g

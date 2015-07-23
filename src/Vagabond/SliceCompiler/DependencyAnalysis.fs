@@ -13,14 +13,38 @@ open Nessos.Vagabond.SliceCompilerTypes
 
 open Microsoft.FSharp.Reflection
 
+[<AutoOpen>]
+module private AssemblyInfo =
+    let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
+    let systemPkt = getPublicKey typeof<int>.Assembly
+    let msPkt = getPublicKey typeof<int option>.Assembly
+
+    let vagabondAssemblies = 
+        hset [|
+            typeof<int option>.Assembly
+            typeof<Mono.Cecil.AssemblyDefinition>.Assembly
+            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>.Assembly
+            typeof<Nessos.Vagabond.AssemblyId>.Assembly
+        |]
+
+    /// assemblies ignored by Vagabond during assembly traversal
+    let isIgnoredAssembly (a : Assembly) =
+        if vagabondAssemblies.Contains a then true
+        else
+            systemPkt = getPublicKey a
+
 /// Assembly-specific topological ordering for assembly dependencies
-let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
+let rec getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
     match tryGetTopologicalOrdering dependencies with
     | Choice1Of2 sorted -> sorted
     | Choice2Of2 cycle ->
-        // graph not DAG, return an appropriate exception
-        let cycle = cycle |> Seq.map (fun a -> a.GetName().Name) |> String.concat ", "
-        raise <| new VagabondException(sprintf "Found circular dependencies: %s." cycle)
+        // tolerate a certain set of microsoft-shipped assemblies that are cyclic
+        match cycle |> List.tryFind (fun a -> a.GlobalAssemblyCache && getPublicKey a = msPkt) with
+        | Some msCyclic -> dependencies |> removeDependencies msCyclic |> getAssemblyOrdering
+        | None ->
+            // graph not DAG, return an appropriate exception
+            let cycle = cycle |> Seq.map (fun a -> a.GetName().Name) |> String.concat ", "
+            raise <| new VagabondException(sprintf "Found circular dependencies: %s." cycle)
 
 /// returns all type depndencies for supplied object graph
 let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
@@ -59,30 +83,6 @@ let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
     do FsPickler.VisitObject(typeGatherer, graph)
 
     Seq.toArray types, Seq.toArray assemblies
-
-
-/// assemblies ignored by Vagabond during assembly traversal
-let private isIgnoredAssembly =
-    let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
-    let systemPkt = getPublicKey typeof<int>.Assembly
-    let msPkt = getPublicKey typeof<int option>.Assembly
-    let vagabondAssemblies = 
-        hset [|
-            typeof<int option>.Assembly
-            typeof<Mono.Cecil.AssemblyDefinition>.Assembly
-            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>.Assembly
-            typeof<Nessos.Vagabond.AssemblyId>.Assembly
-        |]
-
-    // ignore MS assemblies that are in circular dependency
-    let cyclicLibs = hset [| "System.Web" ; "System.Web.Services" ; "System.Web.Design" |]
-
-    fun (a:Assembly) ->
-        if vagabondAssemblies.Contains a then true
-        else
-            let pkt = getPublicKey a
-            pkt = systemPkt ||
-            pkt = msPkt && cyclicLibs.Contains(a.GetName().Name)
 
 
 /// locally resolve an assembly by qualified name

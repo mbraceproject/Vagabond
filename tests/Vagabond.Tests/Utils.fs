@@ -5,6 +5,8 @@ open NUnit.Framework
 [<AutoOpen>]
 module Utils =
 
+    let runsOnMono = System.Type.GetType("Mono.Runtime") <> null
+
     let isNet46OrAbove = typeof<System.Net.ServicePointManager>.GetProperty("ReusePort") <> null
 
     let shouldfail (f : unit -> 'T) =

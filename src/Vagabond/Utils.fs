@@ -205,12 +205,7 @@ module internal Utils =
             if List.isEmpty g then Choice1Of2 (List.rev sorted) else
 
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> 
-                try Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
-                with :? KeyNotFoundException -> 
-                    Console.WriteLine(sprintf "Graph: %A" g)
-                    reraise()
-
+            | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
             | Some (t,_) ->
                 let g0 = g |> removeNode t
                 aux (t :: sorted) g0

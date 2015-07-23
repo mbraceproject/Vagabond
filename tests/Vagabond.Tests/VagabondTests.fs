@@ -49,9 +49,5 @@ module ``Generic Vagabond API tests`` =
             Vagabond.ComputeAssemblyDependencies(o, policy = AssemblyLookupPolicy.None)
             |> ignore
         
-        try
-            lookup cyclicAssemblies
-            for a in cyclicAssemblies do lookup a
-        with _ ->
-            printfn "%A" cyclicAssemblies
-            reraise()
+        lookup cyclicAssemblies
+        for a in cyclicAssemblies do lookup a

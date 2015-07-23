@@ -197,11 +197,7 @@ module internal Utils =
             let rec walk (path : 'T list) (t : 'T) =
                 match tryFindCycleInPath path [] t with
                 | Some _ as cycle -> cycle
-                | None -> 
-                    try d.[t] |> List.tryPick (walk (t :: path))
-                    with :? KeyNotFoundException -> 
-                        printfn "Graph: %A" g
-                        reraise()
+                | None -> d.[t] |> List.tryPick (walk (t :: path))
 
             g |> List.head |> fst |> walk [] |> Option.get
 
@@ -209,7 +205,12 @@ module internal Utils =
             if List.isEmpty g then Choice1Of2 (List.rev sorted) else
 
             match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
+            | None -> 
+                try Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
+                with :? KeyNotFoundException -> 
+                    Console.WriteLine(sprintf "Graph: %A" g)
+                    reraise()
+
             | Some (t,_) ->
                 let g0 = g |> removeNode t
                 aux (t :: sorted) g0

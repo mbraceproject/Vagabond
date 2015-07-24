@@ -330,12 +330,13 @@ type Vagabond =
     /// <param name="obj">object graph to be traversed</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
-    static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?policy:AssemblyLookupPolicy) : Assembly list =
+    static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?policy:AssemblyLookupPolicy) : Assembly [] =
         let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
         computeDependencies obj 
         |> Seq.map fst
         |> traverseDependencies isIgnoredAssembly policy None
+        |> List.toArray
 
     /// <summary>
     ///     Resolves all assembly dependencies of given assembly.
@@ -343,10 +344,11 @@ type Vagabond =
     /// <param name="assembly">assembly to be traversed</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
-    static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly list = 
+    static member ComputeAssemblyDependencies(assembly:Assembly, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly [] = 
         let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
         traverseDependencies isIgnoredAssembly policy None [assembly]
+        |> List.toArray
 
     /// <summary>
     ///     Resolves all assembly dependencies of given assemblies.
@@ -354,10 +356,11 @@ type Vagabond =
     /// <param name="assemblies">Starting assembly dependencies.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="policy">Assembly lookup policy. Defaults to require dependencies loaded in AppDomain.</param>
-    static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly list = 
+    static member ComputeAssemblyDependencies(assemblies:seq<Assembly>, ?isIgnoredAssembly : Assembly -> bool, ?policy : AssemblyLookupPolicy) : Assembly [] = 
         let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
         traverseDependencies isIgnoredAssembly policy None assemblies
+        |> List.toArray
 
 
     /// <summary>
@@ -372,8 +375,8 @@ type Vagabond =
     ///     Computes unique id's for a collection of static assemblies.
     /// </summary>
     /// <param name="assemblies">Input static assemblies</param>
-    static member ComputeAssemblyIds (assemblies : seq<Assembly>) : AssemblyId list =
-        assemblies |> Seq.map Vagabond.ComputeAssemblyId |> Seq.toList
+    static member ComputeAssemblyIds (assemblies : seq<Assembly>) : AssemblyId [] =
+        assemblies |> Seq.map Vagabond.ComputeAssemblyId |> Seq.toArray
 
     /// <summary>
     ///     Generates a unique file name that corresponds to the particular assembly id.

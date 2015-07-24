@@ -1,3 +1,4 @@
+* 0.7.9 - Dependency resolution bugfix.
 * 0.7.8 - Dependency resolution bugfix.
 * 0.7.7 - Fix cyclic dependency issue in Microsoft assemblies.
 * 0.7.6 - Fix bug related to F# 4.0 quotation literals.

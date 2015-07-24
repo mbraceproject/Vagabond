@@ -34,18 +34,28 @@ module private AssemblyInfo =
             systemPkt = getPublicKey a
 
 /// Assembly-specific topological ordering for assembly dependencies
-let rec getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
-    let proj (a : Assembly) = a.AssemblyId
-    match tryGetTopologicalOrdering proj dependencies with
-    | Choice1Of2 sorted -> sorted
-    | Choice2Of2 cycle ->
-        // tolerate a certain set of microsoft-shipped assemblies that are cyclic
-        match cycle |> List.tryFind (fun a -> a.GlobalAssemblyCache) with
-        | Some msCyclic -> dependencies |> removeDependencies proj msCyclic |> getAssemblyOrdering
-        | None ->
-            // graph not DAG, return an appropriate exception
-            let cycle = cycle |> Seq.map (fun a -> a.GetName().Name) |> String.concat ", "
-            raise <| new VagabondException(sprintf "Found circular dependencies: %s." cycle)
+let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
+    // map assemblies to AssemblyId that has correct equality semantics
+    let idGraph = dependencies |> Graph.map (fun a -> a.AssemblyId)
+    let map = dependencies |> Seq.map (fun (a,_) -> a.AssemblyId, a) |> Map.ofSeq
+
+    let rec aux (graph : Graph<AssemblyId>) =
+        match Graph.tryGetTopologicalOrdering graph with
+        | Choice1Of2 sorted -> sorted |> List.map (fun id -> map.[id])
+        | Choice2Of2 cycle ->
+            // tolerate a certain set of microsoft-shipped assemblies that are cyclic
+            match cycle |> List.tryFindIndex (fun id -> map.[id].GlobalAssemblyCache) with
+            | Some i ->
+                let n = List.length cycle
+                // break cycle by trimming a single edge from the dependency graph
+                let trimmedGraph = graph |> Graph.filterEdge (fun s e -> not (s = cycle.[i] && e = cycle.[i + 1 % n]))
+                aux trimmedGraph
+            | None ->
+                // graph not DAG, return an appropriate exception
+                let cycle = cycle |> Seq.map (fun id -> id.GetName().Name) |> String.concat ", "
+                raise <| new VagabondException(sprintf "Found circular assembly dependencies: %s." cycle)
+
+    aux idGraph
 
 /// returns all type depndencies for supplied object graph
 let gatherObjectDependencies (graph:obj) : Type [] * Assembly [] =
@@ -110,9 +120,14 @@ let traverseDependencies ignoreF requireLoaded (state : DynamicAssemblyCompilerS
 
     let rec traverseDependencyGraph (graph : Map<AssemblyId, Assembly * Assembly list>) (remaining : Assembly list) =
         match remaining with
-        | [] -> graph |> Map.toList |> List.map snd
+        | [] -> graph |> Seq.map (fun kv -> kv.Value) |> Seq.toList
         | a :: tail when graph.ContainsKey a.AssemblyId || isIgnoredAssembly a || ignoreF a -> traverseDependencyGraph graph tail
-        | a :: tail -> 
+        | a :: tail ->
+            // substitute reflection-only assemblies with their AppDomain loaded counterparts, if available
+            let a =
+                if a.ReflectionOnly then defaultArg (tryGetLoadedAssembly a.FullName) a
+                else a
+
             let dependencies = a.GetReferencedAssemblies() |> Array.choose (fun an -> tryResolveAssembly ignoreF requireLoaded state an.FullName) |> Array.toList
             traverseDependencyGraph (graph.Add(a.AssemblyId, (a, dependencies))) (dependencies @ tail)
 

@@ -172,45 +172,63 @@ module internal Utils =
         System.AppDomain.CurrentDomain.add_AssemblyResolve <|
             new ResolveEventHandler (fun _ args -> defaultArg (tryGetLoadedAssembly args.Name) null)
 
-    // toplogical sorting for DAGs
+    /// Directed graph representation
     type Graph<'T> = ('T * 'T list) list
 
-    /// remove node and adjacent edges from given graph
-    let removeNode (proj : 'T -> 'K) (node : 'T) (graph : Graph<'T>) =
-        graph |> List.choose(fun (t, ts) -> if proj t = proj node then None else Some(t, ts |> List.filter (fun t -> proj t <> proj node)))
+    module Graph =
 
-    /// remove adjacent edges of node from given graph
-    let removeDependencies (proj : 'T -> 'K) (node : 'T) (graph : Graph<'T>) =
-        graph |> List.map(fun (t, ts) -> t, ts |> List.filter (fun t -> proj t <> proj node))
+        /// <summary>
+        ///     Maps directed graph to isomorphic instance of relabeled nodes.
+        /// </summary>
+        /// <param name="f">Mapper function.</param>
+        /// <param name="graph">Input graph.</param>
+        let map (f : 'T -> 'S) (graph : Graph<'T>) : Graph<'S> =
+            graph |> List.map (fun (n, edges) -> f n, List.map f edges)
 
-    /// Attempt to compute a topological sorting for graph if DAG,
-    /// If not DAG returns the reduced DAG for further debugging
-    let tryGetTopologicalOrdering<'T, 'K when 'K : comparison> (proj : 'T -> 'K) (g : Graph<'T>) : Choice<'T list, 'T list> =
-        let locateCycle (g : Graph<'T>) =
-            let d = g |> Seq.map (fun (t,ts) -> proj t, ts) |> Map.ofSeq
-            let rec tryFindCycleInPath (path : 'T list) (acc : 'T list) (t : 'T) =
-                match path with
-                | [] -> None
-                | h :: tl when proj h = proj t -> Some (h :: acc)
-                | h :: tl -> tryFindCycleInPath tl (h :: acc) t
+        /// <summary>
+        ///     Filters nodes (and adjacent edges) that satisfy the provided predicate.
+        /// </summary>
+        /// <param name="f">Node filter function.</param>
+        /// <param name="graph">Input directed graph.</param>
+        let filterNode (f : 'T -> bool) (graph : Graph<'T>) : Graph<'T> =
+            graph |> List.choose(fun (n, edges) -> if f n then Some(n, List.filter f edges) else None)
 
-            let rec walk (path : 'T list) (t : 'T) =
-                match tryFindCycleInPath path [] t with
-                | Some _ as cycle -> cycle
-                | None -> d.[proj t] |> List.tryPick (walk (t :: path))
+        /// <summary>
+        ///     Filters directed edges from graph that satisfy provided predicate.
+        /// </summary>
+        /// <param name="f">Directed edge filter predicate.</param>
+        /// <param name="graph">Input directed graph.</param>
+        let filterEdge (f : 'T -> 'T -> bool) (graph : Graph<'T>) : Graph<'T> =
+            graph |> List.map (fun (n, edges) -> (n, List.filter (fun e -> f n e) edges))
 
-            g |> List.head |> fst |> walk [] |> Option.get
+        /// Attempt to compute a topological sorting for graph if DAG,
+        /// If not DAG returns a cycle within the graph for further debugging.
+        let tryGetTopologicalOrdering<'T when 'T : equality> (g : Graph<'T>) : Choice<'T list, 'T list> =
+            let locateCycle (g : Graph<'T>) =
+                let d = dict g
+                let rec tryFindCycleInPath (path : 'T list) (acc : 'T list) (t : 'T) =
+                    match path with
+                    | [] -> None
+                    | h :: tl when h = t -> Some (h :: acc)
+                    | h :: tl -> tryFindCycleInPath tl (h :: acc) t
 
-        let rec aux sorted (g : Graph<'T>) =
-            if List.isEmpty g then Choice1Of2 (List.rev sorted) else
+                let rec walk (path : 'T list) (t : 'T) =
+                    match tryFindCycleInPath path [] t with
+                    | Some _ as cycle -> cycle
+                    | None -> d.[t] |> List.tryPick (walk (t :: path))
 
-            match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
-            | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
-            | Some (t,_) ->
-                let g0 = g |> removeNode proj t
-                aux (t :: sorted) g0
+                g |> List.head |> fst |> walk [] |> Option.get
 
-        aux [] g
+            let rec aux sorted (g : Graph<'T>) =
+                if List.isEmpty g then Choice1Of2 (List.rev sorted) else
+
+                match g |> List.tryFind (function (_,[]) -> true | _ -> false) with
+                | None -> Choice2Of2 (locateCycle g) // not a DAG, detect and report a cycle in graph
+                | Some (t,_) ->
+                    let g0 = g |> filterNode ((<>) t)
+                    aux (t :: sorted) g0
+
+            aux [] g
 
     type ReplyChannel<'T> internal (rc : AsyncReplyChannel<Exn<'T>>) =
         member __.Reply (t : 'T) = rc.Reply <| Success t

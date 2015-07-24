@@ -73,7 +73,7 @@ module AssemblySliceName =
     /// try parsing a dynamic assembly slice
     let tryParseDynamicAssemblySlice =
         let guidRegex = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
-        let sliceRegex = new Regex("^(.*)_(" + guidRegex + ")_([0-9]+)")
+        let sliceRegex = new Regex("^(.*)_(" + guidRegex + ")_([0-9]+)", RegexOptions.Compiled)
         fun (assemblyName : string) ->
             let m = sliceRegex.Match assemblyName
             if m.Success then

@@ -236,13 +236,13 @@ module internal Utils =
         member __.ReplyWithError (e : exn) = rc.Reply <| Error e
 
     and MailboxProcessor<'T> with
-        member m.PostAndAsyncReply (msgB : ReplyChannel<'R> -> 'T) = async {
+        member m.PostAndAsyncReply (msgB : ReplyChannel<'R> -> 'T) : Async<'R> = async {
             let! result = m.PostAndAsyncReply(fun ch -> msgB(new ReplyChannel<_>(ch)))
             return result.Value
         }
 
-        member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) =
-            m.PostAndAsyncReply msgB |> Async.RunSync
+        member m.PostAndReply (msgB : ReplyChannel<'R> -> 'T) : 'R =
+            m.PostAndReply(fun ch -> msgB(new ReplyChannel<_>(ch))).Value
 
     and MailboxProxessor =
         static member Stateful (init, processF : 'State -> 'Message -> Async<'State>, ?ct) =

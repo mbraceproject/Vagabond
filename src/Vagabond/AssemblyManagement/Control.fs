@@ -26,8 +26,6 @@ type VagabondMessage =
     | GetAssemblyLoadInfo of AssemblyLookupPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
     | CompileDynamicAssemblySlice of Assembly [] * ReplyChannel<DynamicAssemblySlice []>
     | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
-    | GetRegisteredNativeDependencies of ReplyChannel<VagabondAssembly []>
-    | GetStaticBindings of ReplyChannel<(FieldInfo * HashResult) []>
 
 /// A mailboxprocessor wrapper for handling vagabond state
 type VagabondController (uuid : Guid, config : VagabondConfiguration) =
@@ -36,6 +34,8 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
         if not <| Directory.Exists config.CacheDirectory then
             raise <| new DirectoryNotFoundException(config.CacheDirectory)
 
+    let nativeAssemblies : VagabondAssembly [] ref = ref [||]
+    let staticBindings : (FieldInfo * HashResult) [] ref = ref [||]
     let compilerState = ref <| initCompilerState uuid config.DynamicAssemblyProfiles config.CacheDirectory
 
     let typeNameConverter = mkTypeNameConverter config.TypeConverter (fun () -> compilerState.Value)
@@ -109,6 +109,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
         | TryGetVagabondAssembly (policy, id, rc) ->
             try
                 let state', va = tryExportAssembly state policy id
+                staticBindings := state'.StaticBindings
                 rc.Reply va
                 return state'
 
@@ -119,6 +120,8 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
         | LoadAssembly (policy, va, rc) ->
             try
                 let state', result = loadAssembly state policy va
+                staticBindings := state'.StaticBindings
+                nativeAssemblies := state.NativeAssemblyManager.LoadedNativeAssemblies
                 rc.Reply result
                 return state'
 
@@ -139,18 +142,11 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
         | RegisterNativeDependency(assembly, rc) ->
             try
                 let loadInfo = state.NativeAssemblyManager.Load assembly
+                nativeAssemblies := state.NativeAssemblyManager.LoadedNativeAssemblies
                 rc.Reply (())
             with e ->
                 rc.ReplyWithError e
 
-            return state
-
-        | GetRegisteredNativeDependencies rc ->
-            rc.Reply state.NativeAssemblyManager.LoadedNativeAssemblies
-            return state
-
-        | GetStaticBindings rc ->
-            rc.Reply state.StaticBindings
             return state
     }
 
@@ -169,5 +165,5 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
 
     member __.PostAndAsyncReply msgB = actor.PostAndAsyncReply msgB
     member __.PostAndReply msgB = actor.PostAndReply msgB
-    member __.NativeDependencies = actor.PostAndReply GetRegisteredNativeDependencies
-    member __.StaticBindings = actor.PostAndReply GetStaticBindings
+    member __.NativeDependencies = !nativeAssemblies
+    member __.StaticBindings = !staticBindings

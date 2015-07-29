@@ -5,6 +5,7 @@ open System.IO
 open System.Reflection
 
 open Nessos.FsPickler
+open Nessos.FsPickler.Hashing
 
 open Nessos.Vagabond
 open Nessos.Vagabond.Utils
@@ -23,11 +24,10 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     /// gets metadata file path for given cached assembly
     static let getMetadataPath path = Path.ChangeExtension(path, ".vgb")
 
-    /// gets path for persisted dependency
-    static let getPersistedDataPath (cachePath : string) (id : DataDependencyId) (gen : int) =
-        let dir = Path.GetDirectoryName cachePath
-        let fileName = Path.GetFileNameWithoutExtension cachePath
-        Path.Combine(dir, sprintf "%s-%d-%d.dat" fileName id gen)
+    /// gets file name for persisted data dependency of given hashcode
+    let getPersistedBindingPath (hash : HashResult) = 
+        let fileName = DataBinding.CreateUniqueFileNameByHash hash
+        Path.Combine(cacheDirectory, fileName + ".dat")
 
     /// asynchronously writes stream data to file in given path
     static let streamToFile (source : Stream) (path : string) = async {
@@ -70,7 +70,7 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
 
     /// returns an array of data dependency paths given metadata
     let getPersistedDataDependencies (md : VagabondMetadata) =
-        md.DataDependencies |> Array.filter (fun dd -> match dd.Data with Persisted _ -> true | _ -> false)
+        md.DataDependencies |> Array.choose (fun dd -> match dd.Data with Persisted hash -> Some (dd, hash) | _ -> None)
 
     /// gets persisted Vagabond assembly from cache
     let getCachedAssembly (cachePath:string) (id : AssemblyId) =
@@ -82,12 +82,12 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             Image = cachePath
             Symbols = symbols
             Metadata = metadata
-            PersistedDataDependencies = dataDependencies |> Array.map (fun dd -> dd.Id, getPersistedDataPath cachePath dd.Id dd.Generation)
+            PersistedDataDependencies = dataDependencies |> Array.map (fun (dd, hash) -> dd.Id, getPersistedBindingPath hash)
         }
 
     // Returns persist path for given data dependency
-    static member GetPersistedDataPath (assemblyPath : string, id, generation) =
-        getPersistedDataPath assemblyPath id generation
+    member __.GetPersistedDataPath (hash : HashResult) =
+        getPersistedBindingPath hash
 
     /// Current cache directory
     member __.CacheDirectory = cacheDirectory
@@ -156,12 +156,14 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
                 let indexedCurrent = current.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
                 metadata 
                 |> getPersistedDataDependencies
-                |> Array.filter (fun dd -> dd.Generation > indexedCurrent.[dd.Id].Generation)
+                |> Array.filter (fun (dd,_) -> dd.Generation > indexedCurrent.[dd.Id].Generation)
 
-        let importPersistedDependency (dd : DataDependencyInfo) = async {
-            let dpath = getPersistedDataPath cachePath dd.Id dd.Generation
-            use! dataReader = importer.GetPersistedDataDependencyReader(id, dd)
-            do! streamToFile dataReader dpath
+        let importPersistedDependency (dd : DataDependencyInfo, hash : HashResult) = async {
+            let dpath = getPersistedBindingPath hash
+            if not <| File.Exists dpath then
+                use! dataReader = importer.GetPersistedDataDependencyReader(id, dd)
+                do! streamToFile dataReader dpath
+
             return (dd.Id, dpath)
         }
 

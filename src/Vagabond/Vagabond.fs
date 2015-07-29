@@ -382,5 +382,12 @@ type Vagabond =
     ///     Generates a unique file name that corresponds to the particular assembly id.
     ///     Useful for caching implementations.
     /// </summary>
-    /// <param name="id">Input assembly identifier</param>
-    static member GetFileName(id : AssemblyId) : string = id.GetFileName()
+    /// <param name="id">Input assembly identifier.</param>
+    static member GetUniqueFileName(id : AssemblyId) : string = id.GetFileName()
+
+    /// <summary>
+    ///     Generates a unique file name that correspond to the particular object hash.
+    ///     Useful for caching implementations.
+    /// </summary>
+    /// <param name="hash">Input object hash.</param>
+    static member GetUniqueFileName(hash : HashResult) : string = DataBinding.CreateUniqueFileNameByHash hash

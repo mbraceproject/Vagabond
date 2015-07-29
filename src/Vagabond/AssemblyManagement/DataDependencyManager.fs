@@ -33,7 +33,7 @@ let updateStaticBindings (bindings : (FieldInfo * HashResult) []) (newBindings :
     dict |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toArray
 
 /// export data dependency for locally generated slice
-let exportDataDependency (state : VagabondState) (assemblyPath : string) 
+let exportDataDependency (state : VagabondState) (assemblyPath : string)
                             (id : DataDependencyId) (current : DataExportState option) (field : FieldInfo) : DataExportState =
     // get current value for static field
     let value = field.GetValue(null)
@@ -70,9 +70,11 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     // persist to file, if so required
     let persistFile =
         match data with
-        | Persisted _ ->
-            let persistedPath = AssemblyCache.GetPersistedDataPath(assemblyPath, id, dependencyInfo.Generation)
-            picklePersistedBinding state persistedPath value
+        | Persisted hash ->
+            let persistedPath = state.AssemblyCache.GetPersistedDataPath hash
+            if not <| File.Exists persistedPath then
+                picklePersistedBinding state persistedPath value
+
             Some (id, persistedPath)
         | _ -> None
 

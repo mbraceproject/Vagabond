@@ -7,6 +7,7 @@ open System.Reflection
 open System.Text.RegularExpressions
 open System.Threading
 
+open Nessos.FsPickler.Hashing
 open Nessos.Vagabond
 
 /// computes a unique assembly identifier
@@ -143,6 +144,33 @@ type AssemblyId with
             sprintf "%s-%O-%s-%d-%s" (truncate 30 name) an.Version (truncate 5 g) slice hash
         // strip invalid characters; fix scriptcs bug
         |> stripInvalidFileChars
+
+
+type DataBinding private () =
+    // strips A.B.C. namespace prefixes in type names
+    static let stripNamespaceRegex = new Regex(@"([^.,\[]+\.)+", RegexOptions.Compiled)
+    static let stripNamespacesFromTypeName (typeName : string) = stripNamespaceRegex.Replace(typeName, "")
+
+    static let truncate (n : int) (txt : string) =
+        if n >= txt.Length then txt
+        else txt.Substring(0, n)
+
+    // encode a positive long to variable-length byte array
+    // we do this to save a few bytes and avoid the dreaded PathTooLongException.
+    static let long2Bytes (long : int64) =
+        let bs = new ResizeArray<byte> ()
+        let mutable long = long
+        while long > 0L do
+            bs.Add (byte long)
+            long <- long / 256L
+        bs.ToArray()
+
+    /// Creates a unique filename for given hashcode
+    static member CreateUniqueFileNameByHash(hash : HashResult) =
+        let lengthEnc = long2Bytes hash.Length |> Convert.toBase32String
+        let hashEnc = hash.Hash |> Convert.toBase32String
+        let typeName = hash.Type |> stripNamespacesFromTypeName |> truncate 40
+        sprintf "%s-%s-%s" typeName lengthEnc hashEnc
 
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file

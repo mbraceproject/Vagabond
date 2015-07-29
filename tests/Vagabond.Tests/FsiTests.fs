@@ -156,6 +156,14 @@ module FsiTests =
         fsi.EvalInteraction("let x = client.EvaluateThunk <| fun () -> [| 1 .. 100 |]")
         fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.sum x") |> shouldEqual 5050
 
+    [<Test>]
+    let ``03. Fsi large top-level bindings`` () =
+            
+        let fsi = FsiSession.Value
+
+        for i in 1 .. 5 do
+            fsi.EvalInteraction("let x = [| 1L .. 1000000L |]")
+            fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.length x") |> shouldEqual 1000000
 
     [<Test>]
     let ``04. Custom type execution`` () =

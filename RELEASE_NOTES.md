@@ -1,3 +1,4 @@
+* 0.8.1 - Expose Vagabond.TryParseAssemblySliceName method to public API.
 * 0.8.0 - Use global, hash-based filenames for persisted data dependencies.
 * 0.7.9 - Dependency resolution bugfix.
 * 0.7.8 - Dependency resolution bugfix.

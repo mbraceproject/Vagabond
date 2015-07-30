@@ -391,3 +391,11 @@ type Vagabond =
     /// </summary>
     /// <param name="hash">Input object hash.</param>
     static member GetUniqueFileName(hash : HashResult) : string = DataBinding.CreateUniqueFileNameByHash hash
+
+    /// <summary>
+    ///     Attempts to parse an input assembly name that satisfied the Vagabond assembly slice format.
+    ///     Returns the Vagabond uuid in the slice compiling process, the original dynamic assembly name
+    ///     and the current slice index.
+    /// </summary>
+    /// <param name="sliceName">Slice assembly name to be parsed.</param>
+    static member TryParseAssemblySliceName(sliceName : string) : (Guid * string * int) option = AssemblySliceName.tryParseDynamicAssemblySlice sliceName

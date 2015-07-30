@@ -81,7 +81,7 @@ module AssemblySliceName =
                 let dynamicName = m.Groups.[1].Value
                 let uuid = Guid.Parse <| m.Groups.[2].Value
                 let sliceId = int <| m.Groups.[3].Value
-                Some(dynamicName, sliceId, uuid)
+                Some(uuid, dynamicName, sliceId)
             else
                 None
 
@@ -136,12 +136,12 @@ type AssemblyId with
         // without losing uniqueness.
         match AssemblySliceName.tryParseDynamicAssemblySlice an.Name with
         | None -> sprintf "%s-%O-%s" (truncate 40 an.Name) an.Version hash
-        | Some(name, slice, guid) -> 
+        | Some(guid, assemblyName, sliceId) -> 
             // we cache using a shortened vagabond guid; 
             // we do this since uniqueness is guaranteed by the hash alone.
             // Guid is added simply to differentiate assemblies coming from different sources.
             let g = guid.ToString("N")
-            sprintf "%s-%O-%s-%d-%s" (truncate 30 name) an.Version (truncate 5 g) slice hash
+            sprintf "%s-%O-%s-%d-%s" (truncate 30 assemblyName) an.Version (truncate 5 g) sliceId hash
         // strip invalid characters; fix scriptcs bug
         |> stripInvalidFileChars
 

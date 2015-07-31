@@ -12,6 +12,8 @@ open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.DependencyAnalysis
 open Nessos.Vagabond.Control
 
+type HashResult = Nessos.FsPickler.Hashing.HashResult
+
 /// Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states
 [<AutoSerializable(false)>]
 type VagabondManager internal (config : VagabondConfiguration) =
@@ -390,7 +392,9 @@ type Vagabond =
     ///     Useful for caching implementations.
     /// </summary>
     /// <param name="hash">Input object hash.</param>
-    static member GetUniqueFileName(hash : HashResult) : string = DataBinding.CreateUniqueFileNameByHash hash
+    /// <param name="assemblyPrefix">Dynamic assembly slice id used to prefix path. Defaults to no assembly prefix.</param>
+    static member GetUniqueFileName(hash : HashResult, ?assemblyPrefix : AssemblyId) : string = 
+        DataDependency.CreateUniqueFileNameByHash(hash, ?prefixId = assemblyPrefix)
 
     /// <summary>
     ///     Attempts to parse an input assembly name that satisfied the Vagabond assembly slice format.

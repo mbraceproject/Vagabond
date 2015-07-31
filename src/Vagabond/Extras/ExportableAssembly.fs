@@ -3,6 +3,7 @@ module Nessos.Vagabond.ExportableAssembly
 
 open System
 open System.IO
+open System.Collections.Generic
 
 /// A Vagabond assembly with all data loaded in-memory 
 /// for instant exportation.
@@ -17,7 +18,7 @@ type ExportableAssembly =
         /// Vagabond metadata * static initializers
         Metadata : VagabondMetadata
         /// Raw peristed data dependencies
-        PersistedDataRaw : (DataDependencyId * byte []) []
+        PersistedDataRaw : (HashResult * byte []) []
     }
 
 type VagabondManager with
@@ -29,7 +30,7 @@ type VagabondManager with
     member v.CreateRawAssembly(va : VagabondAssembly) =
         let imageBuf = new MemoryStream()
         let symbols = va.Symbols |> Option.map (fun _ -> new MemoryStream())
-        let persisted = ref Map.empty<DataDependencyId, MemoryStream>
+        let persisted = new Dictionary<HashResult, MemoryStream>()
 
         let uploader =
             {
@@ -42,14 +43,10 @@ type VagabondManager with
                         return symbols |> Option.map unbox
                     }
 
-                    member x.TryGetMetadata(id: AssemblyId) = async {
-                        return None
-                    }
-
-                    member x.GetPersistedDataDependencyReader(id: AssemblyId, dataDependency: DataDependencyInfo) = async {
+                    member x.TryGetPersistedDataDependencyWriter(_ : AssemblyId, _, hashResult: HashResult) = async {
                         let mem = new MemoryStream()
-                        persisted := persisted.Value.Add(dataDependency.Id, mem)
-                        return mem :> _
+                        persisted.Add(hashResult, mem)
+                        return Some(mem :> _)
                     }
                     
                     member x.WriteMetadata(id: AssemblyId, metadata: VagabondMetadata) = async.Zero()
@@ -57,7 +54,7 @@ type VagabondManager with
 
         v.UploadAssemblies(uploader, [|va|]) |> Async.RunSync
 
-        let persisted = persisted.Value |> Map.toSeq |> Seq.map (fun (id,m) -> id, m.ToArray()) |> Seq.toArray
+        let persisted = persisted |> Seq.map (function KeyValue(id,m) -> id, m.ToArray()) |> Seq.toArray
 
         {
             Id = va.Id
@@ -86,8 +83,8 @@ type VagabondManager with
                     member __.GetImageReader(id: AssemblyId) = async { return new MemoryStream(ea.ImageRaw) :> _ }
                     member __.TryGetSymbolReader _ = async { return ea.SymbolsRaw |> Option.map (fun s -> new MemoryStream(s) :> _) }
                     
-                    member __.GetPersistedDataDependencyReader(id: AssemblyId, dataDependency: DataDependencyInfo) = async {
-                        return new MemoryStream(persisted.[dataDependency.Id]) :> Stream
+                    member __.GetPersistedDataDependencyReader(id: AssemblyId, _, hash : HashResult) = async {
+                        return new MemoryStream(persisted.[hash]) :> Stream
                     }
                     
                     member __.ReadMetadata(id: AssemblyId) = async { return ea.Metadata }

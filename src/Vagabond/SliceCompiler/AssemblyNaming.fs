@@ -146,7 +146,7 @@ type AssemblyId with
         |> stripInvalidFileChars
 
 
-type DataBinding private () =
+type DataDependency private () =
     // strips A.B.C. namespace prefixes in type names
     static let stripNamespaceRegex = new Regex(@"([^.,\[]+\.)+", RegexOptions.Compiled)
     static let stripNamespacesFromTypeName (typeName : string) = stripNamespaceRegex.Replace(typeName, "")
@@ -166,11 +166,18 @@ type DataBinding private () =
         bs.ToArray()
 
     /// Creates a unique filename for given hashcode
-    static member CreateUniqueFileNameByHash(hash : HashResult) =
+    static member CreateUniqueFileNameByHash(hash : HashResult, ?prefixId : AssemblyId) =
         let lengthEnc = long2Bytes hash.Length |> Convert.toBase32String
         let hashEnc = hash.Hash |> Convert.toBase32String
         let typeName = hash.Type |> stripNamespacesFromTypeName |> truncate 40
-        sprintf "%s-%s-%s" typeName lengthEnc hashEnc
+        match prefixId with
+        | Some id ->
+            let guid,_,_ = AssemblySliceName.tryParseDynamicAssemblySlice id.FullName |> Option.get
+            let b32 = guid.ToByteArray() |> Convert.toBase32String |> truncate 7
+            sprintf "%s-%s-%s-%s" b32 typeName lengthEnc hashEnc
+
+        | None ->
+            sprintf "%s-%s-%s" typeName lengthEnc hashEnc
 
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file

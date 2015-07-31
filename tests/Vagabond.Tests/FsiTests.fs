@@ -581,3 +581,14 @@ module FsiTests =
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 1
         fsi.EvalInteraction "let y = new Foo ()"
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 2
+
+
+    [<Test>]
+    let ``26. Multiple Large bindings in single slice`` () =
+        let fsi = FsiSession.Value
+        fsi.EvalInteraction """
+            let x = [|1L .. 10000000L|]
+            let y = [|1L .. 10000000L|]
+        """
+
+        fsi.EvalExpression "client.EvaluateThunk (fun () -> x.Length = y.Length)" |> shouldEqual true

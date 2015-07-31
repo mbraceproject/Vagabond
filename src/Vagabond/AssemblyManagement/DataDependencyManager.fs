@@ -33,7 +33,7 @@ let updateStaticBindings (bindings : (FieldInfo * HashResult) []) (newBindings :
     dict |> Seq.map (fun kv -> kv.Key, kv.Value) |> Seq.toArray
 
 /// export data dependency for locally generated slice
-let exportDataDependency (state : VagabondState) (assemblyPath : string)
+let exportDataDependency (state : VagabondState) (assemblyPath : string) (assemblyId : AssemblyId)
                             (id : DataDependencyId) (current : DataExportState option) (field : FieldInfo) : DataExportState =
     // get current value for static field
     let value = field.GetValue(null)
@@ -71,7 +71,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string)
     let persistFile =
         match data with
         | Persisted hash ->
-            let persistedPath = state.AssemblyCache.GetPersistedDataPath hash
+            let persistedPath = state.AssemblyCache.GetPersistedDataPath(assemblyId, hash)
             if not <| File.Exists persistedPath then
                 picklePersistedBinding state persistedPath value
 
@@ -86,8 +86,8 @@ let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice
     let assemblyPath = slice.Assembly.Location
     let exportState =
         match state.AssemblyLoadState.TryFind assemblyId with
-        | None -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id None fI)
-        | Some (ExportedSlice deps) -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath id (Some deps.[id]) fI)
+        | None -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath assemblyId id None fI)
+        | Some (ExportedSlice deps) -> slice.StaticFields |> Array.mapi (fun id fI -> exportDataDependency state assemblyPath assemblyId id (Some deps.[id]) fI)
         | Some _ -> invalidOp <| sprintf "internal error: assembly '%s' not local slice." assemblyId.FullName
 
     let persisted = exportState |> Array.choose (fun de -> de.PersistFile)

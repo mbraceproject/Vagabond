@@ -25,8 +25,8 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     static let getMetadataPath path = Path.ChangeExtension(path, ".vgb")
 
     /// gets file name for persisted data dependency of given hashcode
-    let getPersistedBindingPath (hash : HashResult) = 
-        let fileName = DataBinding.CreateUniqueFileNameByHash hash
+    let getPersistedDataDependencyPath (id : AssemblyId) (hash : HashResult) = 
+        let fileName = DataDependency.CreateUniqueFileNameByHash(hash, prefixId = id)
         Path.Combine(cacheDirectory, fileName + ".dat")
 
     /// asynchronously writes stream data to file in given path
@@ -69,7 +69,7 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
         | Some md -> md
 
     /// returns an array of data dependency paths given metadata
-    let getPersistedDataDependencies (md : VagabondMetadata) =
+    static let getPersistedDataDependencies (md : VagabondMetadata) =
         md.DataDependencies |> Array.choose (fun dd -> match dd.Data with Persisted hash -> Some (dd, hash) | _ -> None)
 
     /// gets persisted Vagabond assembly from cache
@@ -82,12 +82,12 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             Image = cachePath
             Symbols = symbols
             Metadata = metadata
-            PersistedDataDependencies = dataDependencies |> Array.map (fun (dd, hash) -> dd.Id, getPersistedBindingPath hash)
+            PersistedDataDependencies = dataDependencies |> Array.map (fun (dd, hash) -> dd.Id, getPersistedDataDependencyPath id hash)
         }
 
     // Returns persist path for given data dependency
-    member __.GetPersistedDataPath (hash : HashResult) =
-        getPersistedBindingPath hash
+    member __.GetPersistedDataPath (id : AssemblyId, hash : HashResult) =
+        getPersistedDataDependencyPath id hash
 
     /// Current cache directory
     member __.CacheDirectory = cacheDirectory
@@ -146,34 +146,39 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
                     return Some symbolsPath
         }
 
-        // read current metadata, if it exists
+        // read current metadata
         let! metadata = importer.ReadMetadata id
-        let persistedDependencies =
-            match tryReadMetadata cachePath with
-            | None -> getPersistedDataDependencies metadata
-            | Some current ->
-                // dependencies from previous generations already cached, detect which need updating
-                let indexedCurrent = current.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
-                metadata 
-                |> getPersistedDataDependencies
-                |> Array.filter (fun (dd,_) -> dd.Generation > indexedCurrent.[dd.Id].Generation)
+        let groupedPersistedDependencies = 
+            getPersistedDataDependencies metadata
+            |> Seq.groupBy snd
+            |> Seq.map (fun (hash,dds) -> dds |> Seq.map fst |> Seq.toArray, hash)
+            |> Seq.toArray
 
-        let importPersistedDependency (dd : DataDependencyInfo, hash : HashResult) = async {
-            let dpath = getPersistedBindingPath hash
+        let importPersistedDependency (dds : DataDependencyInfo [], hash : HashResult) = async {
+            let dpath = getPersistedDataDependencyPath id hash
             if not <| File.Exists dpath then
-                use! dataReader = importer.GetPersistedDataDependencyReader(id, dd)
+                use! dataReader = importer.GetPersistedDataDependencyReader(id, dds.[0], hash)
                 do! streamToFile dataReader dpath
 
-            return (dd.Id, dpath)
+            return (dds, dpath)
         }
 
         // download persisted data dependency files
-        let! persistedFiles = persistedDependencies |> Seq.map importPersistedDependency |> Async.Parallel
+        let! persistedFiles = groupedPersistedDependencies |> Seq.map importPersistedDependency |> Async.Parallel
 
         // finaly, write metadata file
         writeMetadata cachePath metadata
 
-        return { Id = id ; Image = cachePath ; Symbols = symbolsPath ; Metadata = metadata ; PersistedDataDependencies = persistedFiles }
+        return { 
+            Id = id
+            Image = cachePath
+            Symbols = symbolsPath
+            Metadata = metadata 
+            PersistedDataDependencies = 
+                persistedFiles 
+                |> Seq.collect (fun (dds,path) -> dds |> Seq.map (fun dd -> dd.Id, path))
+                |> Seq.toArray
+        }
     }
 
     /// Exports assembly of given id from cache
@@ -197,26 +202,27 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
                 use s = s
                 do! fileToStream sf s
 
-        // 4. Get remote current metadata, if it exists
-        let! remoteMD = exporter.TryGetMetadata va.Id
-
         // 3. Write data dependencies if not found in remote party
-        let localDependencyInfo = va.Metadata.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
-        let requiredDependencies =
-            match remoteMD with
-            | None -> va.PersistedDataDependencies
-            | Some remoteMD ->
-                // dependencies from previous generations already cached, detect which need updating
-                let remoteMD = remoteMD.DataDependencies |> Seq.map (fun dd -> dd.Id, dd) |> Map.ofSeq
-                va.PersistedDataDependencies
-                |> Array.filter (fun (id, _) -> localDependencyInfo.[id].Generation > remoteMD.[id].Generation)
+        let groupedPersistedDependencies = 
+            getPersistedDataDependencies va.Metadata
+            |> Seq.groupBy snd
+            |> Seq.map (fun (hash,dds) -> dds |> Seq.head |> fst, hash)
+            |> Seq.toArray
 
-        let writePersistedDataDependency (id : DataDependencyId, path : string) = async {
-            use! writer = exporter.GetPersistedDataDependencyReader(va.Id, localDependencyInfo.[id])
-            do! fileToStream path writer
+        let localPersistedFiles = va.PersistedDataDependencies |> Map.ofArray
+
+        let writePersistedDataDependency (dd : DataDependencyInfo, hash : HashResult) = async {
+            let! writerOpt = exporter.TryGetPersistedDataDependencyWriter(va.Id, dd, hash)
+            match writerOpt with
+            | Some writer ->
+                use writer = writer
+                let localFile = localPersistedFiles.[dd.Id]
+                do! fileToStream localFile writer
+
+            | None -> ()
         }
 
-        do! requiredDependencies |> Seq.map writePersistedDataDependency |> Async.Parallel |> Async.Ignore
+        do! groupedPersistedDependencies |> Seq.map writePersistedDataDependency |> Async.Parallel |> Async.Ignore
 
         // 4. Write metadata
         do! exporter.WriteMetadata(va.Id, va.Metadata)

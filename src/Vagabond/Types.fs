@@ -136,10 +136,8 @@ type IAssemblyUploader =
     abstract TryGetImageWriter : id:AssemblyId -> Async<Stream option>
     /// Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.
     abstract TryGetSymbolsWriter : id:AssemblyId -> Async<Stream option>
-    /// Asynchronously returns currently stored Vagabond metadata for given id. Returns 'None' if it does not exist.
-    abstract TryGetMetadata : id:AssemblyId -> Async<VagabondMetadata option>
-    /// Asynchronously returns a write stream for writing supplied persisted data dependency.
-    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
+    /// Asynchronously returns a write stream for writing supplied persisted data dependency. Returns 'None' if dependency alread exists.
+    abstract TryGetPersistedDataDependencyWriter : id:AssemblyId * info:DataDependencyInfo * hash:HashResult -> Async<Stream option>
     /// Asynchronously writes Vagabond metadata for assembly of provided id.
     abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<unit>
 
@@ -147,12 +145,12 @@ type IAssemblyUploader =
 type IAssemblyDownloader =
     /// Asynchronously returns a read stream for assembly image of given id.
     abstract GetImageReader : id:AssemblyId -> Async<Stream>
-    /// Asynchronously returns a read stream for assembly debug symbols of given id.
+    /// Asynchronously returns a read stream for assembly debug symbols of given id. Returns 'None' if symbols of given assembly do not exist.
     abstract TryGetSymbolReader : id:AssemblyId -> Async<Stream option>
     /// Asynchronously reads Vagabond metadata information for assembly of given id.
     abstract ReadMetadata : id:AssemblyId -> Async<VagabondMetadata>
     /// Asynchronously returns a read stream for Vagabond data of given id.
-    abstract GetPersistedDataDependencyReader : id:AssemblyId * dataDependency:DataDependencyInfo -> Async<Stream>
+    abstract GetPersistedDataDependencyReader : id:AssemblyId * info:DataDependencyInfo * hash:HashResult -> Async<Stream>
 
 /// Vagabond configuration record
 type VagabondConfiguration =

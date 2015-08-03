@@ -93,6 +93,12 @@ module internal Utils =
     type Async =
 
         /// <summary>
+        ///     Asynchronously raises an exception.
+        /// </summary>
+        /// <param name="e">Exception to be raised.</param>
+        static member Raise(e : exn) = Async.FromContinuations(fun (_,ec,_) -> ec e)
+
+        /// <summary>
         ///     Runs the asynchronous computation and awaits its result.
         ///     Preserves original stacktrace for any exception raised.
         /// </summary>
@@ -111,6 +117,52 @@ module internal Utils =
             | Choice1Of3 t -> t
             | Choice2Of3 e -> reraise' e
             | Choice3Of3 e -> raise e
+
+
+    type RetryPolicy = exn * int -> TimeSpan option
+
+    type Retry =
+        
+        /// <summary>
+        ///     Drives a retriable operation with provided retry policy.
+        /// </summary>
+        /// <param name="retryPolicy">Takes exception and number of failures returning a retry decision: either give up or retry after a given delay.</param>
+        /// <param name="operation">Input retriable operation</param>
+        static member Retry (retryPolicy : RetryPolicy) (operation : unit -> 'T) =
+            let rec aux (retries : int) =
+                let result = try operation () |> Choice1Of2 with e -> Choice2Of2 e
+                match result with
+                | Choice1Of2 t -> t
+                | Choice2Of2 e ->
+                    match retryPolicy (e, retries) with
+                    | None -> reraise' e
+                    | Some ts ->
+                        Thread.Sleep (int ts.TotalMilliseconds)
+                        aux (retries + 1)
+
+            aux 1
+
+        /// <summary>
+        ///     Asynchronously drives a retriable operation with provided retry policy.
+        /// </summary>
+        /// <param name="retryPolicy">Takes exception and number of failures returning a retry decision: either give up or retry after a given delay.</param>
+        /// <param name="operation">Input retriable operation</param>
+        static member RetryAsync (retryPolicy : RetryPolicy) (operation : Async<'T>) = async {
+            let rec aux (retries : int) = async {
+                let! result = Async.Catch operation
+                match result with
+                | Choice1Of2 t -> return t
+                | Choice2Of2 e ->
+                    match retryPolicy (e, retries) with
+                    | None -> return! Async.Raise e
+                    | Some ts ->
+                        do! Async.Sleep (int ts.TotalMilliseconds)
+                        return! aux (retries + 1)
+            }
+
+            return! aux 1
+        }
+        
 
     let hset (ts : seq<'T>) = new HashSet<'T>(ts)
 

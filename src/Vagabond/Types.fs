@@ -136,7 +136,7 @@ type IAssemblyUploader =
     abstract TryGetImageWriter : id:AssemblyId -> Async<Stream option>
     /// Asynchronously returns a write stream for assembly debug symbols of given id. Returns 'None' if symbols already exist.
     abstract TryGetSymbolsWriter : id:AssemblyId -> Async<Stream option>
-    /// Asynchronously returns a write stream for writing supplied persisted data dependency. Returns 'None' if dependency alread exists.
+    /// Asynchronously returns a write stream for writing supplied persisted data dependency. Returns 'None' if dependency already exists.
     abstract TryGetPersistedDataDependencyWriter : id:AssemblyId * info:DataDependencyInfo * hash:HashResult -> Async<Stream option>
     /// Asynchronously writes Vagabond metadata for assembly of provided id.
     abstract WriteMetadata : id:AssemblyId * metadata:VagabondMetadata -> Async<unit>

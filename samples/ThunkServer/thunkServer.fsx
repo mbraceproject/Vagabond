@@ -190,29 +190,3 @@ client.NativeAssemblies
 let useNativeMKL () = Control.UseNativeMKL()
 
 client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
-
-open System.Text.RegularExpressions
-
-
-let r = new Regex(@"([^.,\[]+\.)+", RegexOptions.Compiled)
-
-open Nessos.FsPickler
-
-let h = FsPickler.ComputeHash (Some 42)
-
-let sample = "Microsoft.FSharp.Core`[A.B.C,A]"
-
-let replace x = r.Replace(x, "")
-
-replace typeof<int option>.FullName
-replace sample
-replace h.Type
-replace "A.B.C+T"
-
-#r "Vagabond.dll"
-
-let x = [|1L .. 1000000L|]
-
-client.EvaluateThunk(fun () -> x)
-
-VagabondConfig.Instance.ComputeObjectDependencies <@ x @>

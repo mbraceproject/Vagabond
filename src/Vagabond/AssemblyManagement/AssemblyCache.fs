@@ -29,17 +29,10 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
         let fileName = DataDependency.CreateUniqueFileNameByHash(hash, prefixId = id)
         Path.Combine(cacheDirectory, fileName + ".dat")
 
-    /// asynchronously writes stream data to file in given path
-    static let streamToFile (source : Stream) (path : string) = async {
-        use fs = File.OpenWrite path
-        do! source.CopyToAsync(fs)
-    }
-
-    /// asynchronously writes file data to given stream
-    static let fileToStream (path : string) (target : Stream) = async {
-        use fs = File.OpenRead path
-        do! fs.CopyToAsync(target)
-    }
+    static let ioRetryPolicy : RetryPolicy =
+        function
+        | :? IOException, retries when retries < 5 -> Some <| TimeSpan.FromMilliseconds 200.
+        | _ -> None
 
     // resolve symbols file
     static let tryFindSymbols cachePath =
@@ -105,6 +98,23 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     member __.IsCachedAssembly(id : AssemblyId) : bool =
         __.TryGetCachedAssembly(id).IsSome
 
+
+    /// Asynchronously attempt to acquire a writer file stream to a path that
+    /// that does not exist. Returns 'None' if file found to exist.
+    static member TryOpenWrite (path : string) =
+        // avoid write races by enforcing a retry policy
+        Retry.Retry ioRetryPolicy <|
+            fun () ->
+                if not <| File.Exists path then
+                    let fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None)
+                    Some fs
+                else
+                    None
+
+    /// Asynchronously acquire a reader file stream to a path that should exist.
+    static member OpenRead (path : string) =
+        Retry.Retry ioRetryPolicy (fun () -> new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+
     /// Creates a Vagabond assembly record for given System.Reflection.Assembly.
     static member CreateVagabondAssembly(assembly : Assembly, isSlice : bool) : VagabondAssembly =
         if assembly.IsDynamic || String.IsNullOrEmpty assembly.Location then
@@ -129,9 +139,13 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
     /// Import assembly of given id to cache
     member __.Download(importer : IAssemblyDownloader, id : AssemblyId) = async {
         let cachePath = getCachedAssemblyPath cacheDirectory id
-        if not <| File.Exists cachePath then
-            let! imgReader = importer.GetImageReader id
-            do! streamToFile imgReader cachePath
+        let result = AssemblyCache.TryOpenWrite cachePath
+        match result with
+        | None -> () // file alreay exists in cache, do not write
+        | Some fs ->
+            use fs = fs
+            use! imgReader = importer.GetImageReader id
+            do! imgReader.CopyToAsync fs
         
         let! symbolsPath = async {
             let symbolsPath = getSymbolsPath cachePath
@@ -141,9 +155,14 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
                 match symbolsReader with
                 | None -> return None
                 | Some sReader -> 
-                    use sReader = sReader in 
-                    do! streamToFile sReader symbolsPath
-                    return Some symbolsPath
+                    use sReader = sReader
+                    let result = AssemblyCache.TryOpenWrite symbolsPath
+                    match result with
+                    | None -> return None
+                    | Some fs ->
+                        use fs = fs
+                        do! sReader.CopyToAsync fs
+                        return Some symbolsPath
         }
 
         // read current metadata
@@ -156,9 +175,13 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
 
         let importPersistedDependency (dds : DataDependencyInfo [], hash : HashResult) = async {
             let dpath = getPersistedDataDependencyPath id hash
-            if not <| File.Exists dpath then
+            let result = AssemblyCache.TryOpenWrite dpath
+            match result with
+            | None -> ()
+            | Some fs ->
+                use fs = fs
                 use! dataReader = importer.GetPersistedDataDependencyReader(id, dds.[0], hash)
-                do! streamToFile dataReader dpath
+                do! dataReader.CopyToAsync fs
 
             return (dds, dpath)
         }
@@ -189,7 +212,8 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
         | None -> ()
         | Some s ->
             use s = s
-            do! fileToStream va.Image s
+            use fs = AssemblyCache.OpenRead va.Image
+            do! fs.CopyToAsync s
 
         // 2. Write symbols if exists locally but not found in remote party
         match va.Symbols with
@@ -200,7 +224,8 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             | None -> ()
             | Some s ->
                 use s = s
-                do! fileToStream sf s
+                use fs = AssemblyCache.OpenRead sf
+                do! fs.CopyToAsync s
 
         // 3. Write data dependencies if not found in remote party
         let groupedPersistedDependencies = 
@@ -217,7 +242,8 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             | Some writer ->
                 use writer = writer
                 let localFile = localPersistedFiles.[dd.Id]
-                do! fileToStream localFile writer
+                use fs = AssemblyCache.OpenRead localFile
+                do! fs.CopyToAsync writer
 
             | None -> ()
         }

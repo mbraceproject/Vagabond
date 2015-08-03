@@ -15,13 +15,17 @@ open Nessos.Vagabond.AssemblyManagementTypes
 
 /// pickle value to file
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =
-    use fs = File.OpenWrite path
-    let stream = state.Configuration.DataCompressionAlgorithm.Compress fs
-    state.Serializer.Serialize(stream, value)
+    let result = AssemblyCache.TryOpenWrite path
+    match result with
+    | None -> ()
+    | Some fs ->
+        use fs = fs
+        let stream = state.Configuration.DataCompressionAlgorithm.Compress fs
+        state.Serializer.Serialize(stream, value)
 
 /// unpickle value from file
 let unpicklePersistedBinding (state : VagabondState) (path : string) =
-    use fs = File.OpenRead path
+    use fs = AssemblyCache.OpenRead path
     let stream = state.Configuration.DataCompressionAlgorithm.Decompress fs
     state.Serializer.Deserialize<obj>(stream)
 
@@ -72,8 +76,7 @@ let exportDataDependency (state : VagabondState) (assemblyPath : string) (assemb
         match data with
         | Persisted hash ->
             let persistedPath = state.AssemblyCache.GetPersistedDataPath(assemblyId, hash)
-            if not <| File.Exists persistedPath then
-                picklePersistedBinding state persistedPath value
+            picklePersistedBinding state persistedPath value
 
             Some (id, persistedPath)
         | _ -> None

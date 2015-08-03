@@ -141,7 +141,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
 
         | RegisterNativeDependency(assembly, rc) ->
             try
-                let loadInfo = state.NativeAssemblyManager.Load assembly
+                let _ = state.NativeAssemblyManager.Load assembly
                 nativeAssemblies := state.NativeAssemblyManager.LoadedNativeAssemblies
                 rc.Reply (())
             with e ->

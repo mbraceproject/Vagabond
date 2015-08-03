@@ -238,10 +238,6 @@ type Vagabond =
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
@@ -250,7 +246,7 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10 KiB.
     /// </param>
     static member Initialize(?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?requireLoadedInAppDomain : bool, ?lookupPolicy : AssemblyLookupPolicy, 
+                                ?isIgnoredAssembly : Assembly -> bool, ?lookupPolicy : AssemblyLookupPolicy, 
                                     ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
 
         let cacheDirectory = 
@@ -264,7 +260,6 @@ type Vagabond =
                 path
 
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
-        let requireLoadedInAppDomain = defaultArg requireLoadedInAppDomain true
         let dataPersistTreshold = defaultArg dataPersistTreshold (10L * 1024L)
 
         let profiles =
@@ -300,10 +295,6 @@ type Vagabond =
     /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
-    /// <param name="requireLoadedInAppDomain">
-    ///     Demand all transitive dependencies be loadable in current AppDomain.
-    ///     If unset, only loaded assemblies are listed as dependencies. Defaults to true.
-    /// </param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
@@ -312,12 +303,12 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10KiB.
     /// </param>
     static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>,
-                                ?typeConverter : ITypeNameConverter, ?requireLoadedInAppDomain : bool, ?lookupPolicy : AssemblyLookupPolicy,
+                                ?typeConverter : ITypeNameConverter, ?lookupPolicy : AssemblyLookupPolicy,
                                 ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
         let traversedIgnored = traverseDependencies (fun _ -> false) AssemblyLookupPolicy.None None ignoredAssemblies
         let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
         Vagabond.Initialize(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
-                                ?requireLoadedInAppDomain = requireLoadedInAppDomain, ?typeConverter = typeConverter, ?lookupPolicy = lookupPolicy, 
+                                ?typeConverter = typeConverter, ?lookupPolicy = lookupPolicy, 
                                 ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
 
     /// <summary>

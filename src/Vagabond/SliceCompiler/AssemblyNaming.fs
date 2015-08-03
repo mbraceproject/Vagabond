@@ -189,7 +189,6 @@ type VagabondAssembly with
     /// Defines un unmanaged VagabondAssembly for provided managed assembly
     static member CreateManaged(assembly : Assembly, isDynamicAssemblySlice : bool, dataDependencies, dataFiles) =
         let location = assembly.Location
-        let extension = Path.GetExtension location
         let symbols =
             let file = getSymbolsPath location
             if File.Exists file then Some file else None

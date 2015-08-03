@@ -80,7 +80,7 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
     let generatedSlices = assemblyState.GeneratedSlices.Add(sliceId, sliceInfo)
         
     // update the type index
-    let mapTypeIndex (id : string) (info : TypeParseInfo) =
+    let mapTypeIndex (_ : string) (info : TypeParseInfo) =
         match info with
         | AlwaysIncluded -> InAllSlices
         | InCurrentSlice _ -> InSpecificSlice sliceInfo

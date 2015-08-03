@@ -260,7 +260,7 @@ module private Impl =
             | Cleanup ->
                 match Exn.protect2 cleanupDomains 0 state with
                 | Success state2 -> return! behaviour (Some state2) self
-                | Error e -> return! behaviour gstate self
+                | Error _ -> return! behaviour gstate self
     }
 
 /// Provides an AppDomain pooling mechanism for use by Vagabond.
@@ -492,7 +492,7 @@ module private EvaluatorImpl =
         let mtcs = new MarshalledTaskCompletionSource<ResultPickle>()
         try
             let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
-            use d = ct.Register (fun () -> mcts.Cancel ())
+            use _ = ct.Register (fun () -> mcts.Cancel ())
             let! presult = Async.AwaitTask(mtcs.Task)
             let result = pickler.Value.UnPickleTyped presult
             return result.Value :?> 'T

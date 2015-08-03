@@ -51,7 +51,7 @@ type VagabondManager with
         // Step 3. check load results; if client replies with fault, fail.
         let gatherErrors (info : AssemblyLoadInfo) =
             match info with
-            | LoadFault(id, (:?VagabondException as e)) -> raise e
+            | LoadFault(_, (:?VagabondException as e)) -> raise e
             | LoadFault(id, e) -> raise <| new VagabondException(sprintf "error on remote loading of assembly '%s'." id.FullName, e)
             | NotLoaded id -> raise <| new VagabondException(sprintf "could not load assembly '%s' on remote client." id.FullName)
             | Loaded (_, _, md) ->

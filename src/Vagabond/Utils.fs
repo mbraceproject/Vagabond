@@ -261,7 +261,7 @@ module internal Utils =
                 let rec tryFindCycleInPath (path : 'T list) (acc : 'T list) (t : 'T) =
                     match path with
                     | [] -> None
-                    | h :: tl when h = t -> Some (h :: acc)
+                    | h :: _ when h = t -> Some (h :: acc)
                     | h :: tl -> tryFindCycleInPath tl (h :: acc) t
 
                 let rec walk (path : 'T list) (t : 'T) =

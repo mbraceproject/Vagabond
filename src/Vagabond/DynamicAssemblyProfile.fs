@@ -69,7 +69,7 @@ type FsiDynamicAssemblyProfile () =
             else
                 InCurrentSlice
 
-        member __.EraseStaticConstructor (t : Type) = false
+        member __.EraseStaticConstructor (_ : Type) = false
         member __.PickleStaticField (f : FieldInfo, _ : bool) =
             // all static fields declared in types nested inside modules are to be pickled.
             let rec isModuleType (t : Type) =

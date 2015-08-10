@@ -1,3 +1,4 @@
+* 0.8.4 - Update FsPickler to latest version.
 * 0.8.3 - Fix concurrency issue in AssemblyCache.
 * 0.8.2 - Bugfixes in caching mechanism. Corrections in the uploader/downloader API.
 * 0.8.1 - Expose Vagabond.TryParseAssemblySliceName method to public API.

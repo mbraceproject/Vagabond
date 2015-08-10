@@ -40,7 +40,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
 
     let typeNameConverter = mkTypeNameConverter config.TypeConverter (fun () -> compilerState.Value)
 
-    let serializer = FsPickler.CreateBinary(typeConverter = typeNameConverter)
+    let serializer = FsPickler.CreateBinarySerializer(typeConverter = typeNameConverter)
     let assemblyCache = new AssemblyCache(config.CacheDirectory, serializer)
     let nativeAssemblyManager = new NativeAssemblyManager(config.CacheDirectory)
 

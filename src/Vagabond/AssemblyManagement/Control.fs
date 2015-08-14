@@ -63,9 +63,27 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
         match message with
         | ImportAssemblies(importer, ids, rc) ->
             try
+                let state', loadInfo = getAssemblyLoadInfos state AssemblyLookupPolicy.ResolveRuntimeStrongNames ids
+                let shouldDownload (loadInfo : AssemblyLoadInfo) =
+                    match loadInfo with
+                    | Loaded(id, _, metadata : VagabondMetadata) ->
+                        // only donwload assembly slices if remotely generated
+                        if metadata.IsDynamicAssemblySlice then not <| state'.CompilerState.IsLocalDynamicAssemblySlice id
+                        else
+                            false
+
+                    | NotLoaded _ | LoadFault _ -> true
+
+                let requiredDownloads = 
+                    loadInfo 
+                    |> Seq.filter shouldDownload
+                    |> Seq.map (fun li -> li.Id)
+                    |> Set.ofSeq
+
                 let! vas =
                     ids
                     |> Seq.distinct
+                    |> Seq.filter requiredDownloads.Contains
                     |> Seq.map(fun id -> state.AssemblyCache.Download(importer, id))
                     |> Async.Parallel
 

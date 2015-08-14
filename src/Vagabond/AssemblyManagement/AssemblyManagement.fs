@@ -96,6 +96,16 @@ let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLookupPolicy) 
             | None -> state, NotLoaded id
 
 
+let getAssemblyLoadInfos (state : VagabondState) (policy : AssemblyLookupPolicy) (ids : seq<AssemblyId>) =
+    let mutable state = state
+    let results = new ResizeArray<AssemblyLoadInfo> ()
+    for id in ids do
+        let state', li = getAssemblyLoadInfo state policy id
+        state <- state'
+        results.Add li
+    state, results.ToArray()
+
+
 //
 // assembly import protocol implementation
 //

@@ -55,7 +55,7 @@ type ThunkServer private () =
 
     do printfn "ThunkServer listening at %O\n" Actor.EndPoint
 
-    member __.Stop = actor.Stop()
+    member __.Stop () = actor.Stop()
     member internal __.Ref = actor.Ref
     member __.Uri = ActorRef.toUri actor.Ref
 

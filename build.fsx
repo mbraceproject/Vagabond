@@ -142,9 +142,9 @@ Target "Default" DoNothing
 
 "Build"
   ==> "PrepareRelease"
-  ==> "NuGet"
   ==> "GenerateDocs"
   ==> "ReleaseDocs"
+  ==> "NuGet"
   ==> "Release"
 
 "NuGet" 

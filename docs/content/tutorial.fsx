@@ -8,8 +8,9 @@
 
 open System
 open System.Reflection
+open Nessos.Vagabond
 
-let assembly = Unchecked.defaultof<Assembly>
+let assembly = Unchecked.defaultof<AssemblyId>
 
 (**
 # API Overview

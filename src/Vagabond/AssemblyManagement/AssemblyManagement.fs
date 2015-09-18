@@ -48,7 +48,7 @@ let tryExportAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (i
             raise <| new VagabondException(msg)
 
         | Some asmb -> 
-            let va = VagabondAssembly.CreateManaged(asmb, false, [||], [||])
+            let va = VagabondAssembly.FromManagedAssembly(asmb, false, [||], [||])
             { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }, Some va
 
         | None when policy.HasFlag AssemblyLookupPolicy.ResolveVagabondCache ->
@@ -84,7 +84,7 @@ let getAssemblyLoadInfo (state : VagabondState) (policy : AssemblyLookupPolicy) 
                 state, LoadFault(id, VagabondException(msg))
 
             | Some a ->
-                let va = VagabondAssembly.CreateManaged(a, false, [||], [||])
+                let va = VagabondAssembly.FromManagedAssembly(a, false, [||], [||])
                 let state = { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }
                 state, Loaded(id, true, va.Metadata)
 
@@ -113,6 +113,12 @@ let getAssemblyLoadInfos (state : VagabondState) (policy : AssemblyLookupPolicy)
 let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : VagabondAssembly) =
     // load assembly to the current AppDomain
     let loadAssembly (va : VagabondAssembly) =
+        // copy potential mixed mode assembly to native assembly folder
+        if va.Metadata.ProcessorArchitecture <> ProcessorArchitecture.MSIL then
+            match state.NativeAssemblyManager.Load va with
+            | LoadFault(_,e) -> raise e
+            | _ -> ()
+
         let assembly = System.Reflection.Assembly.LoadFrom va.Image
 
         if assembly.FullName <> va.FullName then
@@ -124,7 +130,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : V
             raise <| VagabondException(msg)
 
     try
-        if va.Metadata.IsManagedAssembly then
+        if not va.Metadata.IsNativeAssembly then
             // dynamic assembly slice generated in local process
             if state.CompilerState.IsLocalDynamicAssemblySlice va.Id then
                 let state, va = tryExportAssembly state policy va.Id
@@ -152,7 +158,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : V
                         state, LoadFault(va.Id, VagabondException(msg))
 
                     | Some a ->
-                        let va = VagabondAssembly.CreateManaged(a, false, [||], [||])
+                        let va = VagabondAssembly.FromManagedAssembly(a, false, [||], [||])
                         let state = { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }
                         state, Loaded(va.Id, true, va.Metadata)
 

@@ -181,22 +181,29 @@ type DataDependency private () =
 
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file
-    static member CreateUnmanaged(path : string) =
+    static member FromNativeAssembly(path : string) =
         let id = AssemblyIdGenerator.GetAssemblyId path
-        let metadata = { IsManagedAssembly = false ; IsDynamicAssemblySlice = false ; DataDependencies = [||] }
+        let fileName = Path.GetFileName path
+        let metadata = 
+            { IsNativeAssembly = true ; OriginalFileName = fileName ; ProcessorArchitecture = ProcessorArchitecture.None ; 
+                IsDynamicAssemblySlice = false ; DataDependencies = [||] }
+
         { Id = id ; Image = path ; Symbols = None ; Metadata = metadata ; PersistedDataDependencies = [||] }
 
     /// Defines un unmanaged VagabondAssembly for provided managed assembly
-    static member CreateManaged(assembly : Assembly, isDynamicAssemblySlice : bool, dataDependencies, dataFiles) =
+    static member FromManagedAssembly(assembly : Assembly, isDynamicAssemblySlice : bool, dataDependencies, dataFiles) =
         let location = assembly.Location
         let symbols =
             let file = getSymbolsPath location
             if File.Exists file then Some file else None
 
         let id = assembly.AssemblyId
+
         let metadata = 
             { 
-                IsManagedAssembly = true
+                IsNativeAssembly = false
+                ProcessorArchitecture = assembly.GetName().ProcessorArchitecture
+                OriginalFileName = Path.GetFileName assembly.Location
                 IsDynamicAssemblySlice = isDynamicAssemblySlice
                 DataDependencies = dataDependencies
             }

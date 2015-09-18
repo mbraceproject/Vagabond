@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2013
-VisualStudioVersion = 12.0.31101.0
+VisualStudioVersion = 12.0.40629.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{B521A597-793B-4D2A-8302-AAC7AC224ACC}"
 	ProjectSection(SolutionItems) = preProject
@@ -17,6 +17,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60
 		build.cmd = build.cmd
 		build.fsx = build.fsx
 		build.sh = build.sh
+		resource\Google.OrTools.dll = resource\Google.OrTools.dll
 		License.md = License.md
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md

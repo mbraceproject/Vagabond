@@ -117,6 +117,7 @@ module FsiTests =
                 "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
                 "../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
                 "../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+                "../resource/Google.OrTools.dll"
             ]
 
         fsi.EvalInteraction "open ThunkServer"
@@ -592,3 +593,31 @@ module FsiTests =
         """
 
         fsi.EvalExpression "client.EvaluateThunk (fun () -> x.Length = y.Length)" |> shouldEqual true
+
+    [<Test>]
+    let ``27. Mixed mode assemblies`` () =
+        if is64BitProcess && not runsOnMono.Value then
+            let fsi = FsiSession.Value
+
+            fsi.EvalInteraction """
+            open Google.OrTools
+            open Google.OrTools.Algorithms
+
+            let vector (ints : seq<int64>) =
+                let k = new KInt64Vector()
+                for i in ints do k.Add i
+                k
+
+            let vectorvector (ints : seq<seq<int64>>) =
+                let kvv = new KInt64VectorVector()
+                for g in ints do kvv.Add(vector g)
+                kvv
+
+            let solve() =
+                let kss = new Google.OrTools.Algorithms.KnapsackSolver("default")
+                kss.Init(vector [1L .. 10L], vectorvector [[1L]], vector [1L .. 10L])
+                kss.Solve()
+"""
+
+            fsi.EvalInteraction "let expected = solve ()"
+            fsi.EvalExpression "client.EvaluateThunk (fun () -> solve () = expected)" |> shouldEqual true

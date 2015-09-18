@@ -17,7 +17,7 @@ module ``Generic Vagabond API tests`` =
         let path = typeof<int>.Assembly.Location
         let instance = Vagabond.Initialize()
         let info = instance.RegisterNativeDependency(path)
-        info.Metadata.IsManagedAssembly |> shouldEqual false
+        info.Metadata.IsNativeAssembly |> shouldEqual true
         info.Image |> shouldEqual path
         info.Symbols |> shouldEqual None
         info.Metadata.IsDynamicAssemblySlice |> shouldEqual false

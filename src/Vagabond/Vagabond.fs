@@ -53,7 +53,7 @@ type VagabondManager internal (config : VagabondConfiguration) =
     [<CompilerMessage("Native assembly support is an experimental feature of Vagabond.", 1571)>]
     member __.RegisterNativeDependency(path : string) : VagabondAssembly =
         if runsOnMono.Value then raise <| new PlatformNotSupportedException("Native dependencies not supported on mono.")
-        let va = VagabondAssembly.CreateUnmanaged(path)
+        let va = VagabondAssembly.FromNativeAssembly(path)
         controller.PostAndReply(fun ch -> RegisterNativeDependency(va, ch))
         va
 

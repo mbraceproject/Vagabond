@@ -95,7 +95,7 @@ let exportDataDependencies (state : VagabondState) (slice : DynamicAssemblySlice
 
     let persisted = exportState |> Array.choose (fun de -> de.PersistFile)
     let dependencies = exportState |> Array.map (fun de -> de.Info)
-    let va = VagabondAssembly.CreateManaged(slice.Assembly, true, dependencies, persisted)
+    let va = VagabondAssembly.FromManagedAssembly(slice.Assembly, true, dependencies, persisted)
 
     { state with 
         AssemblyLoadState = state.AssemblyLoadState.Add(assemblyId, ExportedSlice exportState)

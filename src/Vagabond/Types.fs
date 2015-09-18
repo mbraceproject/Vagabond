@@ -78,7 +78,13 @@ type DataDependencyInfo =
 type VagabondMetadata =
     {
         /// Specifies if is managed CIL assembly.
-        IsManagedAssembly : bool
+        IsNativeAssembly : bool
+
+        /// Original file name of packaged assembly.
+        OriginalFileName : string
+
+        /// Declared Processor architecture by assembly.
+        ProcessorArchitecture : ProcessorArchitecture
 
         /// Specifies if assembly is dynamic assembly slice.
         IsDynamicAssemblySlice : bool

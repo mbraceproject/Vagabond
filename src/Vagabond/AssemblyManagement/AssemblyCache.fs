@@ -124,7 +124,9 @@ type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =
             let symbols = tryFindSymbols location
             let metadata =
                 {
-                    IsManagedAssembly = true
+                    IsNativeAssembly = false
+                    ProcessorArchitecture = assembly.GetName().ProcessorArchitecture
+                    OriginalFileName = Path.GetFileName assembly.Location
                     IsDynamicAssemblySlice = isSlice
                     DataDependencies = [||]
                 }

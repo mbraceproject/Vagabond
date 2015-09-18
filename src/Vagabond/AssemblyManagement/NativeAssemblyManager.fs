@@ -1,6 +1,7 @@
 ﻿namespace Nessos.Vagabond
 
 open System
+open System.Reflection
 open System.Collections.Generic
 open System.IO
 
@@ -23,7 +24,7 @@ type internal NativeAssemblyManager(path : string) =
     /// Loads a native assembly by copying to the native path
     member __.Load(va : VagabondAssembly) =
         try
-            let cachePath = Path.Combine(container, va.Id.FullName + va.Id.Extension)
+            let cachePath = Path.Combine(container, va.Metadata.OriginalFileName)
             let shouldCopy =
                 if File.Exists cachePath then
                     let cachedId = AssemblyIdGenerator.GetAssemblyId cachePath

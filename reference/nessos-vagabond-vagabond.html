@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Vagabond - Vagabond</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content=""/>
+    <meta name="author" content="Eirik Tsarpalis"/>
+
+    <script src="https://code.jquery.com/jquery-1.8.0.js"></script>
+    <script src="https://code.jquery.com/ui/1.8.23/jquery-ui.js"></script>
+    <script src="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/js/bootstrap.min.js"></script>
+    <link href="https://netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap-combined.min.css" rel="stylesheet"/>
+
+    <link type="text/css" rel="stylesheet" href="/Vagabond/content/style.css" />
+    <script type="text/javascript" src="/Vagabond/content/tips.js"></script>
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="https://html5shim.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="container">
+      <div class="masthead">
+        <ul class="nav nav-pills pull-right">
+          <li><a href="http://fsharp.org">fsharp.org</a></li>
+          <li><a href="http://github.com/nessos/Vagabond">github page</a></li>
+        </ul>
+        <h3 class="muted"><a href="/Vagabond/index.html">Vagabond</a></h3>
+      </div>
+      <hr />
+      <div class="row">
+        <div class="span9" id="main">
+          
+
+
+
+<h1>Vagabond</h1>
+<p>
+  <span>Namespace: Nessos.Vagabond</span><br />
+</p>
+<div class="xmldoc">
+<p>A collection of general purpose utilities on dependency traversal.</p>
+
+
+</div>
+  <h3>Static members</h3>
+  <table class="table table-bordered member-list">
+    <thead>
+      <tr><td>Static member</td><td>Description</td></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '60', 60)" onmouseover="showTip(event, '60', 60)">
+            ComputeAssemblyDependencies(...)
+          </code>
+          <div class="tip" id="60">
+            <strong>Signature:</strong> (assemblies:seq&lt;Assembly&gt; * isIgnoredAssembly:(Assembly -&gt; bool) option * policy:AssemblyLookupPolicy option) -&gt; Assembly []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L352-352" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given assemblies.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '61', 61)" onmouseover="showTip(event, '61', 61)">
+            ComputeAssemblyDependencies(...)
+          </code>
+          <div class="tip" id="61">
+            <strong>Signature:</strong> (assembly:Assembly * isIgnoredAssembly:(Assembly -&gt; bool) option * policy:AssemblyLookupPolicy option) -&gt; Assembly []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L340-340" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given assembly.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '62', 62)" onmouseover="showTip(event, '62', 62)">
+            ComputeAssemblyDependencies(...)
+          </code>
+          <div class="tip" id="62">
+            <strong>Signature:</strong> (obj:obj * isIgnoredAssembly:(Assembly -&gt; bool) option * policy:AssemblyLookupPolicy option) -&gt; Assembly []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L326-326" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Resolves all assembly dependencies of given object graph.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '63', 63)" onmouseover="showTip(event, '63', 63)">
+            ComputeAssemblyId(assembly)
+          </code>
+          <div class="tip" id="63">
+            <strong>Signature:</strong> assembly:Assembly -&gt; AssemblyId<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L363-363" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Computes a unique id for given static assembly.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '64', 64)" onmouseover="showTip(event, '64', 64)">
+            ComputeAssemblyIds(assemblies)
+          </code>
+          <div class="tip" id="64">
+            <strong>Signature:</strong> assemblies:seq&lt;Assembly&gt; -&gt; AssemblyId []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L371-371" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Computes unique id's for a collection of static assemblies.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '65', 65)" onmouseover="showTip(event, '65', 65)">
+            ComputeTypeDependencies(obj)
+          </code>
+          <div class="tip" id="65">
+            <strong>Signature:</strong> obj:obj -&gt; Type []<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L318-318" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Returns all type instances that appear in given object graph.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '66', 66)" onmouseover="showTip(event, '66', 66)">
+            GetUniqueFileName(hash, assemblyPrefix)
+          </code>
+          <div class="tip" id="66">
+            <strong>Signature:</strong> (hash:HashResult * assemblyPrefix:AssemblyId option) -&gt; string<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L387-387" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Generates a unique file name that correspond to the particular object hash.
+Useful for caching implementations.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '67', 67)" onmouseover="showTip(event, '67', 67)">
+            GetUniqueFileName(id)
+          </code>
+          <div class="tip" id="67">
+            <strong>Signature:</strong> id:AssemblyId -&gt; string<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L379-379" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Generates a unique file name that corresponds to the particular assembly id.
+Useful for caching implementations.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '68', 68)" onmouseover="showTip(event, '68', 68)">
+            Initialize(...)
+          </code>
+          <div class="tip" id="68">
+            <strong>Signature:</strong> (ignoredAssemblies:seq&lt;Assembly&gt; * cacheDirectory:string option * profiles:seq&lt;IDynamicAssemblyProfile&gt; option * typeConverter:ITypeNameConverter option * lookupPolicy:AssemblyLookupPolicy option * dataCompressionAlgorithm:ICompressionAlgorithm option * dataPersistTreshold:int64 option) -&gt; VagabondManager<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L305-305" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Initializes a new Vagabond instance.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '69', 69)" onmouseover="showTip(event, '69', 69)">
+            Initialize(...)
+          </code>
+          <div class="tip" id="69">
+            <strong>Signature:</strong> (cacheDirectory:string option * profiles:seq&lt;IDynamicAssemblyProfile&gt; option * typeConverter:ITypeNameConverter option * isIgnoredAssembly:(Assembly -&gt; bool) option * lookupPolicy:AssemblyLookupPolicy option * dataCompressionAlgorithm:ICompressionAlgorithm option * dataPersistTreshold:int64 option) -&gt; VagabondManager<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L248-248" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Initializes a new Vagabond instance.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '70', 70)" onmouseover="showTip(event, '70', 70)">
+            Initialize(config)
+          </code>
+          <div class="tip" id="70">
+            <strong>Signature:</strong> config:VagabondConfiguration -&gt; VagabondManager<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L232-232" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Initializes a Vagabond instance given supplied configuration object.</p>
+
+
+
+        </td>
+      </tr>
+      <tr>
+        <td class="member-name">
+
+          <code onmouseout="hideTip(event, '71', 71)" onmouseover="showTip(event, '71', 71)">
+            TryParseAssemblySliceName(sliceName)
+          </code>
+          <div class="tip" id="71">
+            <strong>Signature:</strong> sliceName:string -&gt; (Guid * string * int) option<br />
+                      </div>
+        </td>
+        <td class="xmldoc">
+            <a href="http://github.com/nessos/Vagabond/tree/master/src/Vagabond/Vagabond.fs#L396-396" class="github-link">
+              <img src="../content/img/github.png" class="normal" />
+              <img src="../content/img/github-blue.png" class="hover" />
+            </a>
+          <p>Attempts to parse an input assembly name that satisfied the Vagabond assembly slice format.
+Returns the Vagabond uuid in the slice compiling process, the original dynamic assembly name
+and the current slice index.</p>
+
+
+
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+        </div>
+        <div class="span3">
+          <a target="_blank" href="http://www.nessos.gr/">
+			<img src="/Vagabond/img/nessos.png" alt="F# Project" style="width:150px;margin:10px" /> 
+		  </a>
+          <ul class="nav nav-list" id="menu" style="margin-top: 20px;">
+            <li class="nav-header">Vagabond</li>
+            <li><a href="/Vagabond/index.html">Home Page</a></li>
+            <li class="divider"></li>
+            <li><a href="http://www.nuget.org/packages/Vagabond">Get Library via NuGet</a></li>
+            <li><a href="http://github.com/nessos/Vagabond">Source Code on GitHub</a></li>
+            <li><a href="http://github.com/nessos/Vagabond/blob/master/License.md">License</a></li>
+            <li><a href="http://github.com/nessos/Vagabond/blob/master/RELEASE_NOTES.md">Release Notes</a></li>
+
+            <li class="nav-header">Documentation</li>
+            <li><a href="/Vagabond/tutorial.html">Tutorial</a></li>
+            <li><a href="/Vagabond/overview.html">Technical Overview</a></li>
+            <li><a href="/Vagabond/reference/index.html">API Reference</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <a href="http://github.com/nessos/Vagabond"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_gray_6d6d6d.png" alt="Fork me on GitHub"/></a>
+  </body>
+  </html>

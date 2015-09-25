@@ -1,3 +1,4 @@
+* 0.9.1 - Relax FsPickler dependency constraints.
 * 0.9.0 - Implement support for mixed mode assemblies.
 * 0.8.5 - Fix redundant downloads to AssemblyCache issue.
 * 0.8.4 - Update FsPickler to latest version.

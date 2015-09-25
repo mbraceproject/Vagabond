@@ -6,7 +6,7 @@ nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64
 nuget Nuget.CommandLine
 nuget FSharp.Data ~> 2.2.5
-nuget FsPickler ~> 1.3.0
+nuget FsPickler ~> 1.3
 nuget LinqOptimizer.FSharp
 nuget Mono.Cecil ~> 0.9.6.1
 nuget NUnit

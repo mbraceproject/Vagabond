@@ -14,11 +14,11 @@ NUGET
       FSharp.Compiler.Service (>= 0.0.90)
     FsPickler (1.4.0)
     LinqOptimizer.FSharp (0.6.3)
-    MathNet.Numerics (3.7.1)
-      TaskParallelLibrary (>= 1.0.2856) - framework: >= net35 < net40
-    MathNet.Numerics.FSharp (3.7.1)
-      FSharp.Core (>= 3.1.2.1)
-      MathNet.Numerics (3.7.1)
+    MathNet.Numerics (3.8.0)
+      TaskParallelLibrary (>= 1.0.2856.0) - framework: >= net35 < net40
+    MathNet.Numerics.FSharp (3.8.0)
+      FSharp.Core (>= 3.1.2.5)
+      MathNet.Numerics (3.8.0)
     MathNet.Numerics.MKL.Win-x64 (1.8.0)
       MathNet.Numerics (>= 2.4.0)
     Mono.Cecil (0.9.6.1)

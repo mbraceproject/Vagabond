@@ -12,6 +12,6 @@ nuget FAKE
 nuget FSharp.Formatting prerelease
 nuget FSharp.Compiler.Service
 nuget NUnit.Runners
-nuget MathNet.Numerics ~> 3.8.0
+nuget MathNet.Numerics ~> 3.7.0
 nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0

@@ -175,6 +175,8 @@ type VagabondConfiguration =
         IsIgnoredAssembly : Assembly -> bool
         /// Data compression algorithm used by vagabond
         DataCompressionAlgorithm : ICompressionAlgorithm
+        /// Force loading of local FSharp.Core when deserializing FSharp.Core types
+        ForceLocalFSharpCoreAssembly : bool
     }
 
 /// Exception raised by Vagabond

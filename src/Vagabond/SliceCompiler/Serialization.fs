@@ -44,17 +44,11 @@ type VagabondTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 /// <summary>
 /// Creates a typenameconverter passing a wrapped, user supplied type name converter instance
 /// </summary>
+/// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly version when deserializing.</param>
 /// <param name="wrappedConverter">User-supplied type converter.</param>
 /// <param name="stateF">Slice compiler state reader.</param>
-let mkTypeNameConverter (wrappedConverter : ITypeNameConverter option) (stateF : unit -> DynamicAssemblyCompilerState) =
-
-    let tyConv = new VagabondTypeNameConverter(stateF) :> ITypeNameConverter
-
-    match wrappedConverter with
-    | None -> tyConv
-    | Some c ->
-        {
-            new ITypeNameConverter with
-                member __.OfSerializedType tI = tI |> tyConv.OfSerializedType |> c.OfSerializedType
-                member __.ToDeserializedType tI = tI |> c.ToDeserializedType |> tyConv.ToDeserializedType
-        }
+let mkTypeNameConverter (forceLocalFSharpCore : bool) (wrappedConverter : ITypeNameConverter option) (stateF : unit -> DynamicAssemblyCompilerState) =
+        [|  yield new VagabondTypeNameConverter(stateF) :> ITypeNameConverter
+            if forceLocalFSharpCore then yield new LocalFSharpCoreConverter() :> _
+            match wrappedConverter with Some w -> yield w | None -> () |]
+        |> TypeNameConverter.compose

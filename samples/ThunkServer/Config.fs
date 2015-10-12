@@ -18,7 +18,7 @@ type VagabondConfig private () =
     static let manager =
         let cachePath = Path.Combine(Path.GetTempPath(), sprintf "thunkServerCache-%s" <| Guid.NewGuid().ToString("N"))
         let _ = Directory.CreateDirectory cachePath
-        Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
+        Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()], forceLocalFSharpCore = true)
 
     static member Instance = manager
     static member Serializer = manager.Serializer

@@ -38,7 +38,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
     let staticBindings : (FieldInfo * HashResult) [] ref = ref [||]
     let compilerState = ref <| initCompilerState uuid config.DynamicAssemblyProfiles config.CacheDirectory
 
-    let typeNameConverter = mkTypeNameConverter config.TypeConverter (fun () -> compilerState.Value)
+    let typeNameConverter = mkTypeNameConverter config.ForceLocalFSharpCoreAssembly config.TypeConverter (fun () -> compilerState.Value)
 
     let serializer = FsPickler.CreateBinarySerializer(typeConverter = typeNameConverter)
     let assemblyCache = new AssemblyCache(config.CacheDirectory, serializer)

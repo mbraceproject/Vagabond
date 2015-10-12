@@ -1,3 +1,4 @@
+* 0.10.0 - Add support for constrained FSharp.Core deserializations.
 * 0.9.1 - Relax FsPickler dependency constraints.
 * 0.9.0 - Implement support for mixed mode assemblies.
 * 0.8.5 - Fix redundant downloads to AssemblyCache issue.

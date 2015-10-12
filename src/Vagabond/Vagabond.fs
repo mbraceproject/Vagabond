@@ -237,6 +237,7 @@ type Vagabond =
     /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
+    /// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly when deserializing types. Defaults to false.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
@@ -246,7 +247,7 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10 KiB.
     /// </param>
     static member Initialize(?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?isIgnoredAssembly : Assembly -> bool, ?lookupPolicy : AssemblyLookupPolicy, 
+                                ?forceLocalFSharpCore : bool, ?isIgnoredAssembly : Assembly -> bool, ?lookupPolicy : AssemblyLookupPolicy, 
                                     ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
 
         let cacheDirectory = 
@@ -260,6 +261,7 @@ type Vagabond =
                 path
 
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
+        let forceLocalFSharpCore = defaultArg forceLocalFSharpCore false
         let dataPersistTreshold = defaultArg dataPersistTreshold (10L * 1024L)
 
         let profiles =
@@ -281,6 +283,7 @@ type Vagabond =
                 DataPersistThreshold = dataPersistTreshold
                 DynamicAssemblyProfiles = profiles
                 TypeConverter = typeConverter
+                ForceLocalFSharpCoreAssembly = forceLocalFSharpCore
                 IsIgnoredAssembly = isIgnoredAssembly
                 DataCompressionAlgorithm = dataCompressionAlgorithm
             }
@@ -295,6 +298,7 @@ type Vagabond =
     /// <param name="cacheDirectory">Temp folder used for assembly compilation and caching. Defaults to system temp folder.</param>
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
+    /// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly when deserializing types. Defaults to false.</param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
@@ -303,12 +307,12 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10KiB.
     /// </param>
     static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>,
-                                ?typeConverter : ITypeNameConverter, ?lookupPolicy : AssemblyLookupPolicy,
+                                ?typeConverter : ITypeNameConverter, ?forceLocalFSharpCore : bool, ?lookupPolicy : AssemblyLookupPolicy,
                                 ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
         let traversedIgnored = traverseDependencies (fun _ -> false) AssemblyLookupPolicy.None None ignoredAssemblies
         let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
         Vagabond.Initialize(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
-                                ?typeConverter = typeConverter, ?lookupPolicy = lookupPolicy, 
+                                ?typeConverter = typeConverter, ?forceLocalFSharpCore = forceLocalFSharpCore, ?lookupPolicy = lookupPolicy, 
                                 ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
 
     /// <summary>

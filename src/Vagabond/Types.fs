@@ -177,6 +177,8 @@ type VagabondConfiguration =
         DataCompressionAlgorithm : ICompressionAlgorithm
         /// Force loading of local FSharp.Core when deserializing FSharp.Core types
         ForceLocalFSharpCoreAssembly : bool
+        /// Force slice compilation on serialization of dynamic assembly type not defined in slice
+        ForceSerializationSliceCompilation : bool
     }
 
 /// Exception raised by Vagabond

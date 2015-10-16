@@ -1,3 +1,4 @@
+* 0.11.0 - Support indirect dynamic assembly slice compilation when required by FsPickler.
 * 0.10.0 - Add support for constrained FSharp.Core deserializations.
 * 0.9.1 - Relax FsPickler dependency constraints.
 * 0.9.0 - Implement support for mixed mode assemblies.

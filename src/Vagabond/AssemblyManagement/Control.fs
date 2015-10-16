@@ -37,8 +37,16 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
     let nativeAssemblies : VagabondAssembly [] ref = ref [||]
     let staticBindings : (FieldInfo * HashResult) [] ref = ref [||]
     let compilerState = ref <| initCompilerState uuid config.DynamicAssemblyProfiles config.CacheDirectory
+    let mutable actor = Unchecked.defaultof<MailboxProcessor<VagabondMessage>> // to be initialized at the end of the constructor body
 
-    let typeNameConverter = mkTypeNameConverter config.ForceLocalFSharpCoreAssembly config.TypeConverter (fun () -> compilerState.Value)
+    let serializationCompilerCallback =
+        if config.ForceSerializationSliceCompilation then
+            Some(fun a -> ignore <| actor.PostAndReply(fun ch -> CompileDynamicAssemblySlice([|a|], ch)))
+        else
+            None
+
+    let typeNameConverter = mkTypeNameConverter config.ForceLocalFSharpCoreAssembly config.TypeConverter 
+                                                (fun () -> compilerState.Value) serializationCompilerCallback
 
     let serializer = FsPickler.CreateBinarySerializer(typeConverter = typeNameConverter)
     let assemblyCache = new AssemblyCache(config.CacheDirectory, serializer)
@@ -169,7 +177,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
     }
 
     let cts = new System.Threading.CancellationTokenSource()
-    let actor = MailboxProxessor.Stateful (initState, processMessage, ct = cts.Token)
+    do actor <- MailboxProxessor.Stateful (initState, processMessage, ct = cts.Token)
 
     member __.Start() = actor.Start()
     member __.Stop() = cts.Cancel()

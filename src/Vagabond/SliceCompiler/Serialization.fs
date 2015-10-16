@@ -18,26 +18,32 @@ open Nessos.Vagabond.SliceCompilerTypes
 // An ITypeNameConverter implementation provides bridging when serializing/deserializing values
 // on the exporting side.
 
-type VagabondTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
+type VagabondTypeNameConverter(getState : unit -> DynamicAssemblyCompilerState, ?compileNewSlice : Assembly -> unit) =
 
     interface ITypeNameConverter with
         // convert assembly qualified name dynamic -> slice
-        member __.OfSerializedType(typeInfo : TypeInfo) = 
+        member __.OfSerializedType(typeInfo : TypeInfo) =
             let qname = typeInfo.AssemblyInfo.AssemblyQualifiedName
-            match stateF().DynamicAssemblies.TryFind qname with
-            | None -> typeInfo
-            | Some info ->
-                // type belongs to a slice, detect what slice it belongs to and update accordingly
-                match info.TypeIndex.TryFind typeInfo.Name with
-                | None | Some (InNoSlice | InAllSlices) ->
-                    raise <| new VagabondException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
+            let rec remap isFirstAttempt =
+                match getState().DynamicAssemblies.TryFind qname with
+                | None -> typeInfo
+                | Some info ->
+                    // type belongs to a slice, detect what slice it belongs to and update accordingly
+                    match info.TypeIndex.TryFind typeInfo.Name with
+                    | None when isFirstAttempt && Option.isSome compileNewSlice -> 
+                        // if type has not yet been compiled to slice, force compilation now and retry type mapping
+                        compileNewSlice.Value info.DynamicAssembly ; remap false
+                    | None | Some (InNoSlice | InAllSlices) ->
+                        raise <| new VagabondException(sprintf "type '%s' in dynamic assembly '%s' does not correspond to slice." typeInfo.Name qname)
 
-                | Some (InSpecificSlice slice) -> 
-                    { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = slice.Assembly.GetName().Name } }
+                    | Some (InSpecificSlice slice) -> 
+                        { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = slice.Assembly.GetName().Name } }
+
+            remap true
         
         // convert assembly qualified name slice -> dynamic
         member __.ToDeserializedType(typeInfo : TypeInfo) =
-            match stateF().TryGetDynamicAssemblyId typeInfo.AssemblyInfo.AssemblyQualifiedName with
+            match getState().TryGetDynamicAssemblyId typeInfo.AssemblyInfo.AssemblyQualifiedName with
             | None -> typeInfo
             | Some (assemblyName,_) -> { typeInfo with AssemblyInfo = { typeInfo.AssemblyInfo with Name = assemblyName } }
 
@@ -46,9 +52,13 @@ type VagabondTypeNameConverter(stateF : unit -> DynamicAssemblyCompilerState) =
 /// </summary>
 /// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly version when deserializing.</param>
 /// <param name="wrappedConverter">User-supplied type converter.</param>
-/// <param name="stateF">Slice compiler state reader.</param>
-let mkTypeNameConverter (forceLocalFSharpCore : bool) (wrappedConverter : ITypeNameConverter option) (stateF : unit -> DynamicAssemblyCompilerState) =
-        [|  yield new VagabondTypeNameConverter(stateF) :> ITypeNameConverter
+/// <param name="getState">Slice compiler state reader.</param>
+/// <param name="compileNewSlice">Callback requesting slice compilation for given dynamic assembly by the serializer.</param>
+let mkTypeNameConverter (forceLocalFSharpCore : bool) (wrappedConverter : ITypeNameConverter option) 
+                        (getState : unit -> DynamicAssemblyCompilerState)
+                        (compileNewSlice : (Assembly -> unit) option) =
+
+        [|  yield new VagabondTypeNameConverter(getState, ?compileNewSlice = compileNewSlice) :> ITypeNameConverter
             if forceLocalFSharpCore then yield new LocalFSharpCoreConverter() :> _
             match wrappedConverter with Some w -> yield w | None -> () |]
         |> TypeNameConverter.compose

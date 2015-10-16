@@ -44,12 +44,6 @@ with
     member s.Name = s.DynamicAssembly.GetName()
     /// Returns the latest generated slice for dynamic assembly
     member s.LatestSlice = s.GeneratedSlices.TryFind s.GeneratedSlices.Count
-    /// Attempt to return slice that corresponds to supplied System.Type
-    member i.TryGetSlice(t : Type) =
-        match i.TypeIndex.TryFind t.FullName with
-        | None -> None
-        | Some (InNoSlice | InAllSlices) -> raise <| new VagabondException(sprintf "type '%O' does not correspond to a slice." t)
-        | Some (InSpecificSlice s) -> Some s
 
     /// Returns true if dynamic assembly has new types that need to be compiled to slice
     member s.HasFreshTypes =

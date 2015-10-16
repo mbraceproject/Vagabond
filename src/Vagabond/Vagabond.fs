@@ -238,6 +238,7 @@ type Vagabond =
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
     /// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly when deserializing types. Defaults to false.</param>
+    /// <param name="forceSerializationCompilation">Force on-demand slice compilation when required by serializer. Defaults to true.</param>
     /// <param name="isIgnoredAssembly">User-defined assembly ignore predicate.</param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
@@ -247,7 +248,7 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10 KiB.
     /// </param>
     static member Initialize(?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>, ?typeConverter : ITypeNameConverter, 
-                                ?forceLocalFSharpCore : bool, ?isIgnoredAssembly : Assembly -> bool, ?lookupPolicy : AssemblyLookupPolicy, 
+                                ?forceLocalFSharpCore : bool, ?forceSerializationCompilation : bool, ?isIgnoredAssembly : Assembly -> bool, ?lookupPolicy : AssemblyLookupPolicy, 
                                     ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
 
         let cacheDirectory = 
@@ -262,6 +263,7 @@ type Vagabond =
 
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
         let forceLocalFSharpCore = defaultArg forceLocalFSharpCore false
+        let forceSerializationCompilation = defaultArg forceSerializationCompilation true
         let dataPersistTreshold = defaultArg dataPersistTreshold (10L * 1024L)
 
         let profiles =
@@ -286,6 +288,7 @@ type Vagabond =
                 ForceLocalFSharpCoreAssembly = forceLocalFSharpCore
                 IsIgnoredAssembly = isIgnoredAssembly
                 DataCompressionAlgorithm = dataCompressionAlgorithm
+                ForceSerializationSliceCompilation = forceSerializationCompilation
             }
 
         new VagabondManager(config)
@@ -299,6 +302,7 @@ type Vagabond =
     /// <param name="profiles">Dynamic assembly configuration profiles.</param>
     /// <param name="typeConverter">FsPickler type name converter.</param>
     /// <param name="forceLocalFSharpCore">Force local FSharp.Core assembly when deserializing types. Defaults to false.</param>
+    /// <param name="forceSerializationCompilation">Force on-demand slice compilation when required by serializer. Defaults to true.</param>
     /// <param name="lookupPolicy">Default assembly load policy.</param>
     /// <param name="dataCompressionAlgorithm">Data compression algorithm used by Vagabond. Defaults to GzipStream.</param>
     /// <param name="dataPersistThreshold">
@@ -307,13 +311,13 @@ type Vagabond =
     ///     while all-others will be pickled in-memory. Defaults to 10KiB.
     /// </param>
     static member Initialize(ignoredAssemblies : seq<Assembly>, ?cacheDirectory : string, ?profiles : seq<IDynamicAssemblyProfile>,
-                                ?typeConverter : ITypeNameConverter, ?forceLocalFSharpCore : bool, ?lookupPolicy : AssemblyLookupPolicy,
+                                ?typeConverter : ITypeNameConverter, ?forceLocalFSharpCore : bool, ?forceSerializationCompilation : bool, ?lookupPolicy : AssemblyLookupPolicy,
                                 ?dataCompressionAlgorithm : ICompressionAlgorithm, ?dataPersistTreshold : int64) : VagabondManager =
         let traversedIgnored = traverseDependencies (fun _ -> false) AssemblyLookupPolicy.None None ignoredAssemblies
         let ignoredSet = new System.Collections.Generic.HashSet<_>(traversedIgnored)
         Vagabond.Initialize(?cacheDirectory = cacheDirectory, ?profiles = profiles, isIgnoredAssembly = ignoredSet.Contains, 
-                                ?typeConverter = typeConverter, ?forceLocalFSharpCore = forceLocalFSharpCore, ?lookupPolicy = lookupPolicy, 
-                                ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
+                                ?typeConverter = typeConverter, ?forceLocalFSharpCore = forceLocalFSharpCore, ?forceSerializationCompilation = forceSerializationCompilation,
+                                ?lookupPolicy = lookupPolicy, ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
 
     /// <summary>
     ///     Returns all type instances that appear in given object graph.

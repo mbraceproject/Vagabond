@@ -621,3 +621,19 @@ module FsiTests =
 
             fsi.EvalInteraction "let expected = solve ()"
             fsi.EvalExpression "client.EvaluateThunk (fun () -> solve () = expected)" |> shouldEqual true
+
+    [<Test>]
+    let ``28. Should be able to serialize new types without explicitly requesting slice compilation`` () =
+        let fsi = FsiSession.Value
+
+        fsi.EvalInteraction """
+            type LatestTypeDefinition = { Value : int }
+
+            let roundTrip (n : int) =
+                let v = { Value = n }
+                let p = VagabondConfig.Serializer.Pickle(box v)
+                let v' = client.EvaluateThunk(fun () -> VagabondConfig.Serializer.UnPickle<obj>(p) :?> LatestTypeDefinition)
+                v'.Value
+"""
+
+        fsi.EvalExpression "roundTrip 42" |> shouldEqual 42

@@ -1,6 +1,7 @@
 redirects: on
 source https://www.nuget.org/api/v2
 
+nuget FSharp.Core ~> 4.0
 nuget Nuget.CommandLine
 nuget FSharp.Data ~> 2.2.5
 nuget FsPickler ~> 1.5

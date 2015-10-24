@@ -102,6 +102,8 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     member __.EvaluateThunk (f : unit -> 'T) = __.EvaluateThunkAsync f |> Async.RunSynchronously
     /// Evaluates a function on remote server
     member __.EvaluateDelegate (f : Func<'T>) = __.EvaluateThunk f.Invoke
+    /// Evaluates a function on remote server
+    member __.EvaluateDelegate (f : Action) = __.EvaluateThunk f.Invoke
     /// Kills thunk server if local process
     member __.Kill() = proc |> Option.iter (fun p -> p.Kill())
     /// Register a native assembly for instance

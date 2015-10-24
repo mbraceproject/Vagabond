@@ -58,6 +58,7 @@
     <Compile Include="ThunkServer.fs" />
     <Compile Include="main.fs" />
     <None Include="thunkServer.fsx" />
+    <None Include="thunkServer.csx" />
     <None Include="paket.references" />
     <None Include="App.config" />
   </ItemGroup>

@@ -361,6 +361,15 @@ module internal Utils =
 
             b.ToString ()
 
+
+    /// Assembly classifier active pattern
+    let (|StaticAssembly|DynamicAssembly|InMemoryAssembly|) (assembly : Assembly) =
+        if assembly.IsDynamic then DynamicAssembly
+        else
+            let location = assembly.Location
+            if String.IsNullOrWhiteSpace location then InMemoryAssembly
+            else StaticAssembly location
+
     type AssemblyName with
         /// Is signed assembly
         member an.IsStrongAssembly =

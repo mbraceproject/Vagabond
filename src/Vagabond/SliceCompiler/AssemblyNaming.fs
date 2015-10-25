@@ -39,7 +39,8 @@ type AssemblyIdGenerator private () =
         Array.append bsize hash
 
     static let getManagedAssemblyId(assembly : Assembly) =
-        if assembly.IsDynamic then
+        match assembly with
+        | DynamicAssembly ->
             // generating Assembly id's for dynamic assemblies is convenient,
             // but such instances should not leak to the public API.
             // generate a few random bytes for 'hash'.
@@ -47,8 +48,13 @@ type AssemblyIdGenerator private () =
             let hash = Guid.NewGuid().ToByteArray()
             let extension = "__dynamic__assembly__"
             { FullName = assembly.FullName ; ImageHash = hash ; Extension = extension }
-        else
-            let location = assembly.Location
+
+        | InMemoryAssembly ->
+            let hash = Guid.NewGuid().ToByteArray()
+            let extension = "__inmemory__assembly__"
+            { FullName = assembly.FullName ; ImageHash = hash ; Extension = extension }
+
+        | StaticAssembly location ->
             let hash = computeHash location
             let extension = Path.GetExtension location
             { FullName = assembly.FullName ; ImageHash = hash ; Extension = extension }
@@ -190,28 +196,31 @@ type VagabondAssembly with
 
         { Id = id ; Image = path ; Symbols = None ; Metadata = metadata ; PersistedDataDependencies = [||] }
 
-    /// Defines un unmanaged VagabondAssembly for provided managed assembly
+    /// Defines a VagabondAssembly for provided managed assembly
     static member FromManagedAssembly(assembly : Assembly, isDynamicAssemblySlice : bool, dataDependencies, dataFiles) =
-        let location = assembly.Location
-        let symbols =
-            let file = getSymbolsPath location
-            if File.Exists file then Some file else None
+        match assembly with
+        | StaticAssembly location ->
+            let symbols =
+                let file = getSymbolsPath location
+                if File.Exists file then Some file else None
 
-        let id = assembly.AssemblyId
+            let id = assembly.AssemblyId
 
-        let metadata = 
-            { 
-                IsNativeAssembly = false
-                ProcessorArchitecture = assembly.GetName().ProcessorArchitecture
-                OriginalFileName = Path.GetFileName assembly.Location
-                IsDynamicAssemblySlice = isDynamicAssemblySlice
-                DataDependencies = dataDependencies
+            let metadata = 
+                { 
+                    IsNativeAssembly = false
+                    ProcessorArchitecture = assembly.GetName().ProcessorArchitecture
+                    OriginalFileName = Path.GetFileName assembly.Location
+                    IsDynamicAssemblySlice = isDynamicAssemblySlice
+                    DataDependencies = dataDependencies
+                }
+
+            {
+                Id = id
+                Image = location
+                Symbols = symbols
+                Metadata = metadata
+                PersistedDataDependencies = dataFiles
             }
 
-        {
-            Id = id
-            Image = location
-            Symbols = symbols
-            Metadata = metadata
-            PersistedDataDependencies = dataFiles
-        }
+        | a -> raise <| new VagabondException(sprintf "Internal error: attempting to export non-static assembly %A" a)

@@ -60,9 +60,9 @@
     <Compile Include="SliceCompiler\SliceCompilerTypes.fs" />
     <Compile Include="SliceCompiler\AssemblyNaming.fs" />
     <Compile Include="SliceCompiler\Serialization.fs" />
-    <Compile Include="SliceCompiler\AssemblyParser.fs" />
     <Compile Include="SliceCompiler\DependencyAnalysis.fs" />
-    <Compile Include="SliceCompiler\SliceCompiler.fs" />
+    <Compile Include="SliceCompiler\AssemblyParser.fs" />
+    <Compile Include="SliceCompiler\AssemblyCompiler.fs" />
     <Compile Include="AssemblyManagement\AssemblyCache.fs" />
     <Compile Include="AssemblyManagement\NativeAssemblyManager.fs" />
     <Compile Include="AssemblyManagement\ManagementTypes.fs" />

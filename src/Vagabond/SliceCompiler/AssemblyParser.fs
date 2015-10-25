@@ -84,9 +84,9 @@ let computeSliceData (state : DynamicAssemblyState) =
     |> getParseInfos None Map.empty
     
 /// used by the assembly parser to remap references to corresponding slices
-let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
-    match state.DynamicAssemblies.TryFind t.Assembly.FullName with
-    | None -> None
+let tryRemapReferencedType (state : AssemblyCompilerState) (t : Type) =
+    let akey = t.Assembly.FullName
+    match state.DynamicAssemblies.TryFind akey with
     | Some dynInfo ->
         match dynInfo.TypeIndex.TryFind t.FullName with
         | None | Some InAllSlices -> None
@@ -94,10 +94,36 @@ let tryRemapReferencedType (state : DynamicAssemblyCompilerState) (t : Type) =
             raise <| new VagabondException(sprintf "could not compile slice; referenced excluded type '%O' in assembly '%O'." t dynInfo.Name)
         | Some (InSpecificSlice slice) -> 
             Some <| slice.Assembly.GetType(t.FullName, true)
-        
 
-/// the main assembly parsing method
-let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly : Assembly) =
+    | None ->
+        match state.InMemoryAssemblies.TryFind akey with
+        | Some imemInfo -> Some <| imemInfo.CompiledAssembly.GetType(t.FullName, true)
+        | None -> None
+
+/// parse in-memory assembly
+let parseInMemoryAssembly (state : AssemblyCompilerState) (assembly : Assembly) =
+
+    let remap = memoize (tryRemapReferencedType state)
+    
+    // configuration to be passed to the parser
+
+    let parseConfiguration =
+        {
+            new IAssemblyParserConfig with
+                member __.EraseMember (_ : MemberInfo) = false
+                member __.GetTypeParseAction (_ : Type) = TypeParseAction.ParseAll
+                member __.MakePublic _ = false
+                member __.RemapReference(t : Type, outType : byref<Type>) =
+                    match remap t with
+                    | None -> false
+                    | Some t' -> outType <- t'; true
+        }
+
+    AssemblyParser.Parse(assembly, parseConfiguration)
+
+
+/// parse dynamic assembly
+let parseDynamicAssemblySlice (state : AssemblyCompilerState) (assembly : Assembly) =
 
     // resolve dynamic assembly state
     let assemblyState =
@@ -153,10 +179,4 @@ let parseDynamicAssemblySlice (state : DynamicAssemblyCompilerState) (assembly :
 
     let sliceDefinition = AssemblyParser.Parse(assembly, parseConfiguration)
 
-    let dependencies = 
-        sliceDefinition.MainModule.AssemblyReferences
-        |> Seq.map (fun r -> r.FullName)
-        |> Seq.distinct
-        |> Seq.toList
-
-    typeInfo, assemblyState, dependencies, sliceDefinition
+    typeInfo, assemblyState, sliceDefinition

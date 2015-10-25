@@ -24,7 +24,7 @@ type VagabondMessage =
     | LoadAssembly of AssemblyLookupPolicy * VagabondAssembly * ReplyChannel<AssemblyLoadInfo>
     | TryGetVagabondAssembly of AssemblyLookupPolicy * AssemblyId * ReplyChannel<VagabondAssembly option>
     | GetAssemblyLoadInfo of AssemblyLookupPolicy * AssemblyId * ReplyChannel<AssemblyLoadInfo>
-    | CompileDynamicAssemblySlice of Assembly [] * ReplyChannel<DynamicAssemblySlice []>
+    | CompileAssemblies of Assembly [] * ReplyChannel<Assembly []>
     | RegisterNativeDependency of VagabondAssembly * ReplyChannel<unit>
 
 /// A mailboxprocessor wrapper for handling vagabond state
@@ -41,7 +41,7 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
 
     let serializationCompilerCallback =
         if config.ForceSerializationSliceCompilation then
-            Some(fun a -> ignore <| actor.PostAndReply(fun ch -> CompileDynamicAssemblySlice([|a|], ch)))
+            Some(fun a -> ignore <| actor.PostAndReply(fun ch -> CompileAssemblies([|a|], ch)))
         else
             None
 
@@ -118,9 +118,9 @@ type VagabondController (uuid : Guid, config : VagabondConfiguration) =
                 rc.ReplyWithError e
                 return state
 
-        | CompileDynamicAssemblySlice (assemblies, rc) ->
+        | CompileAssemblies (assemblies, rc) ->
             try
-                let compState, result = compileDynamicAssemblySlices config.IsIgnoredAssembly config.AssemblyLookupPolicy state.CompilerState (Array.toList assemblies)
+                let compState, result = compileAssemblies state.CompilerState (Array.toList assemblies)
 
                 // note: it is essential that the compiler state ref cell is updated *before*
                 // a reply is given; this is to eliminate a certain class of race conditions.

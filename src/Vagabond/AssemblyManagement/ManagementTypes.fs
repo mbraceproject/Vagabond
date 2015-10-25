@@ -39,7 +39,7 @@ type VagabondState =
         /// User-supplied vagabond configuration object
         Configuration : VagabondConfiguration
         /// Dynamic assembly compiler state
-        CompilerState : DynamicAssemblyCompilerState
+        CompilerState : AssemblyCompilerState
         /// Vagabond Assembly load state
         AssemblyLoadState : Map<AssemblyId, AssemblyLoadState>
         /// Vagabond Serializer instance

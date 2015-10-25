@@ -10,4 +10,4 @@ var client = ThunkClient.InitLocal();
 
 client.EvaluateDelegate(() => Console.WriteLine("C# Interactive, meet Vagabond!"));
 
-Action f = () => Console.WriteLine("Hello");
+client.EvaluateDelegate(() => System.Diagnostics.Process.GetCurrentProcess().Id);

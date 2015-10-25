@@ -5,14 +5,8 @@ open System.Reflection
 
 // internal compiler data structures
 
-/// Dynamic type metadata w.r.t. its containing static slice
-type DynamicTypeInfo =
-    | InNoSlice
-    | InAllSlices
-    | InSpecificSlice of DynamicAssemblySlice
-
 /// Contains information on compiled dynamic assembly slice
-and DynamicAssemblySlice =
+type DynamicAssemblySlice =
     {
         /// Qualified name of original dynamic assembly
         DynamicAssemblyQualifiedName : string
@@ -27,8 +21,15 @@ with
     /// Returns true if slice requires static initialization of fields
     member slice.RequiresStaticInitialization = slice.StaticFields.Length > 0
 
+
+/// Dynamic type metadata w.r.t. its containing static slice
+type DynamicTypeInfo =
+    | InNoSlice
+    | InAllSlices
+    | InSpecificSlice of DynamicAssemblySlice
+
 /// Dynamic assembly compilation state
-and DynamicAssemblyState =
+type DynamicAssemblyState =
     {
         /// Original dynamic assembly
         DynamicAssembly : Assembly
@@ -73,8 +74,15 @@ with
             TypeIndex = Map.empty
         }
 
-/// Global dynamic assembly compiler state
-and DynamicAssemblyCompilerState =
+/// Represents the state of an in-memory assembly that has been compiled to disk
+type CompiledInMemoryAssembly =
+    {
+        Origin : Assembly
+        CompiledAssembly : Assembly
+    }
+
+/// Global assembly compiler state
+type AssemblyCompilerState =
     {
         /// Unique compiler identifier
         CompilerId : Guid
@@ -84,6 +92,8 @@ and DynamicAssemblyCompilerState =
         OutputDirectory : string
         /// List of currently compiled dynamic assemblies, indexed by qualified name
         DynamicAssemblies : Map<string, DynamicAssemblyState>
+        /// List of currently compiled in-memory assemblies, indexed by qualified name
+        InMemoryAssemblies : Map<string, CompiledInMemoryAssembly>
         /// Parses a slice assembly qualified name, returning the dynamic assembly qualified name and slice id.
         TryGetDynamicAssemblyId : string -> (string * int) option
         /// Creates a slice assembly qualified name out of a dynamic assembly qualified name and slice id.

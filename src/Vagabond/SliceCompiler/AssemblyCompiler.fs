@@ -13,7 +13,6 @@ open Nessos.Vagabond.Utils
 open Nessos.Vagabond.SliceCompilerTypes
 open Nessos.Vagabond.AssemblyNaming
 open Nessos.Vagabond.AssemblyParser
-open Nessos.Vagabond.DependencyAnalysis
 
 /// creates a path for provided assembly name so that
 /// invalid characters are stripped and overwrites are avoided.
@@ -38,17 +37,38 @@ let initCompilerState (uuid : Guid) (profiles : IDynamicAssemblyProfile []) (out
         OutputDirectory = outDirectory
 
         DynamicAssemblies = Map.empty
+        InMemoryAssemblies = Map.empty
 
         TryGetDynamicAssemblyId = AssemblySliceName.tryParseLocalDynamicAssemblySlice uuid
         CreateAssemblySliceName = AssemblySliceName.mkSliceName uuid
     }
 
+/// compiles an in-memory assembly to disk
+let compileInMemoryAssembly (state : AssemblyCompilerState) (origin : Assembly) =
+    let parsedAssembly = parseInMemoryAssembly state origin
+    let name = origin.GetName().Name
+    let target = getAssemblyPath state.OutputDirectory name
+    // write parsed assebmly to disk
+    do parsedAssembly.Write(target)
+
+    // load new slice to System.Reflection
+    let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+
+    let assemblyInfo = 
+        { 
+            Origin = origin
+            CompiledAssembly = assembly
+        }
+
+    let inMemoryAssemblyIndex = state.InMemoryAssemblies.Add(origin.FullName, assemblyInfo)
+    let state = { state with InMemoryAssemblies = inMemoryAssemblyIndex }
+    assemblyInfo, state
+
 
 /// compiles a slice of given dynamic assembly snapshot
-let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
-                                (assemblyState : DynamicAssemblyState)
-                                (typeData : Map<string, TypeParseInfo>)
-                                (slice : AssemblyDefinition) =
+let compileDynamicAssemblySlice (state : AssemblyCompilerState) (dynamicAssembly : Assembly) =
+
+    let typeData, assemblyState, parsedSlice = parseDynamicAssemblySlice state dynamicAssembly
 
     // prepare slice info
     let sliceId = assemblyState.GeneratedSlices.Count + 1
@@ -56,8 +76,8 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
     let target = getAssemblyPath state.OutputDirectory name
 
     // update assembly name & write to disk
-    do slice.Name.Name <- name
-    do slice.Write(target)
+    do parsedSlice.Name.Name <- name
+    do parsedSlice.Write(target)
 
     // load new slice to System.Reflection
     let assembly = Assembly.ReflectionOnlyLoadFrom(target)
@@ -96,26 +116,29 @@ let compileDynamicAssemblySlice (state : DynamicAssemblyCompilerState)
 
     sliceInfo, state
 
+/// compiles a single assembly
+let compileAssembly (state : AssemblyCompilerState) (assembly : Assembly) : Assembly * AssemblyCompilerState =
+    match assembly with
+    | StaticAssembly _ -> raise <| new VagabondException(sprintf "internal error: attempting to compile static assembly %A" assembly)
+    | DynamicAssembly -> 
+        let result, state = compileDynamicAssemblySlice state assembly
+        result.Assembly, state
+    | InMemoryAssembly ->
+        let result, state = compileInMemoryAssembly state assembly
+        result.CompiledAssembly, state
 
 /// compiles a collection of assemblies
-let compileDynamicAssemblySlices (ignoreF:Assembly -> bool) (policy:AssemblyLookupPolicy) (state : DynamicAssemblyCompilerState) (assemblies : Assembly list) =
-    try
-        // resolve dynamic assembly dependency graph
-        let parsedDynamicAssemblies = parseDynamicAssemblies ignoreF policy state assemblies
+let compileAssemblies (state : AssemblyCompilerState) (assemblies : Assembly list) =
+    // exceptions are handled explicitly so that returned state reflects the last successful compilation
+    let aux ((state : AssemblyCompilerState, result : Exn<Assembly list>) as s) (assembly : Assembly) =
+        match result with
+        | Success compiled ->
+            try
+                let result, state = compileAssembly state assembly
+                state, Success(result :: compiled)
+            with e ->
+                state, Error e
 
-        // exceptions are handled explicitly so that returned state reflects the last successful compilation
-        let compileSlice (state : DynamicAssemblyCompilerState, accumulator : Exn<DynamicAssemblySlice list>)
-                            (typeData, dynAsmb, _, assemblyDef) =
+        | Error _ -> s
 
-            match accumulator with
-            | Success slices ->
-                try
-                    let slice, state = compileDynamicAssemblySlice state dynAsmb typeData assemblyDef
-                    state, Success (slice :: slices)
-                with e ->
-                    state, Error e
-            | Error _ -> state, accumulator
-
-        List.fold compileSlice (state, Success []) parsedDynamicAssemblies
-
-    with e -> state, Error e
+    List.fold aux (state, Success []) assemblies

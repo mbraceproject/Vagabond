@@ -24,13 +24,14 @@ type VagabondManager internal (config : VagabondConfiguration) =
     do controller.Start()
 
     static let ensureDynamic (a : Assembly) = 
-        if a.IsDynamic then () 
-        else invalidArg a.FullName "Vagabond: not a dynamic assembly"
+        match a with
+        | StaticAssembly _ -> invalidArg a.FullName "Vagabond: not a dynamic assembly"
+        | _ -> ()
 
     static let toArray (ts : seq<'T>) = ts |> Seq.distinct |> Seq.toArray
 
     let compile (assemblies : Assembly []) = 
-        controller.PostAndReply(fun ch -> CompileDynamicAssemblySlice(assemblies, ch))
+        controller.PostAndReply(fun ch -> CompileAssemblies(assemblies, ch))
 
     /// Unique identifier for the slice compiler
     member __.UUId = controller.CompilerState.CompilerId
@@ -90,8 +91,8 @@ type VagabondManager internal (config : VagabondConfiguration) =
     /// <param name="assembly">Dynamic assembly to be compiled.</param>
     member __.CompileDynamicAssemblySlice (assembly : Assembly) : VagabondAssembly [] =
         do ensureDynamic assembly
-        let slices = compile [|assembly|]
-        __.GetVagabondAssemblies(slices |> Array.map (fun s -> s.Assembly.AssemblyId))
+        let compiled = compile [|assembly|]
+        __.GetVagabondAssemblies(compiled |> Array.map (fun a -> a.AssemblyId))
 
     /// <summary>
     ///     Returns a collection of all assemblies that the given object depends on.
@@ -104,10 +105,10 @@ type VagabondManager internal (config : VagabondConfiguration) =
         let permitCompilation = defaultArg permitCompilation true
         let includeNativeDependencies = defaultArg includeNativeDependencies false
 
-        let dependencies = computeDependencies graph
+        let dependencies = gatherObjectDependencies config.IsIgnoredAssembly config.AssemblyLookupPolicy (Some controller.CompilerState) graph
 
         if permitCompilation then
-            let assemblies = getDynamicDependenciesRequiringCompilation controller.CompilerState dependencies
+            let assemblies = getAssemblyDependenciesRequiringCompilation controller.CompilerState dependencies
             let _ = compile assemblies in ()
 
         let assemblies = remapDependencies config.IsIgnoredAssembly config.AssemblyLookupPolicy controller.CompilerState dependencies
@@ -320,12 +321,6 @@ type Vagabond =
                                 ?lookupPolicy = lookupPolicy, ?dataCompressionAlgorithm = dataCompressionAlgorithm, ?dataPersistTreshold = dataPersistTreshold)
 
     /// <summary>
-    ///     Returns all type instances that appear in given object graph.
-    /// </summary>
-    /// <param name="obj">object graph to be traversed</param>
-    static member ComputeTypeDependencies(obj:obj) : Type [] = gatherObjectDependencies obj |> fst
-
-    /// <summary>
     ///     Resolves all assembly dependencies of given object graph.
     /// </summary>
     /// <param name="obj">object graph to be traversed</param>
@@ -334,10 +329,9 @@ type Vagabond =
     static member ComputeAssemblyDependencies(obj:obj, ?isIgnoredAssembly, ?policy:AssemblyLookupPolicy) : Assembly [] =
         let policy = defaultArg policy AssemblyLookupPolicy.RequireLocalDependenciesLoadedInAppDomain
         let isIgnoredAssembly = defaultArg isIgnoredAssembly (fun _ -> false)
-        computeDependencies obj 
+        gatherObjectDependencies isIgnoredAssembly policy None obj 
         |> Seq.map fst
-        |> traverseDependencies isIgnoredAssembly policy None
-        |> List.toArray
+        |> Seq.toArray
 
     /// <summary>
     ///     Resolves all assembly dependencies of given assembly.

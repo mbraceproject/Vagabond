@@ -18,7 +18,7 @@ open Nessos.Vagabond.SliceCompilerTypes
 // An ITypeNameConverter implementation provides bridging when serializing/deserializing values
 // on the exporting side.
 
-type VagabondTypeNameConverter(getState : unit -> DynamicAssemblyCompilerState, ?compileNewSlice : Assembly -> unit) =
+type VagabondTypeNameConverter(getState : unit -> AssemblyCompilerState, ?compileNewSlice : Assembly -> unit) =
 
     interface ITypeNameConverter with
         // convert assembly qualified name dynamic -> slice
@@ -55,7 +55,7 @@ type VagabondTypeNameConverter(getState : unit -> DynamicAssemblyCompilerState, 
 /// <param name="getState">Slice compiler state reader.</param>
 /// <param name="compileNewSlice">Callback requesting slice compilation for given dynamic assembly by the serializer.</param>
 let mkTypeNameConverter (forceLocalFSharpCore : bool) (wrappedConverter : ITypeNameConverter option) 
-                        (getState : unit -> DynamicAssemblyCompilerState)
+                        (getState : unit -> AssemblyCompilerState)
                         (compileNewSlice : (Assembly -> unit) option) =
 
         [|  yield new VagabondTypeNameConverter(getState, ?compileNewSlice = compileNewSlice) :> ITypeNameConverter

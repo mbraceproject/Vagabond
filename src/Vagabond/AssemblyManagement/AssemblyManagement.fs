@@ -33,6 +33,14 @@ let tryExportAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (i
 
     | None ->
 
+    // check if slice of compiled in-memory assembly
+    match state.CompilerState.InMemoryAssemblies.TryFind id.FullName with
+    | Some info ->
+        let va = VagabondAssembly.FromManagedAssembly(info.CompiledAssembly, false, [||], [||])
+        { state with AssemblyLoadState = state.AssemblyLoadState.Add(va.Id, LoadedAssembly va) }, Some va
+
+    | None ->
+
     match state.AssemblyLoadState.TryFind id with
     | Some (ExportedSlice _) -> invalidOp <| sprintf "internal error: invalid vagabond state for assembly '%s'." id.FullName
     | Some (LoadedAssembly va | ImportedAssembly va | ImportedSlice va) -> state, Some va

@@ -18,7 +18,8 @@ open Fake.AssemblyInfoFile
 
 let project = "Vagabond"
 
-let gitHome = "https://github.com/nessos"
+let gitOwner = "nessos"
+let gitHome = "https://github.com/" + gitOwner
 let gitName = "Vagabond"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
 
@@ -123,6 +124,47 @@ Target "ReleaseDocs" (fun _ ->
     Branches.push tempDocsDir
 )
 
+// Github Releases
+
+#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+open Octokit
+
+Target "ReleaseGitHub" (fun _ ->
+    let remote =
+        Git.CommandHelper.getGitResult "" "remote -v"
+        |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
+        |> Seq.tryFind (fun (s: string) -> s.Contains(gitOwner + "/" + gitName))
+        |> function None -> gitHome + "/" + gitName | Some (s: string) -> s.Split().[0]
+
+    //StageAll ""
+    Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
+    Branches.pushBranch "" remote (Information.getBranchName "")
+
+    Branches.tag "" release.NugetVersion
+    Branches.pushTag "" remote release.NugetVersion
+
+    let client =
+        match Environment.GetEnvironmentVariable "OctokitToken" with
+        | null -> 
+            let user =
+                match getBuildParam "github-user" with
+                | s when not (String.IsNullOrWhiteSpace s) -> s
+                | _ -> getUserInput "Username: "
+            let pw =
+                match getBuildParam "github-pw" with
+                | s when not (String.IsNullOrWhiteSpace s) -> s
+                | _ -> getUserPassword "Password: "
+
+            createClient user pw
+        | token -> createClientWithToken token
+
+    // release on github
+    client
+    |> createDraft gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes
+    |> releaseDraft
+    |> Async.RunSynchronously
+)
+
 
 Target "Release" DoNothing
 
@@ -146,6 +188,7 @@ Target "Default" DoNothing
   ==> "GenerateDocs"
   ==> "ReleaseDocs"
   ==> "NuGetPush"
+  ==> "ReleaseGitHub"
   ==> "Release"
 
 RunTargetOrDefault "Default"

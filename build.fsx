@@ -93,14 +93,14 @@ FinalTarget "CloseTestRunner" (fun _ ->
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
-Target "NuGet" (fun _ ->
-    Paket.Pack(fun config ->
-        { config with 
+Target "NuGet" (fun _ ->    
+    Paket.Pack (fun p -> 
+        { p with 
+            ToolPath = ".paket/paket.exe" 
+            OutputPath = "bin/"
             Version = release.NugetVersion
-            ReleaseNotes = String.concat "\n" release.Notes
-            OutputPath = "bin"
-            WorkingDir = "bin"
-        }))
+            ReleaseNotes = toLines release.Notes })
+)
 
 Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = "bin/" }))
 
@@ -184,9 +184,9 @@ Target "Default" DoNothing
 
 "Build"
   ==> "PrepareRelease"
-  ==> "NuGet"
   ==> "GenerateDocs"
   ==> "ReleaseDocs"
+  ==> "NuGet"
   ==> "NuGetPush"
   ==> "ReleaseGitHub"
   ==> "Release"

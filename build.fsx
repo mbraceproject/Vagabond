@@ -99,7 +99,7 @@ Target "NuGet" (fun _ ->
             Version = release.NugetVersion
             ReleaseNotes = String.concat "\n" release.Notes
             OutputPath = "bin"
-            WorkingDir = "nuget"
+            WorkingDir = "bin"
         }))
 
 Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = "bin/" }))

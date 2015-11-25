@@ -12,7 +12,7 @@ NUGET
       FSharpVSPowerTools.Core (2.1.0)
     FSharpVSPowerTools.Core (2.1.0)
       FSharp.Compiler.Service (>= 1.4.0.6)
-    FsPickler (1.6.0)
+    FsPickler (1.6.1)
     LinqOptimizer.FSharp (0.6.3)
     MathNet.Numerics (3.7.1)
       TaskParallelLibrary (>= 1.0.2856) - framework: net35
@@ -30,9 +30,7 @@ NUGET
     Mono.Cecil (0.9.6.1)
     NuGet.CommandLine (2.8.6)
     NUnit (2.6.4)
-    NUnit.Console (3.0.0)
-    NUnit.Runners (3.0.0)
-      NUnit.Console (3.0.0)
+    NUnit.Runners (2.6.4)
     Octokit (0.16.0)
       Microsoft.Net.Http
     TaskParallelLibrary (1.0.2856) - framework: net35

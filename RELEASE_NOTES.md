@@ -1,3 +1,4 @@
+* 0.12.1 - C# Interactive support improvements.
 * 0.12.0 - Add support for InMemory assemblies. Fix C# Interactive support.
 * 0.11.0 - Support indirect dynamic assembly slice compilation when required by FsPickler.
 * 0.10.0 - Add support for constrained FSharp.Core deserializations.

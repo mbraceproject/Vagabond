@@ -20,6 +20,7 @@ type internal ServerMsg =
     | LoadAssemblies of ExportableAssembly [] * IReplyChannel<AssemblyLoadInfo []>
     | EvaluteThunk of Type * (unit -> obj) * IReplyChannel<Choice<obj, exn>>
 
+[<AutoSerializable(false)>]
 type ThunkServer private () =
         
     let rec serverLoop (self : Actor<ServerMsg>) = async {
@@ -62,6 +63,7 @@ type ThunkServer private () =
     static member Start () = new ThunkServer()
 
 /// Client object for interacting with thunk server
+[<AutoSerializable(false)>]
 type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     static let mutable exe = None
 

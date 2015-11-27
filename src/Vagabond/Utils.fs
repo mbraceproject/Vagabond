@@ -309,8 +309,8 @@ module internal Utils =
     /// Strips invalid character from a candidate filename
     let stripInvalidFileChars =
         let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape
-        let regex = new Regex(sprintf "[%s]" invalidChars, RegexOptions.Compiled)
-        fun (fileName : string) -> regex.Replace(fileName, "")
+        let regex = new Regex(sprintf "[%s]+" invalidChars, RegexOptions.Compiled)
+        fun (fileName : string) -> regex.Replace(fileName, "_")
 
     /// gets symbols file path for given cached assembly
     let getSymbolsPath path = 

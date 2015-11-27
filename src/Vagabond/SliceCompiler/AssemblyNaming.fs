@@ -154,7 +154,7 @@ type AssemblyId with
 
 type DataDependency private () =
     // strips A.B.C. namespace prefixes in type names
-    static let stripNamespaceRegex = new Regex(@"([^.,\[]+\.)+", RegexOptions.Compiled)
+    static let stripNamespaceRegex = new Regex(@"([^\.,\[]+\.)+", RegexOptions.Compiled)
     static let stripNamespacesFromTypeName (typeName : string) = stripNamespaceRegex.Replace(typeName, "")
 
     static let truncate (n : int) (txt : string) =
@@ -184,6 +184,8 @@ type DataDependency private () =
 
         | None ->
             sprintf "%s-%s-%s" typeName lengthEnc hashEnc
+        // strip invalid characters; fix scriptcs bug
+        |> stripInvalidFileChars
 
 type VagabondAssembly with
     /// Defines an unmanaged VagabondAsembly for provided file

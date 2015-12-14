@@ -1,3 +1,4 @@
+* 0.12.4 - Update FsPickler dependency.
 * 0.12.3 - Update FsPickler dependency.
 * 0.12.2 - Fix hash path sanitization issue.
 * 0.12.1 - C# Interactive support improvements.

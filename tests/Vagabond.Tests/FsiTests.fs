@@ -458,6 +458,27 @@ module FsiTests =
         fsi.EvalExpression "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> shouldEqual 42
 
     [<Test>]
+    let ``17b. Interfaces inheriting interfaces`` () =
+        let fsi = FsiSession.Value
+
+        let code = """
+            type IFoo =
+                abstract Foo : int
+
+            type IBar =
+                inherit IFoo
+                abstract Bar : int
+
+            let mkBar () = 
+                { new IBar with
+                    member __.Foo = 15
+                    member __.Bar = 27 }
+        """
+
+        fsi.EvalInteraction code
+        fsi.EvalExpression "client.EvaluateThunk <| fun () -> mkBar().Foo + mkBar().Bar" |> shouldEqual 42
+
+    [<Test>]
     let ``18. Binary Trees`` () =
         let code = """
             type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>

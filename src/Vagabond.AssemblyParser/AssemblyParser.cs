@@ -216,7 +216,7 @@ namespace Nessos.Vagabond.AssemblyParser
                 return;
 
             var type = method.DeclaringType;
-            if (type == null)
+            if (type == null || type.IsInterface)
                 return;
 
             var overrides = type

@@ -1,4 +1,4 @@
-﻿type project
+type project
 id Vagabond
 description
     A library that facilitates the distribution of code in the .NET framework.
@@ -11,7 +11,12 @@ summary
 licenseurl https://github.com/nessos/Vagabond/blob/master/License.md
 projecturl https://github.com/nessos/Vagabond
 iconurl https://avatars1.githubusercontent.com/u/5538081
+include-pdbs true
 tags
     F#, fsharp, dynamic assemblies, code, distribution, cecil
 references
     Vagabond.dll
+files
+    ../../bin/Vagabond.AssemblyParser.dll ==> lib/net45
+    ../../bin/Vagabond.AssemblyParser.pdb ==> lib/net45
+    ../../bin/Vagabond.AssemblyParser.xml ==> lib/net45

@@ -34,14 +34,11 @@
         <div class="span9" id="main">
           
 <h1><a name="API-Overview" class="anchor" href="#API-Overview">API Overview</a></h1>
-
 <p>The included implementation of
-<a href="https://github.com/nessos/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx">ThunkServer</a> 
+<a href="https://github.com/nessos/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx">ThunkServer</a>
 is a straightforward distributed implementation that makes use of Vagabond.
 What follows is a brief overview of the basic API.</p>
-
 <p>A Vagabond environment can be initialized as follows:</p>
-
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 <span class="l">2: </span>
 <span class="l">3: </span>
@@ -52,9 +49,7 @@ What follows is a brief overview of the basic API.</p>
 </code></pre></td>
 </tr>
 </table>
-
 <p>Given an arbitrary object, dependencies are resolved like so:</p>
-
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 <span class="l">2: </span>
 <span class="l">3: </span>
@@ -65,34 +60,26 @@ What follows is a brief overview of the basic API.</p>
 </code></pre></td>
 </tr>
 </table>
-
 <p>An assembly can be exported by generating Vagabond metadata</p>
-
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs5', 30)" onmouseover="showTip(event, 'fs5', 30)" class="i">vagabondAssembly</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs5', 31)" onmouseover="showTip(event, 'fs5', 31)" class="i">vmanager</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs10', 32)" onmouseover="showTip(event, 'fs10', 32)" class="f">GetVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs5', 33)" onmouseover="showTip(event, 'fs5', 33)" class="i">assembly</span>
 </code></pre></td>
 </tr>
 </table>
-
 <p>An assembly package contains necessary data to load the specified assembly in a remote process.</p>
-
 <p>Assemblies can be loaded in a remote process like so:</p>
-
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 </pre></td>
 <td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs5', 34)" onmouseover="showTip(event, 'fs5', 34)" class="i">response</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs5', 35)" onmouseover="showTip(event, 'fs5', 35)" class="i">vmanager</span><span class="o">.</span><span onmouseout="hideTip(event, 'fs11', 36)" onmouseover="showTip(event, 'fs11', 36)" class="f">LoadVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs5', 37)" onmouseover="showTip(event, 'fs5', 37)" class="i">vagabondAssembly</span>
 </code></pre></td>
 </tr>
 </table>
-
 <h2><a name="Communication" class="anchor" href="#Communication">Communication</a></h2>
-
-<p>Once all required dependencies have been loaded, communication can be 
+<p>Once all required dependencies have been loaded, communication can be
 established by using the <code>.Serializer</code> property found in both the server
 and client instances. These give an <code>FsPickler</code> serializer instance that is
 capable of serializing and deserializing objects depending on dynamic assemblies.</p>
-
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 <span class="l">2: </span>
 <span class="l">3: </span>

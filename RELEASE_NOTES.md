@@ -1,3 +1,4 @@
+* 0.12.10 - Fix cecil handling of higher-rank arrays.
 * 0.12.9 - Fix packaging issue.
 * 0.12.8 - Update FsPickler dependency.
 * 0.12.7 - Fix packaging issue.

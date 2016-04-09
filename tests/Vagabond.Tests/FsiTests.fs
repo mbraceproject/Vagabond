@@ -658,3 +658,15 @@ module FsiTests =
 """
 
         fsi.EvalExpression "roundTrip 42" |> shouldEqual 42
+
+
+    [<Test>]
+    let ``29. Should correctly evaluate Array2D.init calls`` () =
+        let fsi = FsiSession.Value
+
+        fsi.EvalInteraction """
+            let array = client.EvaluateThunk(fun () -> Array2D.init 5 5 (fun _ _ -> 0.))
+        """
+
+        fsi.EvalExpression "arry.GetLength(0)" |> shouldEqual 5
+        fsi.EvalExpression "arry.GetLength(1)" |> shouldEqual 5

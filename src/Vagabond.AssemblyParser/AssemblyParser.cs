@@ -758,6 +758,18 @@ namespace Nessos.Vagabond.AssemblyParser
             type.GetGenericArguments().Zip(instance.GenericArguments, ((ga, gar) => MapReference(ga, gar))).ToList();
         }
 
+        // use correct dimension signature when referencing higher-rank arrays
+        private void MapReference(ArrayType arrayType)
+        {
+            if (arrayType != null && arrayType.Rank > 1)
+            {
+                var rk = arrayType.Rank;
+                arrayType.Dimensions.Clear();
+                for (int i = 0; i < rk; i++)
+                    arrayType.Dimensions.Add(new ArrayDimension(0, null));
+            }
+        }
+
         private TypeReference MapReference(Type t, TypeReference type)
         {
             if (type.IsGenericParameter)
@@ -766,6 +778,8 @@ namespace Nessos.Vagabond.AssemblyParser
             if (type.IsPointer || type.IsByReference || type.IsPinned || type.IsArray)
             {
                 MapReference(t.GetElementType(), ((TypeSpecification)type).ElementType);
+                MapReference(type as ArrayType);
+
                 return type;
             }
 

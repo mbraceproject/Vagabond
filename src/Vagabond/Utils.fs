@@ -20,6 +20,11 @@ module internal Utils =
 
     let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
+    let runsOnWindows = lazy(
+        match Environment.OSVersion.Platform with
+        | PlatformID.Unix | PlatformID.MacOSX -> false
+        | _ -> true)
+
     let private remoteStackTraceField : FieldInfo =
         let bfs = BindingFlags.NonPublic ||| BindingFlags.Instance
         match typeof<System.Exception>.GetField("remote_stack_trace", bfs) with
@@ -308,8 +313,20 @@ module internal Utils =
 
     /// Strips invalid character from a candidate filename
     let stripInvalidFileChars =
-        let invalidChars = new String(Path.GetInvalidFileNameChars()) |> Regex.Escape
-        let regex = new Regex(sprintf "[%s]+" invalidChars, RegexOptions.Compiled)
+        // this is just the hardcoded output of System.IO.Path.GetInvalidFileNameChars()
+        // when run on windows. Mono/Unix implementations use a smaller subset of chars
+        // which can result in non-deterministic path generations in heterogeneous systems
+        // c.f. http://stackoverflow.com/q/2178173 
+        // and  https://github.com/mono/mono/blob/059d656a9b851e90585e3a9f70a7c02e4cc0354e/mcs/class/corlib/System.IO/Path.cs#L549
+        let invalidChars = 
+            [| '"'; '<'; '>'; '|'; '\000'; '\001'; '\002'; '\003'; '\004'; '\005'; '\006';
+               '\007'; '\b'; '\009'; '\010'; '\011'; '\012'; '\013'; '\014'; '\015';
+               '\016'; '\017'; '\018'; '\019'; '\020'; '\021'; '\022'; '\023'; '\024';
+               '\025'; '\026'; '\027'; '\028'; '\029'; '\030'; '\031'; ':'; '*'; '?';
+               '\\'; '/' |]
+
+        let escaped = new String(invalidChars) |> Regex.Escape
+        let regex = new Regex(sprintf "[%s]+" escaped, RegexOptions.Compiled)
         fun (fileName : string) -> regex.Replace(fileName, "_")
 
     /// gets symbols file path for given cached assembly

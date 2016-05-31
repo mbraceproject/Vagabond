@@ -165,7 +165,7 @@ Target "ReleaseGithub" (fun _ ->
     |> Async.RunSynchronously
 )
 
-
+Target "Debug" DoNothing
 Target "Release" DoNothing
 
 // --------------------------------------------------------------------------------------

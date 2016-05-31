@@ -2,18 +2,22 @@ redirects: on
 source https://www.nuget.org/api/v2
 
 nuget FSharp.Core ~> 4.0
-nuget Nuget.CommandLine
 nuget FSharp.Data ~> 2.2.5
-nuget FsPickler ~> 2.1
+nuget FsPickler ~> 2.1.0
 nuget LinqOptimizer.FSharp
 nuget Mono.Cecil ~> 0.9.6.1
 nuget Thespian ~> 0.1.11-alpha
-nuget FAKE
-nuget FSharp.Formatting prerelease
 nuget FSharp.Compiler.Service
 nuget NUnit ~> 2.6
 nuget NUnit.Runners ~> 2.6
 nuget MathNet.Numerics ~> 3.7.0
 nuget MathNet.Numerics.FSharp
 nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
-github fsharp/FAKE modules/Octokit/Octokit.fsx
+
+group Build
+  source https://www.nuget.org/api/v2
+
+  nuget FAKE
+  nuget FSharp.Formatting
+  nuget Nuget.CommandLine
+  github fsharp/FAKE modules/Octokit/Octokit.fsx

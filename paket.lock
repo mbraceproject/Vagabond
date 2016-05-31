@@ -2,16 +2,10 @@ REDIRECTS: ON
 NUGET
   remote: https://www.nuget.org/api/v2
   specs:
-    FAKE (4.25.4)
-    FSharp.Compiler.Service (2.0.0.6)
+    FSharp.Compiler.Service (3.0)
     FSharp.Core (4.0.0.1)
     FSharp.Data (2.2.5)
       Zlib.Portable (>= 1.10) - framework: portable-net40+sl50+wp80+win80
-    FSharp.Formatting (2.14.2)
-      FSharp.Compiler.Service (2.0.0.6)
-      FSharpVSPowerTools.Core (>= 2.3 < 2.4)
-    FSharpVSPowerTools.Core (2.3)
-      FSharp.Compiler.Service (>= 2.0.0.3)
     FsPickler (2.1)
     LinqOptimizer.FSharp (0.6.3)
     MathNet.Numerics (3.7.1)
@@ -21,24 +15,36 @@ NUGET
       MathNet.Numerics (3.7.1)
     MathNet.Numerics.MKL.Win-x64 (1.8)
       MathNet.Numerics (>= 2.4)
+    Mono.Cecil (0.9.6.1)
+    NUnit (2.6.4)
+    NUnit.Runners (2.6.4)
+    TaskParallelLibrary (1.0.2856) - framework: net35
+    Thespian (0.1.11-alpha)
+      FsPickler (>= 2.1 < 3.0)
+    Zlib.Portable (1.11) - framework: portable-net40+sl50+wp80+win80
+
+GROUP Build
+NUGET
+  remote: https://www.nuget.org/api/v2
+  specs:
+    FAKE (4.28)
+    FSharp.Compiler.Service (2.0.0.6)
+    FSharp.Formatting (2.14.3)
+      FSharp.Compiler.Service (2.0.0.6)
+      FSharpVSPowerTools.Core (>= 2.3 < 2.4)
+    FSharpVSPowerTools.Core (2.3)
+      FSharp.Compiler.Service (>= 2.0.0.3)
     Microsoft.Bcl (1.1.10) - framework: net10, net11, net20, net30, net35, net40, net40-full
       Microsoft.Bcl.Build (>= 1.0.14)
     Microsoft.Bcl.Build (1.0.21) - import_targets: false, framework: net10, net11, net20, net30, net35, net40, net40-full
     Microsoft.Net.Http (2.2.29) - framework: net10, net11, net20, net30, net35, net40, net40-full
       Microsoft.Bcl (>= 1.1.10)
       Microsoft.Bcl.Build (>= 1.0.14)
-    Mono.Cecil (0.9.6.1)
-    NuGet.CommandLine (3.3)
-    NUnit (2.6.4)
-    NUnit.Runners (2.6.4)
+    NuGet.CommandLine (3.4.3)
     Octokit (0.19)
       Microsoft.Net.Http  - framework: net10, net11, net20, net30, net35, net40, net40-full
-    TaskParallelLibrary (1.0.2856) - framework: net35
-    Thespian (0.1.11-alpha)
-      FsPickler (>= 2.1 < 3.0)
-    Zlib.Portable (1.11) - framework: portable-net40+sl50+wp80+win80
 GITHUB
   remote: fsharp/FAKE
   specs:
-    modules/Octokit/Octokit.fsx (3bf706bd6058733a1a034755741076b3953aaf09)
+    modules/Octokit/Octokit.fsx (60acb2f035cb39f2bd40a6c58a4de10d915da248)
       Octokit

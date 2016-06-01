@@ -2,13 +2,13 @@
 if [ "X$OS" = "XWindows_NT" ] ; then
   # use .Net
 
-  .Paket/Paket.bootstrapper.exe
+  .paket/paket.bootstrapper.exe
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
 
-  .Paket/Paket.exe restore -v
+  .paket/paket.exe restore -v
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
@@ -18,13 +18,13 @@ if [ "X$OS" = "XWindows_NT" ] ; then
 else
 
   # use mono
-  mono .Paket/Paket.bootstrapper.exe
+  mono .paket/paket.bootstrapper.exe
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code
   fi
 
-  mono .Paket/Paket.exe restore -v
+  mono .paket/paket.exe restore -v
   exit_code=$?
   if [ $exit_code -ne 0 ]; then
   	exit $exit_code

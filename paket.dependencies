@@ -7,7 +7,7 @@ nuget FsPickler ~> 2.1.0
 nuget LinqOptimizer.FSharp
 nuget Mono.Cecil ~> 0.9.6.1
 nuget Thespian ~> 0.1.11-alpha
-nuget FSharp.Compiler.Service
+nuget FSharp.Compiler.Service ~> 5.0
 nuget NUnit ~> 2.6
 nuget NUnit.Runners ~> 2.6
 nuget MathNet.Numerics ~> 3.7.0

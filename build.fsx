@@ -126,7 +126,7 @@ Target "ReleaseDocs" (fun _ ->
 
 // Github Releases
 
-#load "paket-files/fsharp/FAKE/modules/Octokit/Octokit.fsx"
+#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 open Octokit
 
 Target "ReleaseGithub" (fun _ ->

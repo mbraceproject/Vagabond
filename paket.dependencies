@@ -1,3 +1,4 @@
+framework: >= net45
 redirects: on
 source https://www.nuget.org/api/v2
 
@@ -5,7 +6,7 @@ nuget FSharp.Core ~> 4.0
 nuget FSharp.Data ~> 2.2.5
 nuget FsPickler ~> 2.1.0
 nuget LinqOptimizer.FSharp
-nuget Mono.Cecil ~> 0.9.6.1
+nuget Mono.Cecil ~> 0.9.6.3
 nuget Thespian ~> 0.1.11-alpha
 nuget FSharp.Compiler.Service ~> 5.0
 nuget NUnit ~> 2.6

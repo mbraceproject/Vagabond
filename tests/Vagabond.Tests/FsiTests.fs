@@ -669,3 +669,22 @@ module FsiTests =
 
         fsi.EvalExpression "array.GetLength(0)" |> shouldEqual 5
         fsi.EvalExpression "array.GetLength(1)" |> shouldEqual 5
+
+    [<Test>]
+    let ``30. Test against Cecil bug #278`` () =
+        // see https://github.com/jbevain/cecil/issues/278
+        let fsi = FsiSession.Value
+
+        fsi.EvalInteraction """
+        type A<'T> = class end
+        type B<'T,'U> = class end
+
+        type C =
+            static member G x : A<'T> = failwith ""
+            static member F x : A<'T> = C.G (fun () -> x)
+
+        type D =
+            static member F (x:A<B<_,_>>) = C.F x
+    """
+
+        fsi.EvalExpression "client.EvaluateThunk(fun () -> typeof<D>)" |> shouldBe (fun x -> true)

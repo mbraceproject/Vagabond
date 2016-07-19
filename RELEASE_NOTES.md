@@ -1,3 +1,4 @@
+* 0.13.1 - Update to latest Mono.Cecil. Fix #12.
 * 0.13.0 - Bugfix in filename generation.
 * 0.12.11 - Update FsPickler dependency.
 * 0.12.10 - Fix cecil handling of higher-rank arrays.

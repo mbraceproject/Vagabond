@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.Serialization
+﻿module internal MBrace.Vagabond.Serialization
 
 open System
 open System.IO
@@ -6,10 +6,10 @@ open System.Text
 open System.Text.RegularExpressions
 open System.Reflection
 
-open Nessos.FsPickler
+open MBrace.FsPickler
 
-open Nessos.Vagabond
-open Nessos.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond
+open MBrace.Vagabond.SliceCompilerTypes
 
 // FsPickler ITypeNameConverter binding for Vagabond
 // Uses SliceCompiler state to determine serialization/deserialization mappings for slices.

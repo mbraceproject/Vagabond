@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond.AppDomainPool
+﻿namespace MBrace.Vagabond.AppDomainPool
 
 open System
 open System.Collections.Generic
@@ -12,8 +12,8 @@ open System.Threading.Tasks
 
 open Microsoft.FSharp.Control
 
-open Nessos.FsPickler
-open Nessos.Vagabond
+open MBrace.FsPickler
+open MBrace.Vagabond
 
 [<AutoSerializable(true)>] 
 type OutOfResourcesException =

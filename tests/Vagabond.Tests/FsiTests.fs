@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond.Tests
+﻿namespace MBrace.Vagabond.Tests
 
 open System
 open System.Reflection
@@ -9,7 +9,7 @@ open NUnit.Framework
 open Microsoft.FSharp.Compiler.Interactive.Shell
 open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
 
-open Nessos.Vagabond
+open MBrace.Vagabond
 
 [<TestFixture>]
 module FsiTests =

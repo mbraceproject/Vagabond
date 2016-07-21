@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.Control
+﻿module internal MBrace.Vagabond.Control
 
 open System
 open System.IO
@@ -6,17 +6,17 @@ open System.Reflection
 
 open Microsoft.FSharp.Control
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
-open Nessos.Vagabond
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.SliceCompiler
-open Nessos.Vagabond.SliceCompilerTypes
-open Nessos.Vagabond.Serialization
-open Nessos.Vagabond.AssemblyManagementTypes
-open Nessos.Vagabond.AssemblyCache
-open Nessos.Vagabond.AssemblyManagement
+open MBrace.Vagabond
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.SliceCompiler
+open MBrace.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.Serialization
+open MBrace.Vagabond.AssemblyManagementTypes
+open MBrace.Vagabond.AssemblyCache
+open MBrace.Vagabond.AssemblyManagement
 
 type VagabondMessage =
     | ImportAssemblies of IAssemblyDownloader * AssemblyId [] * ReplyChannel<VagabondAssembly []>

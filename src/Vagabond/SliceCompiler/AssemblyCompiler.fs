@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.SliceCompiler
+﻿module internal MBrace.Vagabond.SliceCompiler
 
 open System
 open System.IO
@@ -7,12 +7,12 @@ open System.Reflection
 
 open Mono.Cecil
 
-open Nessos.FsPickler
+open MBrace.FsPickler
 
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.SliceCompilerTypes
-open Nessos.Vagabond.AssemblyNaming
-open Nessos.Vagabond.AssemblyParser
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyParser
 
 /// creates a path for provided assembly name so that
 /// invalid characters are stripped and overwrites are avoided.

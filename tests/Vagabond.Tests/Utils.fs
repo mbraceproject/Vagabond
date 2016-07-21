@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond.Tests
+﻿namespace MBrace.Vagabond.Tests
 
 open NUnit.Framework
 

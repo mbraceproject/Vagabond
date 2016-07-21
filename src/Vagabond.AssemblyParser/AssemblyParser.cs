@@ -19,7 +19,7 @@ using Mono.Reflection;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 
-namespace Nessos.Vagabond.AssemblyParser
+namespace MBrace.Vagabond.AssemblyParser
 {
     /// <summary>
     /// Dynamic assembly to Cecil tree parser implementation.

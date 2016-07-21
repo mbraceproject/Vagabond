@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond
+﻿namespace MBrace.Vagabond
 
 open System.IO
 open System.IO.Compression

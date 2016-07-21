@@ -9,9 +9,9 @@ open System.Threading.Tasks
 open Nessos.Thespian
 open Nessos.Thespian.Remote
 
-open Nessos.Vagabond
-open Nessos.Vagabond.AssemblyProtocols
-open Nessos.Vagabond.ExportableAssembly
+open MBrace.Vagabond
+open MBrace.Vagabond.AssemblyProtocols
+open MBrace.Vagabond.ExportableAssembly
 
 #nowarn "1571"
 

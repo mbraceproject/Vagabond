@@ -18,10 +18,10 @@ open Fake.AssemblyInfoFile
 
 let project = "Vagabond"
 
-let gitOwner = "nessos"
+let gitOwner = "mbraceproject"
 let gitHome = "https://github.com/" + gitOwner
 let gitName = "Vagabond"
-let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/nessos"
+let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/" + gitOwner
 
 
 let testAssemblies = [ "bin/Vagabond.Tests.dll" ]

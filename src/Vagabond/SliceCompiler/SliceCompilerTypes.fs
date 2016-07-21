@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.SliceCompilerTypes
+﻿module internal MBrace.Vagabond.SliceCompilerTypes
 
 open System
 open System.Reflection

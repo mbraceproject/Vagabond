@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.AssemblyNaming
+﻿module internal MBrace.Vagabond.AssemblyNaming
 
 open System
 open System.IO
@@ -7,8 +7,8 @@ open System.Reflection
 open System.Text.RegularExpressions
 open System.Threading
 
-open Nessos.FsPickler.Hashing
-open Nessos.Vagabond
+open MBrace.FsPickler.Hashing
+open MBrace.Vagabond
 
 /// computes a unique assembly identifier
 type AssemblyIdGenerator private () =

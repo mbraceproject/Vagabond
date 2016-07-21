@@ -1,4 +1,4 @@
-﻿module internal Nessos.Vagabond.AssemblyParser
+﻿module internal MBrace.Vagabond.AssemblyParser
 
 open System
 open System.Reflection
@@ -6,10 +6,10 @@ open System.Collections.Generic
 
 open Mono.Cecil
 
-open Nessos.Vagabond
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.AssemblyParser
-open Nessos.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.AssemblyParser
+open MBrace.Vagabond.SliceCompilerTypes
 
 /// Parse info for dynamic type
 type TypeParseInfo =

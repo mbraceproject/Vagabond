@@ -1,15 +1,15 @@
-﻿module internal Nessos.Vagabond.AssemblyCache
+﻿module internal MBrace.Vagabond.AssemblyCache
 
 open System
 open System.IO
 open System.Reflection
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
-open Nessos.Vagabond
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.AssemblyNaming
+open MBrace.Vagabond
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.AssemblyNaming
 
 /// Contains methods for caching assemblies and vagabond metadata to specified folder.
 type AssemblyCache (cacheDirectory : string, serializer : FsPicklerSerializer) =

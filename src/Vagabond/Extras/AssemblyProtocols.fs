@@ -1,9 +1,9 @@
 ﻿/// Vagabond assembly publish/receive protocol implementations
-module Nessos.Vagabond.AssemblyProtocols
+module MBrace.Vagabond.AssemblyProtocols
 
 open System.Reflection
 
-open Nessos.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyNaming
 
 /// Defines an abstract assembly load target; to be used by VagabondServer.
 type IRemoteAssemblyReceiver =

@@ -1,12 +1,12 @@
-﻿namespace Nessos.Vagabond.Tests
+﻿namespace MBrace.Vagabond.Tests
 
 open System
 open System.Threading
 
 open NUnit.Framework
-open Nessos.FsPickler
-open Nessos.Vagabond
-open Nessos.Vagabond.AppDomainPool
+open MBrace.FsPickler
+open MBrace.Vagabond
+open MBrace.Vagabond.AppDomainPool
 
 [<TestFixture>]
 module ``AppDomain Pool Tests`` =

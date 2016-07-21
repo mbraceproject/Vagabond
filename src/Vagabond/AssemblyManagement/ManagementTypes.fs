@@ -1,12 +1,12 @@
-﻿module internal Nessos.Vagabond.AssemblyManagementTypes
+﻿module internal MBrace.Vagabond.AssemblyManagementTypes
 
 open System.Reflection
 
-open Nessos.Vagabond.SliceCompilerTypes
-open Nessos.Vagabond.AssemblyCache
+open MBrace.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.AssemblyCache
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
 /// Local dynamic assembly slice data dependency export state
 type DataExportState =

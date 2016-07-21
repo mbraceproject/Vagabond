@@ -1,12 +1,12 @@
-﻿namespace Nessos.Vagabond
+﻿namespace MBrace.Vagabond
 
 open System
 open System.IO
 open System.Reflection
 open System.Runtime.Serialization
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
 /// Specifies how assemblies are to be
 /// looked up from the local vagabond context.

@@ -1,5 +1,5 @@
 ﻿/// Raw in-memory assembly export/load implementations
-module Nessos.Vagabond.ExportableAssembly
+module MBrace.Vagabond.ExportableAssembly
 
 open System
 open System.IO

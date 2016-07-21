@@ -1,15 +1,15 @@
-﻿module internal Nessos.Vagabond.DependencyAnalysis
+﻿module internal MBrace.Vagabond.DependencyAnalysis
 
 open System
 open System.IO
 open System.Collections.Generic
 open System.Reflection
 
-open Nessos.FsPickler
+open MBrace.FsPickler
 
-open Nessos.Vagabond.AssemblyNaming
-open Nessos.Vagabond.AssemblyParser
-open Nessos.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyParser
+open MBrace.Vagabond.SliceCompilerTypes
 
 open Microsoft.FSharp.Reflection
 
@@ -23,8 +23,8 @@ module private AssemblyInfo =
         hset [|
             typeof<int option>.Assembly
             typeof<Mono.Cecil.AssemblyDefinition>.Assembly
-            typeof<Nessos.Vagabond.AssemblyParser.IAssemblyParserConfig>.Assembly
-            typeof<Nessos.Vagabond.AssemblyId>.Assembly
+            typeof<MBrace.Vagabond.AssemblyParser.IAssemblyParserConfig>.Assembly
+            typeof<MBrace.Vagabond.AssemblyId>.Assembly
         |]
 
     /// assemblies ignored by Vagabond during assembly traversal

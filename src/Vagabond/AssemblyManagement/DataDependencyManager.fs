@@ -1,17 +1,17 @@
-﻿module internal Nessos.Vagabond.DataDependencyManagement
+﻿module internal MBrace.Vagabond.DataDependencyManagement
 
 open System
 open System.Collections.Generic
 open System.Reflection
 open System.IO
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
-open Nessos.Vagabond.SliceCompilerTypes
-open Nessos.Vagabond.AssemblyNaming
-open Nessos.Vagabond.AssemblyCache
-open Nessos.Vagabond.AssemblyManagementTypes
+open MBrace.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyCache
+open MBrace.Vagabond.AssemblyManagementTypes
 
 /// pickle value to file
 let picklePersistedBinding (state : VagabondState) (path : string) (value : obj) =

@@ -4,10 +4,10 @@ source https://www.nuget.org/api/v2
 
 nuget FSharp.Core ~> 4.0
 nuget FSharp.Data ~> 2.2.5
-nuget FsPickler ~> 2.1.0
+nuget FsPickler ~> 3.0
 nuget LinqOptimizer.FSharp
 nuget Mono.Cecil ~> 0.9.6.3
-nuget Thespian ~> 0.1.11-alpha
+nuget Thespian ~> 0.1.12 prerelease
 nuget FSharp.Compiler.Service ~> 5.0
 nuget NUnit ~> 2.6
 nuget NUnit.Runners ~> 2.6

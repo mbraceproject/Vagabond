@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond.Tests
+﻿namespace MBrace.Vagabond.Tests
 
 open System
 open System.Reflection
@@ -10,7 +10,7 @@ open Nessos.Thespian.Serialization
 open Nessos.Thespian.Remote
 open Nessos.Thespian.Remote.TcpProtocol
 
-open Nessos.Vagabond
+open MBrace.Vagabond
 
 /// Vagabond configuration container
 type VagabondConfig private () =

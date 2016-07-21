@@ -8,7 +8,7 @@ let referenceBinaries = [ "Vagabond.dll" ]
 // Web site location for the generated documentation
 let website = "/Vagabond"
 
-let githubLink = "http://github.com/nessos/Vagabond"
+let githubLink = "http://github.com/mbraceproject/Vagabond"
 
 // Specify more information about your project
 let info =

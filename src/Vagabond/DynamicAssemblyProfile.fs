@@ -1,4 +1,4 @@
-﻿namespace Nessos.Vagabond
+﻿namespace MBrace.Vagabond
 
 open System
 open System.Reflection

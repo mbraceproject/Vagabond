@@ -8,9 +8,9 @@ copyright
 	Copyright 2015
 summary
     A library that facilitates the distribution of code in the .NET framework.
-licenseurl https://github.com/nessos/Vagabond/blob/master/License.md
-projecturl https://github.com/nessos/Vagabond
-iconurl https://avatars1.githubusercontent.com/u/5538081
+licenseurl https://github.com/mbraceproject/Vagabond/blob/master/License.md
+projecturl https://github.com/mbraceproject/Vagabond
+iconurl https://avatars1.githubusercontent.com/u/9674757
 include-pdbs true
 tags
     F#, fsharp, dynamic assemblies, code, distribution, cecil

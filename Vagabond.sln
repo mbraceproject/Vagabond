@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2013
-VisualStudioVersion = 12.0.40629.0
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{B521A597-793B-4D2A-8302-AAC7AC224ACC}"
 	ProjectSection(SolutionItems) = preProject
@@ -43,7 +43,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{3D29EE57-78B9-410A-BBCF-7F59C04F667D}"
 	ProjectSection(SolutionItems) = preProject
 		docs\files\img\logo.png = docs\files\img\logo.png
-		docs\files\img\nessos.png = docs\files\img\nessos.png
+		docs\files\img\mbrace.png = docs\files\img\mbrace.png
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DA4963F6-E95D-4541-94BE-9468E172286C}"

@@ -3,7 +3,7 @@ using System.Reflection;
 
 using Mono.Cecil;
 
-namespace Nessos.Vagabond.AssemblyParser
+namespace MBrace.Vagabond.AssemblyParser
 {
     /// <summary>
     /// Dynamic type parse action enumeration.

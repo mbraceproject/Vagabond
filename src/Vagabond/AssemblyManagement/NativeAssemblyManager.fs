@@ -1,11 +1,11 @@
-﻿namespace Nessos.Vagabond
+﻿namespace MBrace.Vagabond
 
 open System
 open System.Reflection
 open System.Collections.Generic
 open System.IO
 
-open Nessos.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyNaming
 
 /// AppDomain-specific native assembly container
 /// container is added to local PATH and copied

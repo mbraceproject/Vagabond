@@ -1,18 +1,18 @@
-﻿namespace Nessos.Vagabond
+﻿namespace MBrace.Vagabond
     
 open System
 open System.IO
 open System.Reflection
 
-open Nessos.FsPickler
-open Nessos.FsPickler.Hashing
+open MBrace.FsPickler
+open MBrace.FsPickler.Hashing
 
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.AssemblyNaming
-open Nessos.Vagabond.DependencyAnalysis
-open Nessos.Vagabond.Control
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.AssemblyNaming
+open MBrace.Vagabond.DependencyAnalysis
+open MBrace.Vagabond.Control
 
-type HashResult = Nessos.FsPickler.Hashing.HashResult
+type HashResult = MBrace.FsPickler.Hashing.HashResult
 
 /// Vagabond management object which instantiates a dynamic assembly compiler, loader and exporter states
 [<AutoSerializable(false)>]

@@ -8,7 +8,7 @@
 
 open System
 open System.Reflection
-open Nessos.Vagabond
+open MBrace.Vagabond
 
 let assembly = Unchecked.defaultof<AssemblyId>
 
@@ -16,7 +16,7 @@ let assembly = Unchecked.defaultof<AssemblyId>
 # API Overview
 
 The included implementation of
-[ThunkServer](https://github.com/nessos/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx) 
+[ThunkServer](https://github.com/mbraceproject/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx) 
 is a straightforward distributed implementation that makes use of Vagabond.
 What follows is a brief overview of the basic API.
 
@@ -24,7 +24,7 @@ A Vagabond environment can be initialized as follows:
 
 *)
 
-open Nessos.Vagabond
+open MBrace.Vagabond
 
 let vmanager = Vagabond.Initialize(cacheDirectory = "/tmp/vagabond")
 

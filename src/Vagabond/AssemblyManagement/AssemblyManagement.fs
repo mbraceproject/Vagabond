@@ -1,18 +1,18 @@
-﻿module internal Nessos.Vagabond.AssemblyManagement
+﻿module internal MBrace.Vagabond.AssemblyManagement
 
 open System
 open System.IO
 open System.Reflection
 
-open Nessos.FsPickler
+open MBrace.FsPickler
 
-open Nessos.Vagabond
-open Nessos.Vagabond.Utils
-open Nessos.Vagabond.SliceCompilerTypes
-open Nessos.Vagabond.AssemblyNaming
-open Nessos.Vagabond.AssemblyCache
-open Nessos.Vagabond.AssemblyManagementTypes
-open Nessos.Vagabond.DataDependencyManagement
+open MBrace.Vagabond
+open MBrace.Vagabond.Utils
+open MBrace.Vagabond.SliceCompilerTypes
+open MBrace.Vagabond.AssemblyNaming
+open MBrace.Vagabond.AssemblyCache
+open MBrace.Vagabond.AssemblyManagementTypes
+open MBrace.Vagabond.DataDependencyManagement
 
 ///
 /// creates an exportable assembly package for given Assembly Id

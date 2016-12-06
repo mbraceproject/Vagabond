@@ -14,5 +14,5 @@ All documentation and related material can be found [here](http://mbraceproject.
 
 Head (branch `master`) Build & Unit tests
 
-* Windows/.NET [![Build status](https://ci.appveyor.com/api/projects/status/b5neb4pkxunyjt93/branch/master?svg=true)](https://ci.appveyor.com/project/mbraceproject/vagabond/branch/master)
+* Windows/.NET [![Build status](https://ci.appveyor.com/api/projects/status/3cwwn7c6oevhhpqj/branch/master?svg=true)](https://ci.appveyor.com/project/nessos/vagabond/branch/master)
 * Mac OS X/Mono 4.0 [![Build Status](https://travis-ci.org/mbraceproject/Vagabond.png?branch=master)](https://travis-ci.org/mbraceproject/Vagabond/branches)

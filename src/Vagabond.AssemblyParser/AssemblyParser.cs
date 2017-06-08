@@ -114,7 +114,7 @@ namespace MBrace.Vagabond.AssemblyParser
                         MapEvent(evt, EventDefinitionFor(evt, type_definition));
 
                     foreach (var iface in type.GetInterfaces())
-                        type_definition.Interfaces.Add(CreateReference(iface, type_definition));
+                        type_definition.Interfaces.Add(new InterfaceImplementation(CreateReference(iface, type_definition)));
 
                     foreach (var nested_type in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic))
                         MapType(nested_type, type_definition);
@@ -678,22 +678,22 @@ namespace MBrace.Vagabond.AssemblyParser
 
         private TypeReference CreateReference(Type type)
         {
-            return MapReference(type, _module_definition.Import(type));
+            return MapReference(type, _module_definition.ImportReference(type));
         }
 
         private TypeReference CreateReference(Type type, TypeReference context)
         {
-            return MapReference(type, _module_definition.Import(type, context));
+            return MapReference(type, _module_definition.ImportReference(type, context));
         }
 
         private TypeReference CreateReference(Type type, MethodReference context)
         {
-            return MapReference(type, _module_definition.Import(type, context));
+            return MapReference(type, _module_definition.ImportReference(type, context));
         }
 
         private FieldReference CreateReference(FieldInfo field, MethodReference context)
         {
-            var reference = _module_definition.Import(field, context);
+            var reference = _module_definition.ImportReference(field, context);
             MapReference(field.DeclaringType, reference.DeclaringType);
             MapReference(field.FieldType, reference.FieldType);
             return reference;
@@ -701,7 +701,7 @@ namespace MBrace.Vagabond.AssemblyParser
 
         private MethodReference CreateReference(MethodBase method, MethodReference context)
         {
-            var reference = _module_definition.Import(method, context);
+            var reference = _module_definition.ImportReference(method, context);
             MapReference(method.DeclaringType, reference.GetElementMethod().DeclaringType);
             MapReference(GetReturnType(method), reference.ReturnType);
             MapGenericArguments(method, reference);
@@ -796,7 +796,7 @@ namespace MBrace.Vagabond.AssemblyParser
                 if (oldscope != null && oldscope.FullName == _assembly_definition.FullName)
                     _module_definition.AssemblyReferences.Remove(oldscope);
 
-                var _type = _module_definition.Import(t);
+                var _type = _module_definition.ImportReference(t);
 
                 type.Name = _type.Name;
                 type.Namespace = _type.Namespace;

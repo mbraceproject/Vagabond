@@ -12,6 +12,7 @@ open Fake.AppVeyor
 open Fake.Git
 open Fake.ReleaseNotesHelper
 open Fake.AssemblyInfoFile
+open Fake.SemVerHelper
 
 // --------------------------------------------------------------------------------------
 // Information about the project to be used at NuGet and in AssemblyInfo files
@@ -31,7 +32,7 @@ let buildVersion =
     if hasRepoVersionTag then assemblyVersion
     else if isAppVeyorBuild then sprintf "%s-b%s" assemblyVersion AppVeyorEnvironment.BuildNumber
     else assemblyVersion
-open SemVerHelper
+
 let nugetDebugVersion =
     let semVer = SemVerHelper.parse nugetVersion
     let debugPatch, debugPreRelease =

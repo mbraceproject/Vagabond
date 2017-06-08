@@ -96,12 +96,12 @@ module FsiTests =
             | Some fsi -> fsi
 
     let defineQuotationEvaluator (fsi : FsiEvaluationSession) =
-        commit <| fsi.EvalInteractionNonThrowing """
+        fsi.EvalInteractionNonThrowing """
             open Microsoft.FSharp.Quotations
             open Microsoft.FSharp.Linq.RuntimeHelpers
 
             let eval (e : Expr<'T>) = LeafExpressionConverter.EvaluateQuotation e :?> 'T
-        """
+        """ |> commit
 
 
     [<TestFixtureSetUp>]
@@ -123,11 +123,11 @@ module FsiTests =
                 "Thespian.dll"
                 "ThunkServer.exe"
 
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
-                "../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-                "../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
+                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
+                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
+                "../packages/test/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+                "../packages/test/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
                 "../resource/Google.OrTools.dll"
             ]
 
@@ -531,7 +531,7 @@ module FsiTests =
 
             // register native dll's
 
-            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
+            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/test/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
             let libiomp5md = nativeDir + "libiomp5md.dll"
             let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
@@ -568,6 +568,7 @@ module FsiTests =
         let fsi = FsiSession.Value
         fsi.EvalInteractionNonThrowing "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)" |> commit
 
+(*
     [<Test>]
     let ``23. Quotation literal references fsi code`` () =
         let fsi = FsiSession.Value
@@ -701,3 +702,5 @@ module FsiTests =
     """  |> commit
 
         fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> typeof<D>)" |> commit |> shouldBe (fun x -> true)
+
+*)

@@ -1,1 +1,12 @@
-configuration: Release
+init:
+  - git config --global core.autocrlf input
+
+build_script:
+  - cmd: build.cmd NuGet
+
+test: off
+
+version: '{build}'
+
+artifacts:
+  - path: bin\*.nupkg

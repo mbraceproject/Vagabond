@@ -2,24 +2,13 @@ REDIRECTS: ON
 FRAMEWORK: >= NET45
 NUGET
   remote: https://www.nuget.org/api/v2
-    FSharp.Compiler.Service (5.0)
     FSharp.Core (4.0.0.1)
-    FSharp.Data (2.2.5)
     FsPickler (3.0)
-    LinqOptimizer.FSharp (0.6.3)
-    MathNet.Numerics (3.7.1)
-    MathNet.Numerics.FSharp (3.7.1)
-      FSharp.Core (>= 3.1.2.1)
-      MathNet.Numerics (3.7.1)
-    MathNet.Numerics.MKL.Win-x64 (1.8)
-      MathNet.Numerics (>= 2.4)
     Mono.Cecil (0.9.6.4)
-    NUnit (2.6.4)
-    NUnit.Runners (2.6.4)
-    Thespian (0.1.12-alpha)
-      FsPickler (>= 3.0)
 
 GROUP Build
+REDIRECTS: ON
+FRAMEWORK: >= NET45
 NUGET
   remote: https://www.nuget.org/api/v2
     FAKE (4.61.3)
@@ -29,16 +18,31 @@ NUGET
       FSharpVSPowerTools.Core (>= 2.3 < 2.4)
     FSharpVSPowerTools.Core (2.3)
       FSharp.Compiler.Service (>= 2.0.0.3)
-    Microsoft.Bcl (1.1.10) - framework: net10, net11, net20, net30, net35, net40, net40-full
-      Microsoft.Bcl.Build (>= 1.0.14)
-    Microsoft.Bcl.Build (1.0.21) - import_targets: false, framework: net10, net11, net20, net30, net35, net40, net40-full
-    Microsoft.Net.Http (2.2.29) - framework: net10, net11, net20, net30, net35, net40, net40-full
-      Microsoft.Bcl (>= 1.1.10)
-      Microsoft.Bcl.Build (>= 1.0.14)
     NuGet.CommandLine (4.1)
     Octokit (0.24)
-      Microsoft.Net.Http  - framework: net10, net11, net20, net30, net35, net40, net40-full
 GITHUB
   remote: fsharp/FAKE
     modules/Octokit/Octokit.fsx (ad65548e62c35ad64ad1f9db6f5768330bc06594)
       Octokit (>= 0.20)
+GROUP Test
+REDIRECTS: ON
+FRAMEWORK: >= NET45
+NUGET
+  remote: https://www.nuget.org/api/v2
+    FSharp.Compiler.Service (5.0)
+    FSharp.Core (4.1.17)
+      System.ValueTuple (>= 4.3)
+    FSharp.Data (2.2.5)
+    FsPickler (3.0)
+    LinqOptimizer.FSharp (0.6.3)
+    MathNet.Numerics (3.7.1)
+    MathNet.Numerics.FSharp (3.7.1)
+      FSharp.Core (>= 3.1.2.1)
+      MathNet.Numerics (3.7.1)
+    MathNet.Numerics.MKL.Win-x64 (1.8)
+      MathNet.Numerics (>= 2.4)
+    NUnit (2.6.4)
+    NUnit.Runners (2.6.4)
+    System.ValueTuple (4.3.1)
+    Thespian (0.1.12-alpha)
+      FsPickler (>= 3.0)

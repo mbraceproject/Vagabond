@@ -1,5 +1,7 @@
-FSharp.Data
+FSharp.Core
 FsPickler
-NUnit
-Thespian
-FSharp.Compiler.Service
+group Test
+  FSharp.Data
+  NUnit
+  Thespian
+  FSharp.Compiler.Service

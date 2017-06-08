@@ -123,9 +123,9 @@ module FsiTests =
                 "Thespian.dll"
                 "ThunkServer.exe"
 
-                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
-                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
-                "../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
                 "../packages/test/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
                 "../packages/test/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
                 "../resource/Google.OrTools.dll"
@@ -279,7 +279,8 @@ module FsiTests =
         fsi.EvalExpressionNonThrowing "results.Length = n" |> commit |> shouldEqual true
 
 
-    [<Test>]
+(*
+[<Test>]
     let ``11. Deploy LinqOptimizer dynamic assemblies`` () =
         
         let code = """
@@ -300,6 +301,7 @@ module FsiTests =
         fsi.EvalInteractionNonThrowing code |> commit 
         fsi.EvalInteractionNonThrowing "let result = client.EvaluateThunk query" |> commit 
         fsi.EvalExpressionNonThrowing "result = query ()" |> commit |> shouldEqual true
+*)
 
     [<Test>]
     let ``12 Remotely deploy an actor definition`` () =
@@ -568,7 +570,6 @@ module FsiTests =
         let fsi = FsiSession.Value
         fsi.EvalInteractionNonThrowing "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)" |> commit
 
-(*
     [<Test>]
     let ``23. Quotation literal references fsi code`` () =
         let fsi = FsiSession.Value
@@ -703,4 +704,3 @@ module FsiTests =
 
         fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> typeof<D>)" |> commit |> shouldBe (fun x -> true)
 
-*)

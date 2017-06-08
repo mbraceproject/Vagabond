@@ -4,7 +4,7 @@ source https://www.nuget.org/api/v2
 
 # The setting below means your libraries will assume a minimum of FSharp.Core 
 
-nuget FSharp.Core ~> 4.0.0.1 strategy: min
+nuget FSharp.Core 4.0.0.1
 
 nuget FsPickler ~> 3.0
 nuget Mono.Cecil ~> 0.9.6.3
@@ -14,6 +14,7 @@ group Test
   redirects: on
   source https://www.nuget.org/api/v2
 
+  nuget FSharp.Core 4.0.0.1
   nuget FSharp.Data ~> 2.2.5
   nuget FSharp.Compiler.Service
   nuget LinqOptimizer.FSharp

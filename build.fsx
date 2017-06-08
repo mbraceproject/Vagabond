@@ -8,6 +8,7 @@
 open System
 open System.IO
 open Fake 
+open Fake.AppVeyor
 open Fake.Git
 open Fake.ReleaseNotesHelper
 open Fake.AssemblyInfoFile
@@ -16,12 +17,26 @@ open Fake.AssemblyInfoFile
 // Information about the project to be used at NuGet and in AssemblyInfo files
 // --------------------------------------------------------------------------------------
 
+Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
+
 let project = "Vagabond"
+let release = LoadReleaseNotes "RELEASE_NOTES.md"
+let nugetVersion = release.NugetVersion
+let isAppVeyorBuild = buildServer = BuildServer.AppVeyor
+let isVersionTag tag = Version.TryParse tag |> fst
+let hasRepoVersionTag = isAppVeyorBuild && AppVeyorEnvironment.RepoTag && isVersionTag AppVeyorEnvironment.RepoTagName
+let assemblyVersion = if hasRepoVersionTag then AppVeyorEnvironment.RepoTagName else release.NugetVersion
+let buildDate = DateTime.UtcNow
+let buildVersion =
+    if hasRepoVersionTag then assemblyVersion
+    else if isAppVeyorBuild then sprintf "%s-b%s" assemblyVersion AppVeyorEnvironment.BuildNumber
+    else assemblyVersion
 
 let gitOwner = "mbraceproject"
 let gitHome = "https://github.com/" + gitOwner
 let gitName = "Vagabond"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/" + gitOwner
+let isTravisBuild = buildServer = BuildServer.Travis
 
 
 let testAssemblies = [ "bin/Vagabond.Tests.dll" ]
@@ -31,21 +46,20 @@ let testAssemblies = [ "bin/Vagabond.Tests.dll" ]
 //// The rest of the code is standard F# build script 
 //// --------------------------------------------------------------------------------------
 
-//// Read release notes & version info from RELEASE_NOTES.md
-Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
-let release = parseReleaseNotes (IO.File.ReadAllLines "RELEASE_NOTES.md")
-
+Target "BuildVersion" (fun _ ->
+    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
+)
 // Generate assembly info files with the right version & up-to-date information
 Target "AssemblyInfo" (fun _ ->
   let vagabondCS = "src/Vagabond.AssemblyParser/Properties/AssemblyInfo.cs"
   CreateCSharpAssemblyInfo vagabondCS
-      [ Attribute.Version release.AssemblyVersion
-        Attribute.FileVersion release.AssemblyVersion] 
+      [ Attribute.Version assemblyVersion
+        Attribute.FileVersion assemblyVersion] 
 
   let vagabondFS = "src/Vagabond/AssemblyInfo.fs"
   CreateFSharpAssemblyInfo vagabondFS
-      [ Attribute.Version release.AssemblyVersion
-        Attribute.FileVersion release.AssemblyVersion] 
+      [ Attribute.Version assemblyVersion
+        Attribute.FileVersion assemblyVersion] 
 )
 
 
@@ -79,7 +93,7 @@ Target "RunTests" (fun _ ->
     ActivateFinalTarget "CloseTestRunner"
 
     testAssemblies
-    |> NUnit (fun p ->
+    |> NUnitSequential.NUnit (fun p ->
         { p with
             DisableShadowCopy = true
             TimeOut = TimeSpan.FromMinutes 20.
@@ -165,29 +179,29 @@ Target "ReleaseGithub" (fun _ ->
     |> Async.RunSynchronously
 )
 
-Target "Debug" DoNothing
-Target "Release" DoNothing
-
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
-Target "Prepare" DoNothing
-Target "PrepareRelease" DoNothing
 Target "Default" DoNothing
+Target "RunTestsAndBuildNuget" DoNothing
+Target "Release" DoNothing
+Target "Help" (fun _ -> PrintTargets() )
 
 "Clean"
+  =?> ("BuildVersion", isAppVeyorBuild)
   ==> "AssemblyInfo"
-  ==> "Prepare"
   ==> "Build"
-  ==> "RunTests"
+  =?> ("RunTests", not isTravisBuild) // Relatively few tests pass on Mono.  We build on Travis but do not test
   ==> "Default"
 
+"NuGet" ==> "RunTestsAndBuildNuget"
+"RunTests" ==> "RunTestsAndBuildNuget"
+
 "Build"
-  ==> "PrepareRelease"
-  ==> "GenerateDocs"
-  ==> "ReleaseDocs"
   ==> "NuGet"
   ==> "NuGetPush"
+  ==> "GenerateDocs"
+  ==> "ReleaseDocs"
   ==> "ReleaseGithub"
   ==> "Release"
 

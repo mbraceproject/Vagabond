@@ -31,6 +31,22 @@ let buildVersion =
     if hasRepoVersionTag then assemblyVersion
     else if isAppVeyorBuild then sprintf "%s-b%s" assemblyVersion AppVeyorEnvironment.BuildNumber
     else assemblyVersion
+open SemVerHelper
+let nugetDebugVersion =
+    let semVer = SemVerHelper.parse nugetVersion
+    let debugPatch, debugPreRelease =
+        match semVer.PreRelease with
+        | None -> semVer.Patch + 1, { Origin = "alpha001"; Name = "alpha"; Number = Some 1; Parts = [AlphaNumeric "alpha001"] }
+        | Some pre ->
+            let num = match pre.Number with Some i -> i + 1 | None -> 1
+            let name = pre.Name
+            let newOrigin = sprintf "%s%03d" name num
+            semVer.Patch, { Origin = newOrigin; Name = name; Number = Some num; Parts = [AlphaNumeric newOrigin] }
+    let debugVer =
+        { semVer with
+            Patch = debugPatch
+            PreRelease = Some debugPreRelease }
+    debugVer.ToString()
 
 let gitOwner = "mbraceproject"
 let gitHome = "https://github.com/" + gitOwner
@@ -112,7 +128,7 @@ Target "NuGet" (fun _ ->
         { p with 
             ToolPath = ".paket/paket.exe" 
             OutputPath = "bin/"
-            Version = release.NugetVersion
+            Version = nugetDebugVersion
             ReleaseNotes = toLines release.Notes })
 )
 

@@ -2,20 +2,32 @@ framework: >= net45
 redirects: on
 source https://www.nuget.org/api/v2
 
-nuget FSharp.Core ~> 4.0
-nuget FSharp.Data ~> 2.2.5
+# The setting below means your libraries will assume a minimum of FSharp.Core 
+
+nuget FSharp.Core 4.0.0.1
+
 nuget FsPickler ~> 3.0
-nuget LinqOptimizer.FSharp
 nuget Mono.Cecil ~> 0.9.6.3
-nuget Thespian ~> 0.1.12 prerelease
-nuget FSharp.Compiler.Service ~> 5.0
-nuget NUnit ~> 2.6
-nuget NUnit.Runners ~> 2.6
-nuget MathNet.Numerics ~> 3.7.0
-nuget MathNet.Numerics.FSharp
-nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
+
+group Test
+  framework: >= net45
+  redirects: on
+  source https://www.nuget.org/api/v2
+
+  nuget FSharp.Core 4.0.0.1
+  nuget FSharp.Data ~> 2.2.5
+  nuget FSharp.Compiler.Service
+  nuget LinqOptimizer.FSharp
+  nuget Thespian ~> 0.1.12 prerelease
+  nuget NUnit ~> 2.6
+  nuget NUnit.Runners ~> 2.6
+  nuget MathNet.Numerics ~> 3.7.0
+  nuget MathNet.Numerics.FSharp
+  nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
 
 group Build
+  framework: >= net45
+  redirects: on
   source https://www.nuget.org/api/v2
 
   nuget FAKE

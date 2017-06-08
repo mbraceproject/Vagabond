@@ -7,7 +7,8 @@ open System.IO
 open NUnit.Framework
 
 open Microsoft.FSharp.Compiler.Interactive.Shell
-open Microsoft.FSharp.Compiler.SimpleSourceCodeServices
+open Microsoft.FSharp.Compiler
+open Microsoft.FSharp.Compiler.SourceCodeServices
 
 open MBrace.Vagabond
 
@@ -28,6 +29,16 @@ module FsiTests =
 
         sprintf "@\"%s\"" fullPath
 
+    let commit (exn: Choice<'T, exn>, errors: FSharpErrorInfo[]) = 
+        for err in errors do
+           raise (AssertionException(sprintf "expected no compilation error, got error %A" err))
+
+        match exn with 
+        | Choice1Of2 res -> res
+        | Choice2Of2 exn -> raise (AssertionException(sprintf "expected no execption, got exception %s" (exn.ToString())))
+
+
+
     type FsiEvaluationSession with
         
         member fsi.AddReferences (paths : string list) =
@@ -36,15 +47,15 @@ module FsiTests =
                 |> Seq.map (fun p -> sprintf "#r %s" <| getPathLiteral p)
                 |> String.concat "\n"
 
-            fsi.EvalInteraction directives
+            fsi.EvalInteractionNonThrowing directives |> commit
 
         member fsi.LoadScript (path : string) =
             let directive = sprintf "#load %s" <| getPathLiteral path
-            fsi.EvalInteraction directive
+            fsi.EvalInteractionNonThrowing directive |> commit
 
         member fsi.TryEvalExpression(code : string) =
-            try fsi.EvalExpression(code)
-            with _ -> None
+            try fsi.EvalExpressionNonThrowing(code)
+            with _ -> (Choice1Of2 None, [| |])
 
     let shouldEqual (expected : 'T) (result : FsiValue option) =
         match result with
@@ -85,12 +96,12 @@ module FsiTests =
             | Some fsi -> fsi
 
     let defineQuotationEvaluator (fsi : FsiEvaluationSession) =
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             open Microsoft.FSharp.Quotations
             open Microsoft.FSharp.Linq.RuntimeHelpers
 
             let eval (e : Expr<'T>) = LeafExpressionConverter.EvaluateQuotation e :?> 'T
-        """
+        """ |> commit
 
 
     [<TestFixtureSetUp>]
@@ -112,17 +123,17 @@ module FsiTests =
                 "Thespian.dll"
                 "ThunkServer.exe"
 
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
-                "../packages/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
-                "../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-                "../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
+                //"../packages/test/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
+                "../packages/test/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+                "../packages/test/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
                 "../resource/Google.OrTools.dll"
             ]
 
-        fsi.EvalInteraction "open ThunkServer"
-        fsi.EvalInteraction <| "ThunkClient.Executable <- @\"" + thunkServer + "\""
-        fsi.EvalInteraction "let client = ThunkClient.InitLocal()"
+        commit <| fsi.EvalInteractionNonThrowing "open ThunkServer"
+        commit <| fsi.EvalInteractionNonThrowing ("ThunkClient.Executable <- @\"" + thunkServer + "\"")
+        commit <| fsi.EvalInteractionNonThrowing "let client = ThunkClient.InitLocal()"
 
     [<TestFixtureTearDown>]
     let stopFsiSession () =
@@ -135,7 +146,7 @@ module FsiTests =
 
         let fsi = FsiSession.Value
 
-        "client.EvaluateThunk <| fun () -> 42" |> fsi.TryEvalExpression |> shouldEqual 42
+        "client.EvaluateThunk <| fun () -> 42" |> fsi.TryEvalExpression |> commit |> shouldEqual 42
 
 
     [<Test>]
@@ -143,10 +154,10 @@ module FsiTests =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction "open System.IO"
-        fsi.EvalInteraction "let randomFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName())"
-        fsi.EvalExpression """client.EvaluateThunk <| fun () -> File.WriteAllText(randomFile, "foo") """ |> shouldEqual ()
-        fsi.EvalExpression "File.ReadAllText randomFile" |> shouldEqual "foo"
+        fsi.EvalInteractionNonThrowing "open System.IO" |> commit 
+        fsi.EvalInteractionNonThrowing "let randomFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName())" |> commit 
+        fsi.EvalExpressionNonThrowing """client.EvaluateThunk <| fun () -> File.WriteAllText(randomFile, "foo") """ |> commit |> shouldEqual ()
+        fsi.EvalExpressionNonThrowing "File.ReadAllText randomFile" |> commit |> shouldEqual "foo"
 
 
     [<Test>]
@@ -154,8 +165,8 @@ module FsiTests =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction("let x = client.EvaluateThunk <| fun () -> [| 1 .. 100 |]")
-        fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.sum x") |> shouldEqual 5050
+        fsi.EvalInteractionNonThrowing("let x = client.EvaluateThunk <| fun () -> [| 1 .. 100 |]") |> commit
+        fsi.EvalExpressionNonThrowing("client.EvaluateThunk <| fun () -> Array.sum x") |> commit |> shouldEqual 5050
 
     [<Test>]
     let ``03. Fsi large top-level bindings`` () =
@@ -163,43 +174,43 @@ module FsiTests =
         let fsi = FsiSession.Value
 
         for i in 1 .. 5 do
-            fsi.EvalInteraction("let x = [| 1L .. 1000000L |]")
-            fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.length x") |> shouldEqual 1000000
+            fsi.EvalInteractionNonThrowing("let x = [| 1L .. 1000000L |]") |> commit 
+            fsi.EvalExpressionNonThrowing("client.EvaluateThunk <| fun () -> Array.length x") |> commit |> shouldEqual 1000000
 
     [<Test>]
     let ``04. Custom type execution`` () =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction "type Foo = { Value : int }"
-        fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> { Value = 41 + 1 }"
-        fsi.EvalExpression "x.Value" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing "type Foo = { Value : int }" |> commit 
+        fsi.EvalInteractionNonThrowing "let x = client.EvaluateThunk <| fun () -> { Value = 41 + 1 }" |> commit 
+        fsi.EvalExpressionNonThrowing "x.Value" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``05. Custom generic type execution`` () =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
-        fsi.EvalInteraction "let x = 1"
-        fsi.EvalInteraction "let y = 1"
+        fsi.EvalInteractionNonThrowing "type Bar<'T> = Bar of 'T" |> commit 
+        fsi.EvalInteractionNonThrowing "let x = 1" |> commit 
+        fsi.EvalInteractionNonThrowing "let y = 1" |> commit 
         for i in 1 .. 10 do
-            fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> Bar x"
-            fsi.EvalInteraction "let y = Bar y"
+            fsi.EvalInteractionNonThrowing "let x = client.EvaluateThunk <| fun () -> Bar x" |> commit 
+            fsi.EvalInteractionNonThrowing "let y = Bar y" |> commit 
 
-        fsi.EvalExpression "x = y" |> shouldEqual true
+        fsi.EvalExpressionNonThrowing "x = y" |> commit |> shouldEqual true
 
     [<Test>]
     let ``06. Custom functions on custom types`` () =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
-        fsi.EvalInteraction "module Bar = let map f (Bar x) = Bar (f x)"
-        fsi.EvalInteraction "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)"
-        fsi.EvalInteraction "let x = Bar 10"
-        fsi.EvalInteraction "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x"
-        fsi.EvalExpression "y = factorial 10" |> shouldEqual true
+        fsi.EvalInteractionNonThrowing "type Bar<'T> = Bar of 'T" |> commit 
+        fsi.EvalInteractionNonThrowing "module Bar = let map f (Bar x) = Bar (f x)" |> commit 
+        fsi.EvalInteractionNonThrowing "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)" |> commit 
+        fsi.EvalInteractionNonThrowing "let x = Bar 10" |> commit 
+        fsi.EvalInteractionNonThrowing "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x" |> commit 
+        fsi.EvalExpressionNonThrowing "y = factorial 10" |> commit |> shouldEqual true
 
     [<Test>]
     let ``07. Nested module definitions`` () =
@@ -214,10 +225,10 @@ module FsiTests =
             
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction code
-        fsi.EvalInteraction "open NestedModule"
-        fsi.EvalInteraction "let (Value y) = client.EvaluateThunk <| fun () -> let (Value y) = x in Value (y+1)" 
-        fsi.EvalExpression "y" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing code |> commit 
+        fsi.EvalInteractionNonThrowing "open NestedModule" |> commit 
+        fsi.EvalInteractionNonThrowing "let (Value y) = client.EvaluateThunk <| fun () -> let (Value y) = x in Value (y+1)"  |> commit 
+        fsi.EvalExpressionNonThrowing "y" |> commit |> shouldEqual 42
 
 
     [<Test>]
@@ -232,10 +243,10 @@ module FsiTests =
         """
 
         let fsi = FsiSession.Value
-        fsi.EvalInteraction code
-        fsi.EvalInteraction "let c = Cell<int>(41)"
-        fsi.EvalInteraction "let c' = client.EvaluateThunk <| fun () -> c.Value <- c.Value + 1 ; c"
-        fsi.EvalExpression "c'.Value" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing code |> commit 
+        fsi.EvalInteractionNonThrowing "let c = Cell<int>(41)" |> commit 
+        fsi.EvalInteractionNonThrowing "let c' = client.EvaluateThunk <| fun () -> c.Value <- c.Value + 1 ; c" |> commit 
+        fsi.EvalExpressionNonThrowing "c'.Value" |> commit |> shouldEqual 42
 
 
     [<Test>]
@@ -263,12 +274,13 @@ module FsiTests =
         """
 
         let fsi = FsiSession.Value
-        fsi.EvalInteraction code
-        fsi.EvalInteraction "let results = runAsync testWorkflow"
-        fsi.EvalExpression "results.Length = n" |> shouldEqual true
+        fsi.EvalInteractionNonThrowing code |> commit 
+        fsi.EvalInteractionNonThrowing "let results = runAsync testWorkflow" |> commit 
+        fsi.EvalExpressionNonThrowing "results.Length = n" |> commit |> shouldEqual true
 
 
-    [<Test>]
+(*
+[<Test>]
     let ``11. Deploy LinqOptimizer dynamic assemblies`` () =
         
         let code = """
@@ -286,9 +298,10 @@ module FsiTests =
         """
 
         let fsi = FsiSession.Value
-        fsi.EvalInteraction code
-        fsi.EvalInteraction "let result = client.EvaluateThunk query"
-        fsi.EvalExpression "result = query ()" |> shouldEqual true
+        fsi.EvalInteractionNonThrowing code |> commit 
+        fsi.EvalInteractionNonThrowing "let result = client.EvaluateThunk query" |> commit 
+        fsi.EvalExpressionNonThrowing "result = query ()" |> commit |> shouldEqual true
+*)
 
     [<Test>]
     let ``12 Remotely deploy an actor definition`` () =
@@ -322,13 +335,13 @@ module FsiTests =
 
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction code
-        fsi.EvalInteraction "let actorRef = deployActor (loop 0)"
+        fsi.EvalInteractionNonThrowing code |> commit 
+        fsi.EvalInteractionNonThrowing "let actorRef = deployActor (loop 0)" |> commit 
 
         for i in 1 .. 100 do
-            fsi.EvalInteraction "actorRef <-- Increment 1"
+            fsi.EvalInteractionNonThrowing "actorRef <-- Increment 1" |> commit 
 
-        fsi.EvalExpression "actorRef <!= GetCount" |> shouldEqual 100
+        fsi.EvalExpressionNonThrowing "actorRef <!= GetCount" |> commit |> shouldEqual 100
 
     [<Test>]
     let ``13. Add reference to external library`` () =
@@ -341,7 +354,7 @@ module FsiTests =
                 let value = TestCtor (42, "42")
         """
 
-        let scs = new SimpleSourceCodeServices()
+        let checker = FSharpChecker.Create()
 
         let workDir = Path.GetTempPath()
         let name = Path.GetRandomFileName()
@@ -349,14 +362,14 @@ module FsiTests =
         let assemblyPath = Path.Combine(workDir, Path.ChangeExtension(name, ".dll"))
             
         do File.WriteAllText(sourcePath, code)
-        let errors,code = scs.Compile [| "" ; "--target:library" ; sourcePath ; "-o" ; assemblyPath |]
+        let errors,code = checker.Compile [| "" ; "--target:library" ; sourcePath ; "-o" ; assemblyPath |] |> Async.RunSynchronously
         if code <> 0 then failwithf "Compiler error: %A" errors
 
         let fsi = FsiSession.Value
 
         fsi.AddReferences [assemblyPath]
-        fsi.EvalInteraction "open StaticAssemblyTest"
-        fsi.EvalExpression "client.EvaluateThunk <| fun () -> let (TestCtor (v,_)) = value in v" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing "open StaticAssemblyTest" |> commit 
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk <| fun () -> let (TestCtor (v,_)) = value in v" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``14. Execute code from F# script file`` () =
@@ -384,9 +397,9 @@ module FsiTests =
         let fsi = FsiSession.Value
 
         fsi.LoadScript scriptPath
-        fsi.EvalInteraction "open Script"
-        fsi.EvalInteraction "let r = client.EvaluateThunk <| fun () -> map factorial value"
-        fsi.EvalExpression "r = map factorial value" |> shouldEqual true
+        fsi.EvalInteractionNonThrowing "open Script" |> commit 
+        fsi.EvalInteractionNonThrowing "let r = client.EvaluateThunk <| fun () -> map factorial value" |> commit 
+        fsi.EvalExpressionNonThrowing "r = map factorial value" |> commit |> shouldEqual true
 
     [<Test>]
     let ``15. Single Interaction - Multiple executions`` () =
@@ -401,7 +414,7 @@ module FsiTests =
             cell.Value
         """
 
-        fsi.EvalExpression code |> shouldEqual 100
+        fsi.EvalExpressionNonThrowing code |> commit |> shouldEqual 100
 
     [<Test>]
     let ``16. Cross slice inheritance`` () =
@@ -427,13 +440,13 @@ module FsiTests =
                 member __.Pair = x,y
         """
 
-        fsi.EvalInteraction type1
-        fsi.EvalInteraction "client.EvaluateThunk <| fun () -> new Foo<int>(42)"
-        fsi.EvalInteraction type2
-        fsi.EvalInteraction "client.EvaluateThunk <| fun () -> new Bar<int, bool>(42, false)"
-        fsi.EvalInteraction type3
-        fsi.EvalInteraction """let foo = client.EvaluateThunk <| fun () -> let b = new Baz(42, "42") in b :> Foo<int>"""
-        fsi.EvalExpression "foo.Value" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing type1 |> commit 
+        fsi.EvalInteractionNonThrowing "client.EvaluateThunk <| fun () -> new Foo<int>(42)" |> commit 
+        fsi.EvalInteractionNonThrowing type2 |> commit 
+        fsi.EvalInteractionNonThrowing "client.EvaluateThunk <| fun () -> new Bar<int, bool>(42, false)" |> commit
+        fsi.EvalInteractionNonThrowing type3 |> commit
+        fsi.EvalInteractionNonThrowing """let foo = client.EvaluateThunk <| fun () -> let b = new Baz(42, "42") in b :> Foo<int>""" |> commit
+        fsi.EvalExpressionNonThrowing "foo.Value" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``17. Cross slice interfaces`` () =
@@ -452,10 +465,10 @@ module FsiTests =
                     member __.GetEncoding<'T> (x : 'T) = 42
         """
 
-        fsi.EvalInteraction interfaceCode
-        fsi.EvalInteraction "client.EvaluateThunk <| fun () -> typeof<IFoo>.GetHashCode()"
-        fsi.EvalInteraction implementationCode
-        fsi.EvalExpression "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing interfaceCode |> commit
+        fsi.EvalInteractionNonThrowing "client.EvaluateThunk <| fun () -> typeof<IFoo>.GetHashCode()" |> commit
+        fsi.EvalInteractionNonThrowing implementationCode |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``17b. Interfaces inheriting interfaces`` () =
@@ -475,8 +488,8 @@ module FsiTests =
                     member __.Bar = 27 }
         """
 
-        fsi.EvalInteraction code
-        fsi.EvalExpression "client.EvaluateThunk <| fun () -> mkBar().Foo + mkBar().Bar" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing code |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk <| fun () -> mkBar().Foo + mkBar().Bar" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``18. Binary Trees`` () =
@@ -496,8 +509,8 @@ module FsiTests =
 
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction code
-        fsi.EvalExpression "sum" |> shouldEqual 192.
+        fsi.EvalInteractionNonThrowing code |> commit
+        fsi.EvalExpressionNonThrowing "sum" |> commit |> shouldEqual 192.
 
 
     [<Test>]
@@ -516,110 +529,110 @@ module FsiTests =
                 client.EvaluateThunk getRandomDeterminant
             """
 
-            fsi.EvalInteraction code
+            fsi.EvalInteractionNonThrowing code |> commit
 
             // register native dll's
 
-            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
+            let nativeDir = Path.Combine(__SOURCE_DIRECTORY__, "../../packages/test/MathNet.Numerics.MKL.Win-x64/content/") |> Path.GetFullPath
             let libiomp5md = nativeDir + "libiomp5md.dll"
             let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
-            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral libiomp5md
-            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getPathLiteral mkl
+            fsi.EvalInteractionNonThrowing ("client.RegisterNativeDependency " + getPathLiteral libiomp5md) |> commit
+            fsi.EvalInteractionNonThrowing ("client.RegisterNativeDependency " + getPathLiteral mkl) |> commit
 
             let code' = """
                 let useNativeMKL () = Control.UseNativeMKL()
                 client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
             """
 
-            fsi.EvalInteraction code'
+            fsi.EvalInteractionNonThrowing code' |> commit
 
     [<Test>]
     let ``20. Update earlier bindings if value changed`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "let array = [|1..100|]"
+        fsi.EvalInteractionNonThrowing "let array = [|1..100|]" |> commit
 
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> Array.sum array)" |> commit |> shouldEqual 5050
 
-        fsi.EvalInteraction "array.[49] <- 0"
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5000
+        fsi.EvalInteractionNonThrowing "array.[49] <- 0" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> Array.sum array)" |> commit |> shouldEqual 5000
 
-        fsi.EvalInteraction "array.[49] <- 50"
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
+        fsi.EvalInteractionNonThrowing "array.[49] <- 50" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> Array.sum array)" |> commit |> shouldEqual 5050
 
     [<Test>]
     let ``21. Concurrent calls to client`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "[|1..20|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"
+        fsi.EvalInteractionNonThrowing "[|1..20|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))" |> commit
 
     [<Test>]
     let ``22. Simple quotation literal`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)"
+        fsi.EvalInteractionNonThrowing "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)" |> commit
 
     [<Test>]
     let ``23. Quotation literal references fsi code`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "let rec f n = if n <= 1 then n else f(n-2) + f(n-1)"
-        fsi.EvalInteraction "client.EvaluateThunk(fun () -> <@ f 10 @>)"
+        fsi.EvalInteractionNonThrowing "let rec f n = if n <= 1 then n else f(n-2) + f(n-1)" |> commit
+        fsi.EvalInteractionNonThrowing "client.EvaluateThunk(fun () -> <@ f 10 @>)" |> commit
 
     [<Test>]
     let ``24. Parametric quotation evaluation`` () =
         let fsi = FsiSession.Value
         defineQuotationEvaluator fsi
-        fsi.EvalInteraction "let incr x = eval <@ x + 1 @>"
-        fsi.EvalExpression "client.EvaluateThunk(fun () -> incr 41)" |> shouldEqual 42
+        fsi.EvalInteractionNonThrowing "let incr x = eval <@ x + 1 @>" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> incr 41)" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``24. Spliced quotation evaluation`` () =
         let fsi = FsiSession.Value
         defineQuotationEvaluator fsi
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             let rec expand n =
                 if n = 0 then <@ 0 @>
                 else <@ %(expand (n-1)) + 1 @>
-        """
+        """ |> commit
 
-        fsi.EvalExpression "client.EvaluateThunk(fun () -> let e = expand 10 in eval <@ %e + 32 @>)" |> shouldEqual 42
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> let e = expand 10 in eval <@ %e + 32 @>)" |> commit |> shouldEqual 42
 
     [<Test>]
     let ``25. Cross slice quotation reference`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction "let x = client.EvaluateThunk(fun () -> 1 + 1)"
-        fsi.EvalExpression "client.EvaluateThunk(fun () -> eval <@ x @>)" |> shouldEqual 2
+        fsi.EvalInteractionNonThrowing "let x = client.EvaluateThunk(fun () -> 1 + 1)" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> eval <@ x @>)" |> commit |> shouldEqual 2
 
     [<Test>]
     let ``26. Class static field pickling`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             type Foo () =
                 static let mutable count = 0
                 do count <- count + 1
                 static member Count = count
-        """
+        """  |> commit
 
-        fsi.EvalInteraction "let x = new Foo ()"
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 1
-        fsi.EvalInteraction "let y = new Foo ()"
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 2
+        fsi.EvalInteractionNonThrowing "let x = new Foo ()" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> Foo.Count)" |> commit |> shouldEqual 1
+        fsi.EvalInteractionNonThrowing "let y = new Foo ()" |> commit
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> Foo.Count)" |> commit |> shouldEqual 2
 
 
     [<Test>]
     let ``26. Multiple Large bindings in single slice`` () =
         let fsi = FsiSession.Value
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             let x = [|1L .. 10000000L|]
             let y = [|1L .. 10000000L|]
-        """
+        """ |> commit
 
-        fsi.EvalExpression "client.EvaluateThunk (fun () -> x.Length = y.Length)" |> shouldEqual true
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> x.Length = y.Length)" |> commit |> shouldEqual true
 
     [<Test>]
     let ``27. Mixed mode assemblies`` () =
         if is64BitProcess && not runsOnMono.Value then
             let fsi = FsiSession.Value
 
-            fsi.EvalInteraction """
+            fsi.EvalInteractionNonThrowing """
             open Google.OrTools
             open Google.OrTools.Algorithms
 
@@ -637,16 +650,17 @@ module FsiTests =
                 let kss = new Google.OrTools.Algorithms.KnapsackSolver("default")
                 kss.Init(vector [1L .. 10L], vectorvector [[1L]], vector [1L .. 10L])
                 kss.Solve()
-"""
+"""   
+                |> commit
 
-            fsi.EvalInteraction "let expected = solve ()"
-            fsi.EvalExpression "client.EvaluateThunk (fun () -> solve () = expected)" |> shouldEqual true
+            fsi.EvalInteractionNonThrowing "let expected = solve ()" |> commit
+            fsi.EvalExpressionNonThrowing "client.EvaluateThunk (fun () -> solve () = expected)" |> commit |> shouldEqual true
 
     [<Test>]
     let ``28. Should be able to serialize new types without explicitly requesting slice compilation`` () =
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             type LatestTypeDefinition = { Value : int }
 
             let roundTrip (n : int) =
@@ -655,27 +669,28 @@ module FsiTests =
                 let v' = client.EvaluateThunk(fun () -> VagabondConfig.Serializer.UnPickle<obj>(p) :?> LatestTypeDefinition)
                 v'.Value
 """
+             |> commit
 
-        fsi.EvalExpression "roundTrip 42" |> shouldEqual 42
+        fsi.EvalExpressionNonThrowing "roundTrip 42" |> commit |> shouldEqual 42
 
 
     [<Test>]
     let ``29. Should correctly evaluate Array2D.init calls`` () =
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
             let array = client.EvaluateThunk(fun () -> Array2D.init 5 5 (fun _ _ -> 0.))
-        """
+        """ |> commit
 
-        fsi.EvalExpression "array.GetLength(0)" |> shouldEqual 5
-        fsi.EvalExpression "array.GetLength(1)" |> shouldEqual 5
+        fsi.EvalExpressionNonThrowing "array.GetLength(0)" |> commit |> shouldEqual 5
+        fsi.EvalExpressionNonThrowing "array.GetLength(1)" |> commit |> shouldEqual 5
 
     [<Test>]
     let ``30. Test against Cecil bug #278`` () =
         // see https://github.com/jbevain/cecil/issues/278
         let fsi = FsiSession.Value
 
-        fsi.EvalInteraction """
+        fsi.EvalInteractionNonThrowing """
         type A<'T> = class end
         type B<'T,'U> = class end
 
@@ -685,6 +700,7 @@ module FsiTests =
 
         type D =
             static member F (x:A<B<_,_>>) = C.F x
-    """
+    """  |> commit
 
-        fsi.EvalExpression "client.EvaluateThunk(fun () -> typeof<D>)" |> shouldBe (fun x -> true)
+        fsi.EvalExpressionNonThrowing "client.EvaluateThunk(fun () -> typeof<D>)" |> commit |> shouldBe (fun x -> true)
+

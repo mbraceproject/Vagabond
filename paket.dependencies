@@ -4,7 +4,7 @@ source https://www.nuget.org/api/v2
 
 nuget FSharp.Core ~> 4.0.0
 nuget FsPickler ~> 3.0.0
-nuget Mono.Cecil ~> 0.9.6.3
+nuget Mono.Cecil >= 0.10.0-beta6
 
 group Test
   framework: >= net45

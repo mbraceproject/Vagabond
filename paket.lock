@@ -4,7 +4,7 @@ NUGET
   remote: https://www.nuget.org/api/v2
     FSharp.Core (4.0.0.1)
     FsPickler (3.0)
-    Mono.Cecil (0.9.6.4)
+    Mono.Cecil (0.10.0-beta6)
 
 GROUP Build
 REDIRECTS: ON

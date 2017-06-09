@@ -3,15 +3,22 @@ redirects: on
 source https://www.nuget.org/api/v2
 
 nuget FSharp.Core ~> 4.1.17
-nuget FsPickler ~> 3.0.0
-nuget Mono.Cecil >= 0.10.0-beta6
+nuget Mono.Cecil prerelease
+
+# We do not yet pick up FsPickler from github
+# git https://github.com/dsyme/FsPickler.git master build: "build.cmd", Packages: /bin/, OS: windows
+# git https://github.com/dsyme/FsPickler.git master build: "build.sh", Packages: /bin/, OS: mono
+
+nuget FsPickler ~> 3.2.0
+
 
 group Test
   framework: >= net45
   redirects: on
   source https://www.nuget.org/api/v2
 
-  nuget FsPickler ~> 3.0.0
+  nuget FSharp.Core ~> 4.1.17
+  nuget FsPickler ~> 3.2.0
   nuget FSharp.Data ~> 2.2.5
   nuget LinqOptimizer.FSharp
   nuget Thespian ~> 0.1.12 prerelease
@@ -19,7 +26,7 @@ group Test
   nuget NUnit ~> 2.6
   nuget NUnit.Runners ~> 2.6
   nuget MathNet.Numerics ~> 3.7.0
-  nuget MathNet.Numerics.FSharp
+  nuget MathNet.Numerics.FSharp ~> 3.7.1
   nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
 
 group Build

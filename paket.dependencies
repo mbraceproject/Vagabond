@@ -9,7 +9,7 @@ nuget Mono.Cecil prerelease
 # git https://github.com/dsyme/FsPickler.git master build: "build.cmd", Packages: /bin/, OS: windows
 # git https://github.com/dsyme/FsPickler.git master build: "build.sh", Packages: /bin/, OS: mono
 
-nuget FsPickler ~> 3.3.0
+nuget FsPickler ~> 3.2.0
 
 
 group Test
@@ -18,7 +18,7 @@ group Test
   source https://www.nuget.org/api/v2
 
   nuget FSharp.Core ~> 4.1.17
-  nuget FsPickler ~> 3.3.0
+  nuget FsPickler ~> 3.2.0
   nuget FSharp.Data ~> 2.2.5
   nuget LinqOptimizer.FSharp
   nuget Thespian ~> 0.1.12 prerelease

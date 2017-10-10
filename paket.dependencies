@@ -1,29 +1,23 @@
-framework: >= net45
+framework: net45
 redirects: on
 source https://www.nuget.org/api/v2
 
-nuget FSharp.Core ~> 4.1.17
-nuget FsPickler ~> 3.0.0
+nuget FSharp.Core >= 4.0 lowest_matching:true
+nuget FsPickler ~> 4.0
 nuget Mono.Cecil >= 0.10.0-beta6
 
-group Test
-  framework: >= net45
-  redirects: on
-  source https://www.nuget.org/api/v2
-
-  nuget FsPickler ~> 3.0.0
-  nuget FSharp.Data ~> 2.2.5
-  nuget LinqOptimizer.FSharp
-  nuget Thespian ~> 0.1.12 prerelease
-  nuget FSharp.Compiler.Service ~> 5.0
-  nuget NUnit ~> 2.6
-  nuget NUnit.Runners ~> 2.6
-  nuget MathNet.Numerics ~> 3.7.0
-  nuget MathNet.Numerics.FSharp
-  nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
+nuget FSharp.Data ~> 2.2.5
+nuget LinqOptimizer.FSharp
+nuget Thespian ~> 0.1.15 prerelease
+nuget FSharp.Compiler.Service ~> 5.0
+nuget NUnit ~> 2.6
+nuget NUnit.Runners ~> 2.6
+nuget MathNet.Numerics ~> 3.7.0
+nuget MathNet.Numerics.FSharp
+nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0
 
 group Build
-  framework: >= net45
+  framework: net45
   redirects: on
   source https://www.nuget.org/api/v2
 

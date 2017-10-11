@@ -7,12 +7,13 @@
 
 open System
 open System.IO
-open Fake 
+open Fake
 open Fake.AppVeyor
 open Fake.Git
 open Fake.ReleaseNotesHelper
 open Fake.AssemblyInfoFile
 open Fake.SemVerHelper
+open Fake.Testing.NUnit3
 
 // --------------------------------------------------------------------------------------
 // Information about the project to be used at NuGet and in AssemblyInfo files
@@ -110,11 +111,9 @@ Target "RunTests" (fun _ ->
     ActivateFinalTarget "CloseTestRunner"
 
     testAssemblies
-    |> NUnitSequential.NUnit (fun p ->
+    |> NUnit3 (fun p ->
         { p with
-            DisableShadowCopy = true
-            TimeOut = TimeSpan.FromMinutes 20.
-            OutputFile = "TestResults.xml" })
+            TimeOut = TimeSpan.FromMinutes 20. })
 )
 
 FinalTarget "CloseTestRunner" (fun _ ->  

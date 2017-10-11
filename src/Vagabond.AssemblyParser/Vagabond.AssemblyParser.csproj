@@ -44,6 +44,7 @@
   <ItemGroup>
     <Compile Include="AssemblyParser.cs" />
     <Compile Include="AssemblyParserConfig.cs" />
+    <Compile Include="AppDomainAssemblyResolver.cs" />
     <Compile Include="ByteBuffer.cs" />
     <Compile Include="Disassembler.cs" />
     <Compile Include="Instruction.cs" />

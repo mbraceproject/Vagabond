@@ -2,7 +2,7 @@ framework: net45
 redirects: on
 source https://www.nuget.org/api/v2
 
-nuget FSharp.Core >= 4.0 lowest_matching:true
+nuget FSharp.Core >= 4.0
 nuget FsPickler ~> 4.0
 nuget Mono.Cecil >= 0.10.0-beta6
 

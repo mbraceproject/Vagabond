@@ -3,7 +3,7 @@ RESTRICTION: == net45
 NUGET
   remote: https://www.nuget.org/api/v2
     FSharp.Compiler.Service (5.0)
-    FSharp.Core (4.0.0.1)
+    FSharp.Core (4.2.3)
     FSharp.Data (2.2.5)
     FsPickler (4.0)
       FSharp.Core (>= 3.1)

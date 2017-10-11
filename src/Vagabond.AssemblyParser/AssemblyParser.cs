@@ -525,9 +525,15 @@ namespace MBrace.Vagabond.AssemblyParser
         {
             var name = assembly.GetName();
 
+            var moduleParams = new ModuleParameters
+            {
+                Kind = ModuleKind.Dll,
+                AssemblyResolver = new AppDomainAssemblyResolver()
+            };
+
             var assembly_definition = AssemblyDefinition.CreateAssembly(
                 new AssemblyNameDefinition(name.Name, name.Version),
-                assembly.ManifestModule.Name, ModuleKind.Dll);
+                assembly.ManifestModule.Name, moduleParams);
 
             assembly_definition.MainModule.Runtime = TargetRuntime.Net_4_0;
             return assembly_definition;

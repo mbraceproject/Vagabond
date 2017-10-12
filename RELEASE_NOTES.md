@@ -1,4 +1,4 @@
-* 0.15.0 - Update FsPickler version.
+* 0.15.0 - Support F# 4.1
 * 0.14.0 - Namespace change Nessos.Vagabond --> MBrace.Vagabond
 * 0.13.1 - Update to latest Mono.Cecil. Fix #12.
 * 0.13.0 - Bugfix in filename generation.

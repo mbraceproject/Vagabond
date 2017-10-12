@@ -107,11 +107,11 @@ module FsiTests =
                 "bin/Thespian.dll"
                 "bin/ThunkServer.exe"
 
-                "packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
-                "packages/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
-                "packages/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
-                "packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-                "packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
+                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
+                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
+                "packages/testing/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+                "packages/testing/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
                 "resource/Google.OrTools.dll"
             ]
 
@@ -515,7 +515,7 @@ module FsiTests =
 
             // register native dll's
 
-            let nativeDir = "packages/MathNet.Numerics.MKL.Win-x64/content/"
+            let nativeDir = "packages/testing/MathNet.Numerics.MKL.Win-x64/content/"
             let libiomp5md = nativeDir + "libiomp5md.dll"
             let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
@@ -683,3 +683,19 @@ module FsiTests =
     """
 
         fsi.EvalExpression "client.EvaluateThunk(fun () -> typeof<D>)" |> shouldBe (fun x -> true)
+
+
+    [<Test>]
+    let ``31 F# 4.1 Struct types supported`` () =
+        let fsi = FsiSession.Value
+
+        fsi.EvalInteraction """
+        
+        [<Struct>]
+        type A = A1 of a:int | A2 of b:int * string
+        
+        [<Struct>]
+        type B = { A : A ; B : struct(int * int) }
+"""
+
+        fsi.EvalExpression """client.EvaluateThunk(fun () -> { A = A2(42,"42") ; B = struct(1,2) })""" |> shouldBe (fun x -> true)

@@ -52,7 +52,7 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 Example 3: Type providers
 **)
 
-#r "../../packages/FSharp.Data/lib/net40/FSharp.Data.dll"
+#r "../../packages/testing/FSharp.Data/lib/net40/FSharp.Data.dll"
 
 open FSharp.Data
 
@@ -133,7 +133,7 @@ ref <!= GetCount
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/LinqOptimizer.FSharp/lib/"
+#I "../../packages/testing/LinqOptimizer.FSharp/lib/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"
@@ -159,8 +159,8 @@ client.EvaluateThunk query
 Example 7: Deploy library-generated dynamic assemblies
 *)
 
-#r "../../packages/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-#r "../../packages/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+#r "../../packages/testing/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+#r "../../packages/testing/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
 
 open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra
@@ -172,7 +172,7 @@ let getRandomDeterminant () =
 client.EvaluateThunk getRandomDeterminant
 
 // register native assemblies to Vagabond state
-let content = __SOURCE_DIRECTORY__ + "/../../packages/MathNet.Numerics.MKL.Win-x64/content/"
+let content = __SOURCE_DIRECTORY__ + "/../../packages/testing/MathNet.Numerics.MKL.Win-x64/content/"
 client.RegisterNativeDependency <| content + "libiomp5md.dll"
 client.RegisterNativeDependency <| content + "MathNet.Numerics.MKL.dll"
 client.NativeAssemblies

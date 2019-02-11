@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.329
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{B521A597-793B-4D2A-8302-AAC7AC224ACC}"
 	ProjectSection(SolutionItems) = preProject
@@ -12,6 +12,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{B521A5
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60BC93-E09B-4E5F-9D85-95A519479D54}"
 	ProjectSection(SolutionItems) = preProject
+		.gitignore = .gitignore
 		.travis.yml = .travis.yml
 		appveyor.yml = appveyor.yml
 		build.cmd = build.cmd
@@ -92,5 +93,8 @@ Global
 		{3D29EE57-78B9-410A-BBCF-7F59C04F667D} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
 		{DA4963F6-E95D-4541-94BE-9468E172286C} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
 		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6} = {DC2A6E19-CB54-495B-8F63-6FF508D15949}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {53E25F19-65D8-432C-AD57-ADCF651A9927}
 	EndGlobalSection
 EndGlobal

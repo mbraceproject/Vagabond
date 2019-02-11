@@ -16,6 +16,7 @@ tags
     F#, fsharp, dynamic assemblies, code, distribution, cecil
 references
     Vagabond.dll
+	Vagabond.AssemblyParser.dll
 files
     ../../bin/Vagabond.AssemblyParser.dll ==> lib/net45
     ../../bin/Vagabond.AssemblyParser.pdb ==> lib/net45

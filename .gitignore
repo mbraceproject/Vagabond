@@ -177,3 +177,4 @@ nuget/*.nupkg
 .paket/paket.exe
 paket-files/
 temp/
+.vs/

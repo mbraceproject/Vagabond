@@ -1,3 +1,4 @@
+* 0.15.1 - Fix nuget issue that was causing errors in new dotnet sdk.
 * 0.15.0 - Support F# 4.1
 * 0.14.0 - Namespace change Nessos.Vagabond --> MBrace.Vagabond
 * 0.13.1 - Update to latest Mono.Cecil. Fix #12.

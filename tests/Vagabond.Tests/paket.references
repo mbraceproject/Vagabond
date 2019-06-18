@@ -1,7 +1,8 @@
 group Testing
 FsPickler
-FSharp.Data
 NUnit
+NUnit3TestAdapter
+Microsoft.Net.Test.SDK
 Thespian
 FSharp.Compiler.Service
 FSharp.Core

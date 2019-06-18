@@ -37,9 +37,10 @@ let gitHome = "https://github.com/" + gitOwner
 let gitName = "Vagabond"
 let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/" + gitOwner
 let isTravisBuild = buildServer = BuildServer.Travis
+let artifactsDir = __SOURCE_DIRECTORY__ @@ "artifacts"
 
 
-let testAssemblies = [ "bin/Vagabond.Tests.dll" ]
+let testProjects = [ "tests/Vagabond.Tests" ]
 
 //
 //// --------------------------------------------------------------------------------------
@@ -67,7 +68,7 @@ Target "AssemblyInfo" (fun _ ->
 // Clean build results & restore NuGet packages
 
 Target "Clean" (fun _ ->
-    CleanDirs [ "bin" ]
+    CleanDirs [ artifactsDir ]
 )
 
 //
@@ -77,12 +78,11 @@ Target "Clean" (fun _ ->
 let configuration = environVarOrDefault "Configuration" "Release"
 
 Target "Build" (fun _ ->
-    // Build the rest of the project
-    { BaseDirectory = __SOURCE_DIRECTORY__
-      Includes = [ project + ".sln" ]
-      Excludes = [] } 
-    |> MSBuild "" "Build" ["Configuration", configuration]
-    |> Log "AppBuild-Output: "
+    DotNetCli.Build(fun config ->
+        { config with
+            Project = project + ".sln"
+            Configuration = configuration }
+    )
 )
 
 
@@ -90,17 +90,14 @@ Target "Build" (fun _ ->
 // Run the unit tests using test runner & kill test runner when complete
 
 Target "RunTests" (fun _ ->
-    ActivateFinalTarget "CloseTestRunner"
-
-    testAssemblies
-    |> NUnit3 (fun p ->
-        { p with
-            TimeOut = TimeSpan.FromMinutes 20. })
+    for proj in testProjects do
+        DotNetCli.Test (fun c ->
+            { c with
+                Project = proj
+                Configuration = configuration 
+                AdditionalArgs = ["--no-build"] })
 )
 
-FinalTarget "CloseTestRunner" (fun _ ->  
-    ProcessHelper.killProcess "nunit-agent.exe"
-)
 //
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
@@ -109,12 +106,12 @@ Target "NuGet" (fun _ ->
     Paket.Pack (fun p -> 
         { p with 
             ToolPath = ".paket/paket.exe" 
-            OutputPath = "bin/"
+            OutputPath = artifactsDir
             Version = release.NugetVersion
             ReleaseNotes = toLines release.Notes })
 )
 
-Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = "bin/" }))
+Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = artifactsDir }))
 
 // Doc generation
 
@@ -138,6 +135,7 @@ Target "ReleaseDocs" (fun _ ->
 
 // Github Releases
 
+#nowarn "85"
 #load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
 open Octokit
 
@@ -181,6 +179,7 @@ Target "ReleaseGithub" (fun _ ->
 // Run all targets by default. Invoke 'build <Target>' to override
 
 Target "Default" DoNothing
+Target "Bundle" DoNothing
 Target "Release" DoNothing
 Target "Help" (fun _ -> PrintTargets() )
 
@@ -193,9 +192,12 @@ Target "Help" (fun _ -> PrintTargets() )
 
 "Default"
   ==> "NuGet"
+  //==> "GenerateDocs"
+  ==> "Bundle"
+
+"Bundle"
   ==> "NuGetPush"
-  ==> "GenerateDocs"
-  ==> "ReleaseDocs"
+  //==> "ReleaseDocs"
   ==> "ReleaseGithub"
   ==> "Release"
 

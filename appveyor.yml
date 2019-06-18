@@ -1,12 +1,11 @@
+image: Visual Studio 2017
+configuration: Release
 init:
   - git config --global core.autocrlf input
-
 build_script:
-  - cmd: build.cmd RunTestsAndBuildNuget
-
+  - cmd: build.cmd Bundle
 test: off
-
-version: '{build}'
-
+version: 0.0.1.{build}
 artifacts:
-  - path: bin\*.nupkg
+  - path: artifacts
+    name: artifacts

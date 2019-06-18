@@ -6,8 +6,8 @@ open System.IO
 
 open NUnit.Framework
 
-open Microsoft.FSharp.Compiler.Interactive.Shell
-open Microsoft.FSharp.Compiler.SourceCodeServices
+open FSharp.Compiler.Interactive.Shell
+open FSharp.Compiler.SourceCodeServices
 
 open MBrace.Vagabond
 
@@ -95,23 +95,41 @@ module FsiTests =
 
         let fsi = FsiSession.Start()
 
-        let thunkServer = getFullPath "bin/ThunkServer.exe"
+        let (@@) left right = Path.Combine(left, right)
+
+        let thunkServerPath = 
+            let configuration =
+#if DEBUG
+                "Debug"
+#else
+                "Release"
+#endif
+            let framework =
+#if NETCOREAPP2_2
+                "netcoreapp2.2"
+#else
+                "net461"
+#endif
+            
+            sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
+
+        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer.exe")
 
         // add dependencies
 
         fsi.AddReferences 
             [
-                "bin/FsPickler.dll"
-                "bin/Mono.Cecil.dll"
-                "bin/Vagabond.dll"
-                "bin/Thespian.dll"
-                "bin/ThunkServer.exe"
+                thunkServerPath @@ "FsPickler.dll"
+                thunkServerPath @@ "Mono.Cecil.dll"
+                thunkServerPath @@ "Vagabond.dll"
+                thunkServerPath @@ "Thespian.dll"
+                thunkServerPath @@ "ThunkServer.exe"
 
-                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.Base.dll"
-                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.Core.dll"
-                "packages/testing/LinqOptimizer.FSharp/lib/LinqOptimizer.FSharp.dll"
-                "packages/testing/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-                "packages/testing/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.Base.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.Core.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.FSharp.dll"
+                "packages/fsi/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+                "packages/fsi/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
                 "resource/Google.OrTools.dll"
             ]
 

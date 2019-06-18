@@ -11,7 +11,8 @@ The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagabond
 **)
 
-#I "../../bin/"
+#I "bin/Debug/net461"
+let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/net461/ThunkServer.exe"
 
 #r "FsPickler.dll"
 #r "ThunkServer.exe"
@@ -19,7 +20,7 @@ Dependency resolution and exportation logic is handled transparently by Vagabond
 open ThunkServer
 
 // initialize & test a local instance
-ThunkClient.Executable <- __SOURCE_DIRECTORY__ + "/../../bin/ThunkServer.exe"
+ThunkClient.Executable <- executable
 let client = ThunkClient.InitLocal()
 
 (**
@@ -52,7 +53,7 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 Example 3: Type providers
 **)
 
-#r "../../packages/testing/FSharp.Data/lib/net40/FSharp.Data.dll"
+#r "../../packages/fsi/FSharp.Data/lib/net45/FSharp.Data.dll"
 
 open FSharp.Data
 
@@ -133,7 +134,7 @@ ref <!= GetCount
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/testing/LinqOptimizer.FSharp/lib/"
+#I "../../packages/fsi/LinqOptimizer.FSharp/lib/net45"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"
@@ -159,8 +160,8 @@ client.EvaluateThunk query
 Example 7: Deploy library-generated dynamic assemblies
 *)
 
-#r "../../packages/testing/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-#r "../../packages/testing/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+#r "../../packages/fsi/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
+#r "../../packages/fsi/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
 
 open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra

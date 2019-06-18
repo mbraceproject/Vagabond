@@ -1,14 +1,14 @@
-﻿#r "../../bin/FsPickler.dll"
-#r "../../bin/Vagabond.AssemblyParser.dll"
-#r "../../bin/Vagabond.dll"
-#r "../../bin/ThunkServer.exe"
+﻿#r "bin/Debug/net45/FsPickler.dll"
+#r "bin/Debug/net45/Vagabond.AssemblyParser.dll"
+#r "bin/Debug/net45/Vagabond.dll"
+#r "bin/Debug/net45/ThunkServer.exe"
 
 // before running sample, don't forget to set binding redirects to FSharp.Core in InteractiveHost.exe
 
 using System.Linq;
 using ThunkServer;
 
-ThunkClient.Executable = "../../bin/ThunkServer.exe";
+ThunkClient.Executable = "bin/Debug/net45/ThunkServer.exe";
 var client = ThunkClient.InitLocal();
 
 client.EvaluateDelegate(() => Console.WriteLine("C# Interactive, meet Vagabond!"));

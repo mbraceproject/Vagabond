@@ -1,63 +1,79 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.329
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.29009.5
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{B521A597-793B-4D2A-8302-AAC7AC224ACC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Vagabond.AssemblyParser", "src\Vagabond.AssemblyParser\Vagabond.AssemblyParser.csproj", "{A2407722-9121-41CE-930F-7A435C8A0CBF}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Vagabond", "src\Vagabond\Vagabond.fsproj", "{4B67348D-42DF-4A3A-B8FF-6FE35D68837C}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "ThunkServer", "samples\ThunkServer\ThunkServer.fsproj", "{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Vagabond.Tests", "tests\Vagabond.Tests\Vagabond.Tests.fsproj", "{603E09C7-FCED-4AA6-B5E2-31DB3CE40054}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".paket", ".paket", "{2F59F86D-E770-4BEB-B0CB-5291108D9D2C}"
 	ProjectSection(SolutionItems) = preProject
-		.paket\paket.bootstrapper.exe = .paket\paket.bootstrapper.exe
-		paket.dependencies = paket.dependencies
-		paket.lock = paket.lock
-		.paket\paket.targets = .paket\paket.targets
+		.paket\paket.exe = .paket\paket.exe
+		.paket\Paket.Restore.targets = .paket\Paket.Restore.targets
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "project", "project", "{BF60BC93-E09B-4E5F-9D85-95A519479D54}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A3ACAF31-4BFA-42AE-876F-4211A163B408}"
 	ProjectSection(SolutionItems) = preProject
+		.dockerignore = .dockerignore
+		.gitattributes = .gitattributes
 		.gitignore = .gitignore
 		.travis.yml = .travis.yml
 		appveyor.yml = appveyor.yml
 		build.cmd = build.cmd
 		build.fsx = build.fsx
 		build.sh = build.sh
-		resource\Google.OrTools.dll = resource\Google.OrTools.dll
+		docker-build.sh = docker-build.sh
+		Dockerfile = Dockerfile
 		License.md = License.md
+		paket.dependencies = paket.dependencies
+		paket.lock = paket.lock
 		README.md = README.md
 		RELEASE_NOTES.md = RELEASE_NOTES.md
+		Vagabond.sln = Vagabond.sln
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{DC2A6E19-CB54-495B-8F63-6FF508D15949}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{428768D4-1BA8-4EA0-BDC2-53DE9C6E25A5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond", "src\Vagabond\Vagabond.fsproj", "{2E62B639-1560-46EB-8528-A604B5D194FB}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Vagabond.Tests", "tests\Vagabond.Tests\Vagabond.Tests.fsproj", "{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vagabond.AssemblyParser", "src\Vagabond.AssemblyParser\Vagabond.AssemblyParser.csproj", "{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{E2A7A569-92D7-4A47-86C0-B0B9C680D530}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "content", "content", "{7024E5FE-9835-411F-9621-5E5CA6558C19}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "content", "content", "{606FBB4A-636D-4DEA-9EEC-C5D5A33E32A6}"
 	ProjectSection(SolutionItems) = preProject
 		docs\content\index.fsx = docs\content\index.fsx
 		docs\content\overview.fsx = docs\content\overview.fsx
 		docs\content\tutorial.fsx = docs\content\tutorial.fsx
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{3D29EE57-78B9-410A-BBCF-7F59C04F667D}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "files", "files", "{BB9AFD75-7588-44B1-85C0-0BF753B24C48}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "img", "img", "{B5C66484-8E95-412C-8435-67FE3E64F2ED}"
 	ProjectSection(SolutionItems) = preProject
 		docs\files\img\logo.png = docs\files\img\logo.png
 		docs\files\img\mbrace.png = docs\files\img\mbrace.png
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{DA4963F6-E95D-4541-94BE-9468E172286C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{87C66125-B112-4822-BB37-EEFB5DE60741}"
 	ProjectSection(SolutionItems) = preProject
 		docs\tools\generate.fsx = docs\tools\generate.fsx
+		docs\tools\packages.config = docs\tools\packages.config
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "templates", "templates", "{3D659481-5E0A-41A9-BD81-B975CC479A8D}"
+	ProjectSection(SolutionItems) = preProject
 		docs\tools\templates\template.cshtml = docs\tools\templates\template.cshtml
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "ThunkServer", "samples\ThunkServer\ThunkServer.fsproj", "{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "resource", "resource", "{CB20F7FC-3F7A-4819-AEA9-A49F518FF1A3}"
+	ProjectSection(SolutionItems) = preProject
+		resource\Google.OrTools.dll = resource\Google.OrTools.dll
+	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9779AE62-9A0D-4CEF-8F16-2F58B0C2B1AB}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{B36354F2-5ED1-4E3D-8749-1D4ABDE1F275}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{45B86A86-AFF6-4031-B4D6-B2ABE6A6E9CD}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{6349FE98-4307-4E8D-9460-18684041C450}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{D57AEB73-74D1-4E59-B91A-F87D65602776}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -65,36 +81,38 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{2E62B639-1560-46EB-8528-A604B5D194FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2E62B639-1560-46EB-8528-A604B5D194FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2E62B639-1560-46EB-8528-A604B5D194FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2E62B639-1560-46EB-8528-A604B5D194FB}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39}.Release|Any CPU.Build.0 = Release|Any CPU
-		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2407722-9121-41CE-930F-7A435C8A0CBF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2407722-9121-41CE-930F-7A435C8A0CBF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2407722-9121-41CE-930F-7A435C8A0CBF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2407722-9121-41CE-930F-7A435C8A0CBF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4B67348D-42DF-4A3A-B8FF-6FE35D68837C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B67348D-42DF-4A3A-B8FF-6FE35D68837C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B67348D-42DF-4A3A-B8FF-6FE35D68837C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B67348D-42DF-4A3A-B8FF-6FE35D68837C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{603E09C7-FCED-4AA6-B5E2-31DB3CE40054}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{603E09C7-FCED-4AA6-B5E2-31DB3CE40054}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{603E09C7-FCED-4AA6-B5E2-31DB3CE40054}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{603E09C7-FCED-4AA6-B5E2-31DB3CE40054}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{2E62B639-1560-46EB-8528-A604B5D194FB} = {9779AE62-9A0D-4CEF-8F16-2F58B0C2B1AB}
-		{8B688D61-B358-4146-A6B8-2CEFABBEC5A0} = {45B86A86-AFF6-4031-B4D6-B2ABE6A6E9CD}
-		{63F1D1AF-BAC0-4A8D-8537-437BA4652F39} = {9779AE62-9A0D-4CEF-8F16-2F58B0C2B1AB}
-		{7024E5FE-9835-411F-9621-5E5CA6558C19} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
-		{3D29EE57-78B9-410A-BBCF-7F59C04F667D} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
-		{DA4963F6-E95D-4541-94BE-9468E172286C} = {E2A7A569-92D7-4A47-86C0-B0B9C680D530}
-		{818400E0-B729-4DB8-A5F5-B8C8DEDA11D6} = {DC2A6E19-CB54-495B-8F63-6FF508D15949}
+		{A2407722-9121-41CE-930F-7A435C8A0CBF} = {6349FE98-4307-4E8D-9460-18684041C450}
+		{4B67348D-42DF-4A3A-B8FF-6FE35D68837C} = {6349FE98-4307-4E8D-9460-18684041C450}
+		{9D0CD44C-68BE-44E0-BD1C-C7D427E140A4} = {B36354F2-5ED1-4E3D-8749-1D4ABDE1F275}
+		{603E09C7-FCED-4AA6-B5E2-31DB3CE40054} = {D57AEB73-74D1-4E59-B91A-F87D65602776}
+		{606FBB4A-636D-4DEA-9EEC-C5D5A33E32A6} = {428768D4-1BA8-4EA0-BDC2-53DE9C6E25A5}
+		{BB9AFD75-7588-44B1-85C0-0BF753B24C48} = {428768D4-1BA8-4EA0-BDC2-53DE9C6E25A5}
+		{B5C66484-8E95-412C-8435-67FE3E64F2ED} = {BB9AFD75-7588-44B1-85C0-0BF753B24C48}
+		{87C66125-B112-4822-BB37-EEFB5DE60741} = {428768D4-1BA8-4EA0-BDC2-53DE9C6E25A5}
+		{3D659481-5E0A-41A9-BD81-B975CC479A8D} = {87C66125-B112-4822-BB37-EEFB5DE60741}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {53E25F19-65D8-432C-AD57-ADCF651A9927}
+		SolutionGuid = {978E7335-1D10-4D4D-8FB1-0B01ECB6952C}
 	EndGlobalSection
 EndGlobal

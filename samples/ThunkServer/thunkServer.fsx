@@ -15,6 +15,7 @@ Dependency resolution and exportation logic is handled transparently by Vagabond
 let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/net461/ThunkServer.exe"
 
 #r "FsPickler.dll"
+#r "Vagabond.dll"
 #r "ThunkServer.exe"
 
 open ThunkServer
@@ -179,3 +180,15 @@ client.NativeAssemblies
 let useNativeMKL () = Control.UseNativeMKL()
 
 client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
+
+// verify skipped failing test is passing here
+type LatestTypeDefinition = { Value : int }
+
+let roundTrip (n : int) =
+    let v = { Value = n }
+    let p = VagabondConfig.Serializer.Pickle(box v)
+    let v' = client.EvaluateThunk(fun () -> VagabondConfig.Serializer.UnPickle<obj>(p) :?> LatestTypeDefinition)
+    v'.Value
+
+
+roundTrip 42

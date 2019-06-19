@@ -23,6 +23,9 @@ module FsiTests =
         sprintf "@\"%s\"" fullPath
 
     type FsiEvaluationSession with
+
+        member fsi.AddFolderReference (path : string) =
+            fsi.EvalInteraction ("#I " + getFullPath path)
         
         member fsi.AddReferences (paths : string list) =
             let directives = 
@@ -117,10 +120,11 @@ module FsiTests =
 
         // add dependencies
 
+        fsi.AddFolderReference thunkServerPath
+
         fsi.AddReferences 
             [
                 thunkServerPath @@ "FsPickler.dll"
-                thunkServerPath @@ "Mono.Cecil.dll"
                 thunkServerPath @@ "Vagabond.dll"
                 thunkServerPath @@ "Thespian.dll"
                 thunkServerPath @@ "ThunkServer.exe"
@@ -655,7 +659,7 @@ module FsiTests =
             fsi.EvalInteraction "let expected = solve ()"
             fsi.EvalExpression "client.EvaluateThunk (fun () -> solve () = expected)" |> shouldEqual true
 
-    [<Test; Ignore("Test failing")>]
+    [<Test; Ignore("Test failing, but works on fsi")>]
     let ``28 Should be able to serialize new types without explicitly requesting slice compilation`` () =
         let fsi = FsiSession.Value
 

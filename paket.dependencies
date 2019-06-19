@@ -29,7 +29,7 @@ group Fsi
   redirects: off
 
   nuget FSharp.Data ~> 3.1.1
-  nuget LinqOptimizer.FSharp ~> 0.7.0
+  nuget LinqOptimizer.FSharp ~> 0.6.0
   nuget MathNet.Numerics ~> 3.7.0
   nuget MathNet.Numerics.FSharp
   nuget MathNet.Numerics.MKL.Win-x64 ~> 1.8.0

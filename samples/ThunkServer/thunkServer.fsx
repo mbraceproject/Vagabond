@@ -58,10 +58,8 @@ Example 3: Type providers
 open FSharp.Data
 
 // World Bank
-
-let wb = WorldBankData.GetDataContext()
-
 let top5 () = 
+    let wb = WorldBankData.GetDataContext()
     query {
         for country in wb.Regions.``Euro area``.Countries do
         sortByDescending country.Indicators.``GDP per capita (current US$)``.[2012]
@@ -134,7 +132,7 @@ ref <!= GetCount
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/fsi/LinqOptimizer.FSharp/lib/net45"
+#I "../../packages/fsi/LinqOptimizer.FSharp/lib/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"
@@ -173,7 +171,7 @@ let getRandomDeterminant () =
 client.EvaluateThunk getRandomDeterminant
 
 // register native assemblies to Vagabond state
-let content = __SOURCE_DIRECTORY__ + "/../../packages/testing/MathNet.Numerics.MKL.Win-x64/content/"
+let content = __SOURCE_DIRECTORY__ + "/../../packages/fsi/MathNet.Numerics.MKL.Win-x64/content/"
 client.RegisterNativeDependency <| content + "libiomp5md.dll"
 client.RegisterNativeDependency <| content + "MathNet.Numerics.MKL.dll"
 client.NativeAssemblies

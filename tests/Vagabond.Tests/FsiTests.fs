@@ -721,3 +721,9 @@ module FsiTests =
 """
 
         fsi.EvalExpression """client.EvaluateThunk(fun () -> { A = A2(42,"42") ; B = struct(1,2) })""" |> shouldBe (fun x -> true)
+
+    [<Test>]
+    let ``32 F# 4.5 Anon records supported`` () =
+        let fsi = FsiSession.Value
+
+        fsi.EvalExpression """client.EvaluateThunk(fun () -> {| A = {| x = 2 |} ; B = struct(1,2) |})""" |> shouldBe (fun x -> true)

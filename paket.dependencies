@@ -1,11 +1,11 @@
 source https://www.nuget.org/api/v2
-framework: net45
+framework: net45, netstandard2.0
 redirects: off
 storage: none
 
 nuget FSharp.Core >= 4.0 lowest_matching:true
 nuget FsPickler ~> 5.2 lowest_matching:true
-nuget Mono.Cecil >= 0.10.0-beta6
+nuget Mono.Cecil >= 0.10.4
 
 group Testing
   source https://www.nuget.org/api/v2
@@ -15,7 +15,6 @@ group Testing
 
   nuget FSharp.Core ~> 4.6
   nuget FsPickler ~> 5.2
-  nuget Mono.Cecil >= 0.10.0-beta6
   nuget Thespian ~> 0.2.0
 
   nuget FSharp.Compiler.Service ~> 29.0.1

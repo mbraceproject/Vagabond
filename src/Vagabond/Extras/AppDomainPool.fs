@@ -1,5 +1,7 @@
 ﻿namespace MBrace.Vagabond.AppDomainPool
 
+#if !NETSTANDARD2_0
+
 open System
 open System.Collections.Generic
 open System.Reflection
@@ -549,3 +551,5 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
 
     interface IDisposable with
         member __.Dispose () = (pool :> IDisposable).Dispose()
+
+#endif

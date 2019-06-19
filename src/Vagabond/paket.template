@@ -18,6 +18,6 @@ references
     Vagabond.dll
 	Vagabond.AssemblyParser.dll
 files
-    ../../bin/Vagabond.AssemblyParser.dll ==> lib/net45
-    ../../bin/Vagabond.AssemblyParser.pdb ==> lib/net45
-    ../../bin/Vagabond.AssemblyParser.xml ==> lib/net45
+    bin/Debug/net45/Vagabond.AssemblyParser.dll ==> lib/net45
+    bin/Debug/net45/Vagabond.AssemblyParser.pdb ==> lib/net45
+    bin/Debug/net45/Vagabond.AssemblyParser.xml ==> lib/net45

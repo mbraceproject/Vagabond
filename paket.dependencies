@@ -9,7 +9,7 @@ nuget Mono.Cecil >= 0.10.4
 
 group Testing
   source https://www.nuget.org/api/v2
-  framework: net461
+  framework: net461, netcoreapp2.2
   redirects: off
   storage: none
 

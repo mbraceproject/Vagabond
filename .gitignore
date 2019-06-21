@@ -177,3 +177,4 @@ nuget/*.nupkg
 paket-files/
 temp/
 .vs/
+.idea/

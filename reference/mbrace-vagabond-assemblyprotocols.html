@@ -38,7 +38,7 @@
 <h1>AssemblyProtocols</h1>
 <p>
   <span>Namespace: MBrace.Vagabond</span><br />
-</p>
+  </p>
 <div class="xmldoc">
 <p>Vagabond assembly publish/receive protocol implementations</p>
 
@@ -56,17 +56,21 @@
           <td class="type-name">
             <a href="mbrace-vagabond-assemblyprotocols-iremoteassemblypublisher.html">IRemoteAssemblyPublisher</a>
           </td>
-          <td class="xmldoc"><p>Defines an abstract assembly exporter; to be used by VagabondClient.</p>
+          <td class="xmldoc">
+          <p>Defines an abstract assembly exporter; to be used by VagabondClient.</p>
 
-</td>
+
+          </td>
         </tr>
         <tr>
           <td class="type-name">
             <a href="mbrace-vagabond-assemblyprotocols-iremoteassemblyreceiver.html">IRemoteAssemblyReceiver</a>
           </td>
-          <td class="xmldoc"><p>Defines an abstract assembly load target; to be used by VagabondServer.</p>
+          <td class="xmldoc">
+          <p>Defines an abstract assembly load target; to be used by VagabondServer.</p>
 
-</td>
+
+          </td>
         </tr>
     </tbody>
   </table>
@@ -83,14 +87,14 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '1', 1)" onmouseover="showTip(event, '1', 1)">
-            ReceiveDependencies(...)
+            x.ReceiveDependencies(...)
           </code>
           <div class="tip" id="1">
             <strong>Signature:</strong> (publisher:IRemoteAssemblyPublisher * lookupPolicy:AssemblyLookupPolicy option) -&gt; Async&lt;unit&gt;<br />
-                      </div>
+                                  </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L82-82" class="github-link">
+                      <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L82-82" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -104,14 +108,14 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '2', 2)" onmouseover="showTip(event, '2', 2)">
-            SubmitDependencies(...)
+            x.SubmitDependencies(...)
           </code>
           <div class="tip" id="2">
             <strong>Signature:</strong> (receiver:IRemoteAssemblyReceiver * dependencies:seq&lt;VagabondAssembly&gt;) -&gt; Async&lt;DataDependencyInfo []&gt;<br />
-                      </div>
+                                  </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L29-29" class="github-link">
+                      <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L29-29" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>
@@ -125,14 +129,14 @@
         <td class="member-name">
 
           <code onmouseout="hideTip(event, '3', 3)" onmouseover="showTip(event, '3', 3)">
-            SubmitObjectDependencies(...)
+            x.SubmitObjectDependencies(...)
           </code>
           <div class="tip" id="3">
             <strong>Signature:</strong> (receiver:IRemoteAssemblyReceiver * obj:obj * permitCompilation:bool option * includeNativeDependencies:bool option) -&gt; Async&lt;DataDependencyInfo []&gt;<br />
-                      </div>
+                                  </div>
         </td>
         <td class="xmldoc">
-            <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L71-71" class="github-link">
+                      <a href="http://github.com/mbraceproject/Vagabond/tree/master/src/Vagabond/Extras/AssemblyProtocols.fs#L71-71" class="github-link">
               <img src="../content/img/github.png" class="normal" />
               <img src="../content/img/github-blue.png" class="hover" />
             </a>

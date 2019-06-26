@@ -6,12 +6,10 @@
 #r "packages/build/FAKE/tools/FakeLib.dll"
 
 open System
-open System.IO
 open Fake
 open Fake.AppVeyor
 open Fake.Git
 open Fake.ReleaseNotesHelper
-open Fake.AssemblyInfoFile
 
 // --------------------------------------------------------------------------------------
 // Information about the project to be used at NuGet and in AssemblyInfo files
@@ -48,19 +46,6 @@ let testProjects = [ "tests/Vagabond.Tests" ]
 Target "BuildVersion" (fun _ ->
     Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
 )
-// Generate assembly info files with the right version & up-to-date information
-Target "AssemblyInfo" (fun _ ->
-  let vagabondCS = "src/Vagabond.AssemblyParser/Properties/AssemblyInfo.cs"
-  CreateCSharpAssemblyInfo vagabondCS
-      [ Attribute.Version assemblyVersion
-        Attribute.FileVersion assemblyVersion] 
-
-  let vagabondFS = "src/Vagabond/AssemblyInfo.fs"
-  CreateFSharpAssemblyInfo vagabondFS
-      [ Attribute.Version assemblyVersion
-        Attribute.FileVersion assemblyVersion] 
-)
-
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
@@ -79,7 +64,14 @@ Target "Build" (fun _ ->
     DotNetCli.Build(fun config ->
         { config with
             Project = project + ".sln"
-            Configuration = configuration }
+            Configuration = configuration
+            AdditionalArgs = 
+                [ 
+                    "-p:Version=" + release.NugetVersion
+                    "-p:GenerateAssemblyInfo=true"
+                    //"-p:SourceLinkCreate=true" 
+                ]
+        }
     )
 )
 
@@ -191,7 +183,6 @@ Target "Help" (fun _ -> PrintTargets() )
 
 "Clean"
   =?> ("BuildVersion", isAppVeyorBuild)
-  ==> "AssemblyInfo"
   ==> "Build"
   =?> ("RunTests", not isTravisBuild) // Relatively few tests pass on Mono.  We build on Travis but do not test
   ==> "Default"

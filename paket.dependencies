@@ -39,5 +39,7 @@ group Build
   redirects: off
 
   nuget FAKE ~> 4.0
-  nuget FSharp.Formatting
+  nuget FSharp.Formatting ~> 3.1
+  nuget FSharp.Compiler.Tools ~> 10.2.3
+
   github fsharp/FAKE modules/Octokit/Octokit.fsx

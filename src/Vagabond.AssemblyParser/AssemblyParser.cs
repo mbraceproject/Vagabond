@@ -649,9 +649,12 @@ namespace MBrace.Vagabond.AssemblyParser
         private void MapGenericParameterConstraints (Type genericParameter, GenericParameter gp, IGenericParameterProvider owner)
         {
             foreach (var constraint in genericParameter.GetGenericParameterConstraints ()) {
-                gp.Constraints.Add (owner.GenericParameterType == GenericParameterType.Type
-                    ? CreateReference(constraint, (TypeReference) owner)
-                    : CreateReference(constraint, (MethodReference) owner));
+                TypeReference reference =
+                    (owner.GenericParameterType == GenericParameterType.Type)
+                    ? CreateReference(constraint, (TypeReference)owner)
+                    : CreateReference(constraint, (MethodReference)owner);
+
+                gp.Constraints.Add(new GenericParameterConstraint(reference));
             }
         }
 

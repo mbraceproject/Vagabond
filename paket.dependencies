@@ -1,4 +1,4 @@
-source https://www.nuget.org/api/v2
+source https://api.nuget.org/v3/index.json
 framework: net45, netstandard2.0
 redirects: off
 storage: none
@@ -8,7 +8,7 @@ nuget FsPickler ~> 5.2 lowest_matching:true
 nuget Mono.Cecil >= 0.11.0 lowest_matching:true
 
 group Testing
-  source https://www.nuget.org/api/v2
+  source https://api.nuget.org/v3/index.json
   framework: net472, netcoreapp3.0
   redirects: off
   storage: none
@@ -23,8 +23,8 @@ group Testing
   nuget Microsoft.Net.Test.SDK ~> 16.4.0
 
 group Fsi
-  source https://www.nuget.org/api/v2
-  framework: net472
+  source https://api.nuget.org/v3/index.json
+  framework: netstandard2.0
   redirects: off
 
   nuget FSharp.Data ~> 3.1.1
@@ -34,12 +34,21 @@ group Fsi
   nuget MathNet.Numerics.MKL.Win-x64 ~> 2.3.0
 
 group Build
-  source https://www.nuget.org/api/v2
+  source https://api.nuget.org/v3/index.json
+  storage: none
+
+  nuget Fake.Core.UserInput	    ~> 5.18.0
+  nuget Fake.Core.ReleaseNotes  ~> 5.18.0
+  nuget Fake.Core.Target        ~> 5.18.0
+  nuget Fake.IO.FileSystem      ~> 5.18.0
+  nuget Fake.DotNet.Cli	        ~> 5.18.0
+  nuget Fake.Tools.Git          ~> 5.18.0
+  nuget Fake.Api.Github         ~> 5.18.0
+
+group DocGeneration
+  source https://api.nuget.org/v3/index.json
   framework: net472
-  redirects: off
 
   nuget FAKE ~> 4.0
   nuget FSharp.Formatting ~> 3.1
   nuget FSharp.Compiler.Tools ~> 10.2.3
-
-  github fsharp/FAKE modules/Octokit/Octokit.fsx

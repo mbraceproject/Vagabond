@@ -2,14 +2,18 @@
 // FAKE build script 
 // --------------------------------------------------------------------------------------
 
-#I "packages/build/FAKE/tools"
-#r "packages/build/FAKE/tools/FakeLib.dll"
+#r "paket: groupref build //"
+#load "./.fake/build.fsx/intellisense.fsx"
 
+open Fake.Core
+open Fake.Core.TargetOperators
+open Fake.DotNet
+open Fake.IO
+open Fake.IO.FileSystemOperators
+open Fake.IO.Globbing.Operators
+open Fake.Tools
+open Fake.Api
 open System
-open Fake
-open Fake.AppVeyor
-open Fake.Git
-open Fake.ReleaseNotesHelper
 
 // --------------------------------------------------------------------------------------
 // Information about the project to be used at NuGet and in AssemblyInfo files
@@ -17,127 +21,128 @@ open Fake.ReleaseNotesHelper
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-let project = "Vagabond"
-let release = LoadReleaseNotes "RELEASE_NOTES.md"
-let isAppVeyorBuild = buildServer = BuildServer.AppVeyor
-let isVersionTag tag = Version.TryParse tag |> fst
-let hasRepoVersionTag = isAppVeyorBuild && AppVeyorEnvironment.RepoTag && isVersionTag AppVeyorEnvironment.RepoTagName
-let assemblyVersion = if hasRepoVersionTag then AppVeyorEnvironment.RepoTagName else release.NugetVersion
-let buildVersion =
-    if hasRepoVersionTag then assemblyVersion
-    else if isAppVeyorBuild then sprintf "%s-b%s" assemblyVersion AppVeyorEnvironment.BuildNumber
-    else assemblyVersion
-
 let gitOwner = "mbraceproject"
-let gitHome = "https://github.com/" + gitOwner
 let gitName = "Vagabond"
-let gitRaw = environVarOrDefault "gitRaw" "https://raw.github.com/" + gitOwner
-let isTravisBuild = buildServer = BuildServer.Travis
+let gitHome = "https://github.com/" + gitOwner
+
 let artifactsDir = __SOURCE_DIRECTORY__ @@ "artifacts"
 
-
-let testProjects = [ "tests/Vagabond.Tests" ]
+let configuration = Environment.environVarOrDefault "Configuration" "Release"
+let release = ReleaseNotes.load "RELEASE_NOTES.md"
 
 //
 //// --------------------------------------------------------------------------------------
 //// The rest of the code is standard F# build script 
 //// --------------------------------------------------------------------------------------
 
-Target "BuildVersion" (fun _ ->
-    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" buildVersion) |> ignore
+Target.create "BuildVersion" (fun _ ->
+    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" release.NugetVersion) |> ignore
 )
 
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
 
-Target "Clean" (fun _ ->
-    CleanDirs [ artifactsDir ]
+Target.create "Clean" (fun _ ->
+    Shell.cleanDirs [ artifactsDir ]
 )
 
 //
 //// --------------------------------------------------------------------------------------
 //// Build library & test project
 
-let configuration = environVarOrDefault "Configuration" "Release"
+Target.create "Build" (fun _ ->
+    DotNet.build (fun c ->
+        { c with
+            Configuration = DotNet.BuildConfiguration.fromString configuration
 
-Target "Build" (fun _ ->
-    DotNetCli.Build(fun config ->
-        { config with
-            Project = project + ".sln"
-            Configuration = configuration
-            AdditionalArgs = 
-                [ 
-                    "-p:Version=" + release.NugetVersion
-                    "-p:GenerateAssemblyInfo=true"
-                    //"-p:SourceLinkCreate=true" 
-                ]
-        }
+            MSBuildParams =
+            { c.MSBuildParams with
+                Properties = [("Version", release.NugetVersion)] }
+
+        }) __SOURCE_DIRECTORY__
     )
-)
 
 
 // --------------------------------------------------------------------------------------
 // Run the unit tests using test runner & kill test runner when complete
 
-Target "RunTests" (fun _ ->
-    for proj in testProjects do
-        DotNetCli.Test (fun c ->
-            { c with
-                Project = proj
-                Configuration = configuration 
-                AdditionalArgs = ["--no-build"] })
+Target.create "RunTests" (fun _ ->
+    DotNet.test (fun c ->
+        { c with
+            Configuration = DotNet.BuildConfiguration.fromString configuration
+            NoBuild = true
+            Blame = true
+
+        }) __SOURCE_DIRECTORY__
 )
 
 //
 //// --------------------------------------------------------------------------------------
 //// Build a NuGet package
 
-Target "NuGet" (fun _ ->    
-    Paket.Pack (fun p -> 
-        { p with 
-            ToolPath = ".paket/paket.exe" 
-            OutputPath = artifactsDir
-            Version = release.NugetVersion
-            ReleaseNotes = toLines release.Notes })
+Target.create "NuGet.Pack" (fun _ ->
+    let releaseNotes = String.toLines release.Notes |> System.Net.WebUtility.HtmlEncode
+    DotNet.pack (fun pack ->
+        { pack with
+            OutputPath = Some artifactsDir
+            Configuration = DotNet.BuildConfiguration.Release
+            MSBuildParams =
+                { pack.MSBuildParams with
+                    Properties = 
+                        [("Version", release.NugetVersion)
+                         ("PackageReleaseNotes", releaseNotes)] }
+        }) __SOURCE_DIRECTORY__
 )
 
-Target "NuGetPush" (fun _ -> Paket.Push (fun p -> { p with WorkingDir = artifactsDir }))
+Target.create "NuGet.ValidateSourceLink" (fun _ ->
+    for nupkg in !! (artifactsDir @@ "*.nupkg") do
+        let p = DotNet.exec id "sourcelink" (sprintf "test %s" nupkg)
+        if not p.OK then failwithf "failed to validate sourcelink for %s" nupkg
+)
+
+Target.create "NuGet.Push" (fun _ ->
+    DotNet.nugetPush (fun opts ->
+        { opts with
+            PushParams =
+                { opts.PushParams with
+                    NoSymbols = true
+                    Source = Some "https://api.nuget.org/v3/index.json"
+                    ApiKey = Some (Environment.GetEnvironmentVariable "NUGET_KEY") }
+        }) (artifactsDir + "/*")
+)
 
 // Doc generation
 
-Target "GenerateDocs" (fun _ ->
-    let path = __SOURCE_DIRECTORY__ @@ "packages/build/FSharp.Compiler.Tools/tools/fsi.exe"
+Target.create "GenerateDocs" (fun _ ->
+    // ugh, still need to use mono and legacy fsi for FSharp.Formatting
+    let path = __SOURCE_DIRECTORY__ @@ "packages/docgeneration/FSharp.Compiler.Tools/tools/fsi.exe"
     let workingDir = "docs/tools"
     let args = "--define:RELEASE generate.fsx"
     let command, args = 
-        if EnvironmentHelper.isMono then "mono", sprintf "'%s' %s" path args 
-        else path, args
+        if Environment.isWindows then path, args
+        else "mono", sprintf "%s %s" path args
 
     if Shell.Exec(command, args, workingDir) <> 0 then
         failwith "failed to generate docs"
 )
 
-Target "ReleaseDocs" (fun _ ->
+Target.create "ReleaseDocs" (fun _ ->
     let tempDocsDir = "temp/gh-pages"
     let outputDocsDir = "docs/output"
-    CleanDir tempDocsDir
-    Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
 
-    fullclean tempDocsDir
-    ensureDirectory outputDocsDir
-    CopyRecursive outputDocsDir tempDocsDir true |> tracefn "%A"
-    StageAll tempDocsDir
-    Commit tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
-    Branches.push tempDocsDir
+    Directory.ensure outputDocsDir
+
+    Shell.cleanDir tempDocsDir
+    Git.Repository.cloneSingleBranch "" (gitHome + "/" + gitName + ".git") "gh-pages" tempDocsDir
+    Shell.copyRecursive outputDocsDir tempDocsDir true |> Trace.tracefn "%A"
+    Git.Staging.stageAll tempDocsDir
+    Git.Commit.exec tempDocsDir (sprintf "Update generated documentation for version %s" release.NugetVersion)
+    Git.Branches.push tempDocsDir
 )
 
 // Github Releases
 
-#nowarn "85"
-#load "paket-files/build/fsharp/FAKE/modules/Octokit/Octokit.fsx"
-open Octokit
-
-Target "ReleaseGithub" (fun _ ->
+Target.create "ReleaseGitHub" (fun _ ->
     let remote =
         Git.CommandHelper.getGitResult "" "remote -v"
         |> Seq.filter (fun (s: string) -> s.EndsWith("(push)"))
@@ -145,57 +150,55 @@ Target "ReleaseGithub" (fun _ ->
         |> function None -> gitHome + "/" + gitName | Some (s: string) -> s.Split().[0]
 
     //StageAll ""
-    Git.Commit.Commit "" (sprintf "Bump version to %s" release.NugetVersion)
-    Branches.pushBranch "" remote (Information.getBranchName "")
+    Git.Commit.exec "" (sprintf "Bump version to %s" release.NugetVersion)
+    Git.Branches.pushBranch "" remote (Git.Information.getBranchName "")
 
-    Branches.tag "" release.NugetVersion
-    Branches.pushTag "" remote release.NugetVersion
+    Git.Branches.tag "" release.NugetVersion
+    Git.Branches.pushTag "" remote release.NugetVersion
 
     let client =
         match Environment.GetEnvironmentVariable "OctokitToken" with
         | null -> 
             let user =
-                match getBuildParam "github-user" with
+                match Environment.environVarOrDefault "github-user" "" with
                 | s when not (String.IsNullOrWhiteSpace s) -> s
-                | _ -> getUserInput "Username: "
+                | _ -> UserInput.getUserInput "Username: "
             let pw =
-                match getBuildParam "github-pw" with
+                match Environment.environVarOrDefault "github-pw" "" with
                 | s when not (String.IsNullOrWhiteSpace s) -> s
-                | _ -> getUserPassword "Password: "
+                | _ -> UserInput.getUserInput "Password: "
 
-            createClient user pw
-        | token -> createClientWithToken token
+            GitHub.createClient user pw
+        | token -> GitHub.createClientWithToken token
 
     // release on github
     client
-    |> createDraft gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes
-    |> releaseDraft
+    |> GitHub.draftNewRelease gitOwner gitName release.NugetVersion (release.SemVer.PreRelease <> None) release.Notes
+    |> GitHub.publishDraft
     |> Async.RunSynchronously
 )
 
 // --------------------------------------------------------------------------------------
 // Run all targets by default. Invoke 'build <Target>' to override
 
-Target "Default" DoNothing
-Target "Bundle" DoNothing
-Target "Release" DoNothing
-Target "Help" (fun _ -> PrintTargets() )
+Target.create "Default" ignore
+Target.create "Bundle" ignore
+Target.create "Release" ignore
 
 "Clean"
-  =?> ("BuildVersion", isAppVeyorBuild)
   ==> "Build"
-  =?> ("RunTests", not isTravisBuild) // Relatively few tests pass on Mono.  We build on Travis but do not test
+  ==> "RunTests"
   ==> "Default"
 
 "Default"
-  ==> "NuGet"
+  ==> "NuGet.Pack"
   ==> "GenerateDocs"
   ==> "Bundle"
 
 "Bundle"
-  ==> "NuGetPush"
+  ==> "NuGet.Push"
   ==> "ReleaseDocs"
   ==> "ReleaseGithub"
   ==> "Release"
 
-RunTargetOrDefault "Default"
+Target.runOrDefault "Bundle"

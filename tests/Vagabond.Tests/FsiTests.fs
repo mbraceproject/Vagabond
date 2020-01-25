@@ -129,11 +129,11 @@ module FsiTests =
                 thunkServerPath @@ "Thespian.dll"
                 thunkServerPath @@ "ThunkServer.exe"
 
-                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.Base.dll"
-                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.Core.dll"
-                "packages/fsi/LinqOptimizer.FSharp/lib/net45/LinqOptimizer.FSharp.dll"
-                "packages/fsi/MathNet.Numerics/lib/net461/MathNet.Numerics.dll"
-                "packages/fsi/MathNet.Numerics.FSharp/lib/net45/MathNet.Numerics.FSharp.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"
+                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.FSharp.dll"
+                "packages/fsi/MathNet.Numerics/lib/netstandard2.0/MathNet.Numerics.dll"
+                "packages/fsi/MathNet.Numerics.FSharp/lib/netstandard2.0/MathNet.Numerics.FSharp.dll"
                 "resource/Google.OrTools.dll"
             ]
 

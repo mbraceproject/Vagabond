@@ -16,12 +16,6 @@
     <Compile Include="FsiTests.fs" />
     <Compile Include="AppDomainPoolTests.fs" />
     <None Include="paket.references" />
-    <None Include="..\..\packages\fsi\FSharp.Core\lib\net45\FSharp.Core.optdata">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="..\..\packages\fsi\FSharp.Core\lib\net45\FSharp.Core.sigdata">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Vagabond\Vagabond.fsproj" />

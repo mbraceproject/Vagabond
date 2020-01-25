@@ -133,7 +133,7 @@ ref <!= GetCount
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/fsi/LinqOptimizer.FSharp/lib/"
+#I "../../packages/fsi/LinqOptimizer.FSharp/lib/net45/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"

@@ -10,7 +10,7 @@
   <ItemGroup>
     <Compile Include="Config.fs" />
     <Compile Include="ThunkServer.fs" />
-    <Compile Include="main.fs" />
+    <Compile Include="Main.fs" />
     <None Include="thunkServer.fsx" />
     <None Include="thunkServer.csx" />
     <None Include="paket.references" />

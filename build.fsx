@@ -35,10 +35,6 @@ let release = ReleaseNotes.load "RELEASE_NOTES.md"
 //// The rest of the code is standard F# build script 
 //// --------------------------------------------------------------------------------------
 
-Target.create "BuildVersion" (fun _ ->
-    Shell.Exec("appveyor", sprintf "UpdateBuild -Version \"%s\"" release.NugetVersion) |> ignore
-)
-
 // --------------------------------------------------------------------------------------
 // Clean build results & restore NuGet packages
 
@@ -192,7 +188,8 @@ Target.create "Release" ignore
 
 "Default"
   ==> "NuGet.Pack"
-  ==> "NuGet.ValidateSourceLink"
+  // disabling due to AssemblyInfo.cs glitch with dotnet SDK 3.1
+  //==> "NuGet.ValidateSourceLink"
   ==> "GenerateDocs"
   ==> "Bundle"
 

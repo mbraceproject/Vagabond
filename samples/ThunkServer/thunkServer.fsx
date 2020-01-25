@@ -172,7 +172,7 @@ let getRandomDeterminant () =
 client.EvaluateThunk getRandomDeterminant
 
 // register native assemblies to Vagabond state
-let content = __SOURCE_DIRECTORY__ + "/../../packages/fsi/MathNet.Numerics.MKL.Win-x64/content/"
+let content = __SOURCE_DIRECTORY__ + "/../../packages/fsi/MathNet.Numerics.MKL.Win-x64/build/x64/"
 client.RegisterNativeDependency <| content + "libiomp5md.dll"
 client.RegisterNativeDependency <| content + "MathNet.Numerics.MKL.dll"
 client.NativeAssemblies

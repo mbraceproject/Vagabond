@@ -1,7 +1,7 @@
-﻿#r "bin/Debug/net45/FsPickler.dll"
-#r "bin/Debug/net45/Vagabond.AssemblyParser.dll"
-#r "bin/Debug/net45/Vagabond.dll"
-#r "bin/Debug/net45/ThunkServer.exe"
+﻿#r "bin/Debug/netstandard2.0/FsPickler.dll"
+#r "bin/Debug/netstandard2.0/Vagabond.AssemblyParser.dll"
+#r "bin/Debug/netstandard2.0/Vagabond.dll"
+#r "bin/Debug/netstandard2.0/ThunkServer.exe"
 
 // before running sample, don't forget to set binding redirects to FSharp.Core in InteractiveHost.exe
 

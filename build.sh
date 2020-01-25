@@ -1,20 +1,12 @@
 #!/bin/bash
-if [ "X$OS" = "XWindows_NT" ] ; then
-  # use .Net
 
-  .paket/paket.exe restore -v
-  exit_code=$?
-  if [ $exit_code -ne 0 ]; then
-  	exit $exit_code
-  fi
+set -eu
+cd `dirname $0`
 
-  packages/build/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
-else
+dotnet tool restore
+dotnet paket restore
 
-  mono .paket/paket.exe restore -v
-  exit_code=$?
-  if [ $exit_code -ne 0 ]; then
-  	exit $exit_code
-  fi
-  mono packages/build/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 
-fi
+MONO=""
+[ "X$OS" = "XWindows_NT" ] || MONO=mono
+
+$MONO packages/build/FAKE/tools/FAKE.exe $@ --fsiargs -d:MONO build.fsx 

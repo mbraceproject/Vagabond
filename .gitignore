@@ -178,4 +178,5 @@ paket-files/
 temp/
 .vs/
 .idea/
+.ionide/
 temp/

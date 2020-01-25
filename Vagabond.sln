@@ -55,7 +55,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{87C66125-B112-4822-BB37-EEFB5DE60741}"
 	ProjectSection(SolutionItems) = preProject
 		docs\tools\generate.fsx = docs\tools\generate.fsx
-		docs\tools\packages.config = docs\tools\packages.config
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "templates", "templates", "{3D659481-5E0A-41A9-BD81-B975CC479A8D}"

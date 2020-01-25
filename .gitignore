@@ -180,3 +180,5 @@ temp/
 .idea/
 .ionide/
 temp/
+
+artifacts/

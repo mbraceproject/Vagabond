@@ -192,6 +192,7 @@ Target.create "Release" ignore
 
 "Default"
   ==> "NuGet.Pack"
+  ==> "NuGet.ValidateSourceLink"
   ==> "GenerateDocs"
   ==> "Bundle"
 

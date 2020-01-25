@@ -1,14 +1,11 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFrameworks>net472;netcoreapp3.0</TargetFrameworks>
-    <PlatformTarget>AnyCPU</PlatformTarget>
     <OutputType>Exe</OutputType>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <TargetFrameworks>net472;netcoreapp3.0</TargetFrameworks>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Config.fs" />
@@ -17,7 +14,6 @@
     <None Include="thunkServer.fsx" />
     <None Include="thunkServer.csx" />
     <None Include="paket.references" />
-    <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Vagabond\Vagabond.fsproj" />

@@ -2,14 +2,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFrameworks>netstandard2.0;net45</TargetFrameworks>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
   </PropertyGroup>
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

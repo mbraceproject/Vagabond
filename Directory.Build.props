@@ -1,0 +1,32 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+  </PropertyGroup>
+
+  <!-- NuGet Metadata -->
+  <PropertyGroup>
+    <Description>A library that facilitates runtime distribution of IL in the .NET</Description>
+    <Authors>Eirik Tsarpalis</Authors>
+    <Copyright>2019</Copyright>
+    <PackageTags>F#, fsharp, dynamic assemblies, code, distribution, cecil</PackageTags>
+    <RepositoryUrl>https://github.com/mbraceproject/Vagabond</RepositoryUrl>
+    <PackageProjectUrl>http://mbraceproject.github.io/Vagabond/</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryType>git</RepositoryType>
+    <!-- SourceLink Options -->
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <!--<IncludeSymbols>true</IncludeSymbols>-->
+    <!--<SymbolPackageFormat>snupkg</SymbolPackageFormat>-->
+  </PropertyGroup>
+
+  <!-- P2P nuget inlining workaround: c.f. http://yer.ac/blog/2019/09/05/dotnet-pack-project-reference-and-nuget-dependency/ -->
+  <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">
+    <ItemGroup>
+      <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+    </ItemGroup>
+  </Target>
+</Project>

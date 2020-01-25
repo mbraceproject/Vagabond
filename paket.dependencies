@@ -3,9 +3,11 @@ framework: net45, netstandard2.0
 redirects: off
 storage: none
 
-nuget FSharp.Core >= 4.0 lowest_matching:true
+nuget FSharp.Core >= 4.3.2 lowest_matching:true
 nuget FsPickler ~> 5.2 lowest_matching:true
 nuget Mono.Cecil >= 0.11.0 lowest_matching:true
+
+nuget Microsoft.SourceLink.GitHub prerelease copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json

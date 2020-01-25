@@ -9,10 +9,10 @@ is the case with F# Interactive.
 
 The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagabond
-**)
+*)
 
-#I "bin/Debug/netcoreapp2.2/win10-x64/publish"
-let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp2.2/win10-x64/publish/ThunkServer.exe"
+#I "bin/Debug/netcoreapp3.0"
+let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp3.0/ThunkServer.exe"
 
 #r "FsPickler.dll"
 #r "Vagabond.dll"
@@ -26,7 +26,7 @@ let client = ThunkClient.InitLocal()
 
 (**
 Example 1: simple, incremental interactions
-**)
+*)
 
 let askDeepThought () = 42
 
@@ -36,7 +36,7 @@ client.EvaluateThunk (fun () -> if answer = 42 then failwith "yet another mindle
 
 (**
 Example 2: custom type definitions
-**)
+*)
 
 type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
 
@@ -52,9 +52,9 @@ let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
 
 (**
 Example 3: Type providers
-**)
+*)
 
-#r "../../packages/fsi/FSharp.Data/lib/net45/FSharp.Data.dll"
+#r "../../packages/fsi/FSharp.Data/lib/netstandard2.0/FSharp.Data.dll"
 
 open FSharp.Data
 
@@ -73,7 +73,7 @@ client.EvaluateThunk top5
 
 (**
 Example 4 : Asynchronous workflows
-**)
+*)
 
 let runRemoteAsync (workflow : Async<'T>) =
     client.EvaluateThunk(fun () -> Async.RunSynchronously workflow)
@@ -95,7 +95,7 @@ runRemoteAsync test
 
 (**
 Example 5: Deploy a locally defined actor
-**)
+*)
 
 #r "Thespian.dll"
 open Nessos.Thespian
@@ -129,11 +129,11 @@ ref <-- Increment 2
 ref <-- Increment 3
 ref <!= GetCount
 
-(*
+(**
 Example 6: Deploy library-generated dynamic assemblies
 *)
 
-#I "../../packages/fsi/LinqOptimizer.FSharp/lib/net45/"
+#I "../../packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/"
 
 #r "LinqOptimizer.Base.dll"
 #r "LinqOptimizer.Core.dll"
@@ -159,8 +159,8 @@ client.EvaluateThunk query
 Example 7: Deploy library-generated dynamic assemblies
 *)
 
-#r "../../packages/fsi/MathNet.Numerics/lib/net40/MathNet.Numerics.dll"
-#r "../../packages/fsi/MathNet.Numerics.FSharp/lib/net40/MathNet.Numerics.FSharp.dll"
+#r "../../packages/fsi/MathNet.Numerics/lib/netstandard2.0/MathNet.Numerics.dll"
+#r "../../packages/fsi/MathNet.Numerics.FSharp/lib/netstandard2.0/MathNet.Numerics.FSharp.dll"
 
 open MathNet.Numerics
 open MathNet.Numerics.LinearAlgebra

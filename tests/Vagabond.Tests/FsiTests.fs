@@ -108,10 +108,10 @@ module FsiTests =
                 "Release"
 #endif
             let framework =
-#if NETCOREAPP2_2
-                "netcoreapp2.2"
+#if NETCOREAPP
+                "netcoreapp3.0"
 #else
-                "net461"
+                "net472"
 #endif
             
             sprintf "samples/ThunkServer/bin/%s/%s" configuration framework

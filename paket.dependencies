@@ -9,7 +9,7 @@ nuget Mono.Cecil >= 0.11.0 lowest_matching:true
 
 group Testing
   source https://www.nuget.org/api/v2
-  framework: net461, netcoreapp2.2
+  framework: net472, netcoreapp3.0
   redirects: off
   storage: none
 
@@ -24,7 +24,7 @@ group Testing
 
 group Fsi
   source https://www.nuget.org/api/v2
-  framework: net461
+  framework: net472
   redirects: off
 
   nuget FSharp.Data ~> 3.1.1
@@ -35,7 +35,7 @@ group Fsi
 
 group Build
   source https://www.nuget.org/api/v2
-  framework: net461
+  framework: net472
   redirects: off
 
   nuget FAKE ~> 4.0

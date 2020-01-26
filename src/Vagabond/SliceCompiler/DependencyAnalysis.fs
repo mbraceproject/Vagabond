@@ -16,8 +16,9 @@ open Microsoft.FSharp.Reflection
 [<AutoOpen>]
 module private AssemblyInfo =
     let getPublicKey (a : Assembly) = a.GetName().GetPublicKey()
+    let getFolder (a : Assembly) = Path.GetDirectoryName a.Location
     let systemPkt = getPublicKey typeof<int>.Assembly
-    let msPkt = getPublicKey typeof<int option>.Assembly
+    let coreLibFolder = getFolder typeof<int>.Assembly
 
     let vagabondAssemblies = 
         hset [|
@@ -29,9 +30,9 @@ module private AssemblyInfo =
 
     /// assemblies ignored by Vagabond during assembly traversal
     let isIgnoredAssembly (a : Assembly) =
-        if vagabondAssemblies.Contains a then true
-        else
-            systemPkt = getPublicKey a
+        vagabondAssemblies.Contains a ||
+        systemPkt = getPublicKey a ||
+        (not a.IsDynamic && coreLibFolder = getFolder a)
 
 /// Assembly-specific topological ordering for assembly dependencies
 let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =

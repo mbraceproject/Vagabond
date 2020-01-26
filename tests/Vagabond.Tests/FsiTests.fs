@@ -19,7 +19,7 @@ module FsiTests =
     let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
 
     let getFullPath path = 
-        let fullPath = Path.Combine(__SOURCE_DIRECTORY__, "..", "..", path)
+        let fullPath = Path.Combine(__SOURCE_DIRECTORY__, "..", "..", path) |> Path.GetFullPath
         sprintf "@\"%s\"" fullPath
 
     type FsiEvaluationSession with
@@ -127,7 +127,7 @@ module FsiTests =
                 thunkServerPath @@ "FsPickler.dll"
                 thunkServerPath @@ "Vagabond.dll"
                 thunkServerPath @@ "Thespian.dll"
-                thunkServerPath @@ "ThunkServer.exe"
+                thunkServerPath @@ "ThunkServer.dll"
 
                 "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
                 "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"
@@ -537,7 +537,7 @@ module FsiTests =
 
             // register native dll's
 
-            let nativeDir = "packages/testing/MathNet.Numerics.MKL.Win-x64/content/"
+            let nativeDir = "packages/fsi/MathNet.Numerics.MKL.Win-x64/build/x64/"
             let libiomp5md = nativeDir + "libiomp5md.dll"
             let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 

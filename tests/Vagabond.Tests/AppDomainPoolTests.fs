@@ -8,6 +8,8 @@ open MBrace.FsPickler
 open MBrace.Vagabond
 open MBrace.Vagabond.AppDomainPool
 
+#if !NETCOREAPP
+
 [<TestFixture>]
 module ``AppDomain Pool Tests`` =
 
@@ -277,3 +279,5 @@ module ``AppDomain Pool Tests`` =
         pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })
         |> Async.RunSynchronously
         |> shouldEqual 42
+
+#endif

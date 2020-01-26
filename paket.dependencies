@@ -20,8 +20,8 @@ group Testing
   nuget Thespian ~> 0.2.0
 
   nuget FSharp.Compiler.Service ~> 34.0.0
-  nuget NUnit ~> 3.12.0
-  nuget NUnit3TestAdapter ~> 3.12.0
+  nuget xunit ~> 2.4.1
+  nuget xunit.runner.visualstudio ~> 2.4.1
   nuget Microsoft.Net.Test.SDK ~> 16.4.0
 
 group Fsi

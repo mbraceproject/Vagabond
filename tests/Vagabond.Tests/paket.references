@@ -1,7 +1,7 @@
 group Testing
 FsPickler
-NUnit
-NUnit3TestAdapter
+xunit
+xunit.runner.visualstudio
 Microsoft.Net.Test.SDK
 Thespian
 FSharp.Compiler.Service

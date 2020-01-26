@@ -10,6 +10,7 @@
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="App.config" />
     <Compile Include="Config.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="VagabondTests.fs" />

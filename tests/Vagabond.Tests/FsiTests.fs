@@ -1,106 +1,42 @@
 ﻿namespace MBrace.Vagabond.Tests
 
 open System
-open System.Reflection
-open System.Runtime.InteropServices
 open System.IO
 
-open NUnit.Framework
+open Xunit
+open Xunit.Abstractions
 
 open FSharp.Compiler.Interactive.Shell
 open FSharp.Compiler.SourceCodeServices
 
-open MBrace.Vagabond
-
-[<TestFixture>]
-module FsiTests =
-
-    let isX64Process = RuntimeInformation.ProcessArchitecture = Architecture.X64
-
-    let isWindowsProcess = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
-
-    let getFullPath path = 
-        let fullPath = Path.Combine(__SOURCE_DIRECTORY__, "..", "..", path) |> Path.GetFullPath
-        sprintf "@\"%s\"" fullPath
-
-    type FsiEvaluationSession with
-
-        member fsi.AddFolderReference (path : string) =
-            fsi.EvalInteraction ("#I " + getFullPath path)
-        
-        member fsi.AddReferences (paths : string list) =
-            let directives = 
-                paths 
-                |> Seq.map (fun p -> "#r " + getFullPath p)
-                |> String.concat Environment.NewLine
-
-            fsi.EvalInteraction directives
-
-        member fsi.LoadScript (path : string) =
-            let directive = "#load " + getFullPath path
-            fsi.EvalInteraction directive
-
-        member fsi.TryEvalExpression(code : string) =
-            try fsi.EvalExpression(code)
-            with _ -> None
-
-    let shouldEqual (expected : 'T) (result : FsiValue option) =
-        match result with
-        | None -> raise <| new AssertionException(sprintf "expected %A, got exception." expected)
-        | Some value ->
-            if not <| typeof<'T>.IsAssignableFrom value.ReflectionType then
-                raise <| new AssertionException(sprintf "expected type %O, got %O." typeof<'T> value.ReflectionType)
-
-            match value.ReflectionValue with
-            | :? 'T as result when result = expected -> ()
-            | result -> raise <| new AssertionException(sprintf "expected %A, got %A." expected result)
-            
-    type FsiSession private () =
-        static let container = ref None
-
-        static member Start () =
-            lock container (fun () ->
-                match !container with
-                | Some _ -> invalidOp "an fsi session is already running."
-                | None ->
-                    let dummy = new StringReader("")
-                    let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
-                    let fsi = FsiEvaluationSession.Create(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, Console.Out, Console.Error)
-                    container := Some fsi; fsi)
-
-        static member Stop () =
-            lock container (fun () ->
-                match !container with
-                | None -> invalidOp "No fsi sessions are running"
-                | Some fsi ->
-                    // need a 'stop' operation here
-                    container := None)
-
-
-        static member Value =
-            match !container with
-            | None -> invalidOp "No fsi session is running."
-            | Some fsi -> fsi
-
-    let defineQuotationEvaluator (fsi : FsiEvaluationSession) =
-        fsi.EvalInteraction """
-            open Microsoft.FSharp.Quotations
-            open Microsoft.FSharp.Linq.RuntimeHelpers
-
-            let eval (e : Expr<'T>) = LeafExpressionConverter.EvaluateQuotation e :?> 'T
-        """
-
-
-    [<OneTimeSetUp>]
-    let initFsiSession () =
-            
+type FsiSessionFixture() =
+    static do
         VagabondConfig.Init()
         Actor.Init()
 
-        let fsi = FsiSession.Start()
+    let dummy = new StringReader("")
+    let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
+    let stdoutWriter = new ObservableTextWriter()
+    let stderrWriter = new ObservableTextWriter()
+    let fsi = FsiEvaluationSession.Create(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, stdoutWriter, stderrWriter)
+    let outputLines = Observable.merge stdoutWriter.Lines stderrWriter.Lines
 
-        let (@@) left right = Path.Combine(left, right)
+    do FsiSessionFixture.SetupThunkServer(fsi)
 
+    member __.Session = fsi
+
+    // a bit of Voodoo to get xunit to print the damn fsi output logs
+    member __.Subscribe(output : ITestOutputHelper) = 
+        let d = outputLines.Subscribe output.WriteLine
+        { new IDisposable with member __.Dispose() = d.Dispose() }
+
+    interface IDisposable with
+        member __.Dispose() =
+            FsiSessionFixture.TearDownThunkServer(fsi)
+            stdoutWriter.Dispose()
+            stderrWriter.Dispose()
+    
+    static member private SetupThunkServer(fsi : FsiEvaluationSession) =
         let thunkServerPath = 
             let configuration =
 #if DEBUG
@@ -114,10 +50,10 @@ module FsiTests =
 #else
                 "net472"
 #endif
-            
-            sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
+        
+            repoRoot @@ sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
 
-        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer" + if isWindowsProcess then ".exe" else "")
+        let thunkServerExe = thunkServerPath @@ "ThunkServer" + (if isWindowsProcess then ".exe" else "")
 
         // add dependencies
 
@@ -130,74 +66,74 @@ module FsiTests =
                 thunkServerPath @@ "Thespian.dll"
                 thunkServerPath @@ "ThunkServer.dll"
 
-                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
-                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"
-                "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.FSharp.dll"
-                "packages/fsi/MathNet.Numerics/lib/netstandard2.0/MathNet.Numerics.dll"
-                "packages/fsi/MathNet.Numerics.FSharp/lib/netstandard2.0/MathNet.Numerics.FSharp.dll"
-                "resource/Google.OrTools.dll"
+                repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
+                repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"
+                repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.FSharp.dll"
+                repoRoot @@ "packages/fsi/MathNet.Numerics/lib/netstandard2.0/MathNet.Numerics.dll"
+                repoRoot @@ "packages/fsi/MathNet.Numerics.FSharp/lib/netstandard2.0/MathNet.Numerics.FSharp.dll"
+                repoRoot @@ "resource/Google.OrTools.dll"
             ]
 
         fsi.EvalInteraction "open ThunkServer"
-        fsi.EvalInteraction <| "ThunkClient.Executable <- " + thunkServer
+        fsi.EvalInteraction ("ThunkClient.Executable <- " + Path.toEscapedString thunkServerExe)
         fsi.EvalInteraction "let client = ThunkClient.InitLocal()"
 
-    [<OneTimeTearDown>]
-    let stopFsiSession () =
-        FsiSession.Value.Interrupt()
-        FsiSession.Value.EvalInteraction "client.Kill()"
-        FsiSession.Stop()
+    static member private TearDownThunkServer(fsi : FsiEvaluationSession) =
+        fsi.EvalInteraction "client.Kill()"
 
-    [<Test>]
+
+[<TestCaseOrderer("MBrace.Vagabond.Tests.Utils.AlphabeticalOrderer", "Vagabond.Tests")>]
+type FsiTests(fixture : FsiSessionFixture, output : ITestOutputHelper) =
+    let testOutputToken = fixture.Subscribe output
+    let fsi = fixture.Session
+
+    let defineQuotationEvaluator (fsi : FsiEvaluationSession) =
+        fsi.EvalInteraction """
+            open Microsoft.FSharp.Quotations
+            open Microsoft.FSharp.Linq.RuntimeHelpers
+
+            let eval (e : Expr<'T>) = LeafExpressionConverter.EvaluateQuotation e :?> 'T
+        """
+
+    let shouldEqual (expected : 'T) (result : FsiValue option) =
+        match result with
+        | None -> Assert.True(false, sprintf "expected %A, got exception." expected)
+        | Some value ->
+            match value.ReflectionValue with
+            | :? 'T as result -> Assert.Equal<'T>(expected, result)
+            | _ -> Assert.True(false, sprintf "expected %A, got %A." expected result)
+
+    [<Fact>]
     let ``01 Simple thunk execution`` () =
-
-        let fsi = FsiSession.Value
-
         "client.EvaluateThunk <| fun () -> 42" |> fsi.TryEvalExpression |> shouldEqual 42
 
-
-    [<Test>]
+    [<Fact>]
     let ``02 Side effect execution`` () =
-            
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction "open System.IO"
         fsi.EvalInteraction "let randomFile = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName())"
         fsi.EvalExpression """client.EvaluateThunk <| fun () -> File.WriteAllText(randomFile, "foo") """ |> shouldEqual ()
         fsi.EvalExpression "File.ReadAllText randomFile" |> shouldEqual "foo"
 
 
-    [<Test>]
+    [<Fact>]
     let ``03 Fsi top-level bindings`` () =
-            
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction("let x = client.EvaluateThunk <| fun () -> [| 1 .. 100 |]")
         fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.sum x") |> shouldEqual 5050
 
-    [<Test>]
+    [<Fact>]
     let ``03 Fsi large top-level bindings`` () =
-            
-        let fsi = FsiSession.Value
-
         for i in 1 .. 5 do
             fsi.EvalInteraction("let x = [| 1L .. 1000000L |]")
             fsi.EvalExpression("client.EvaluateThunk <| fun () -> Array.length x") |> shouldEqual 1000000
 
-    [<Test>]
+    [<Fact>]
     let ``04 Custom type execution`` () =
-            
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction "type Foo = { Value : int }"
         fsi.EvalInteraction "let x = client.EvaluateThunk <| fun () -> { Value = 41 + 1 }"
         fsi.EvalExpression "x.Value" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``05 Custom generic type execution`` () =
-            
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
         fsi.EvalInteraction "let x = 1"
         fsi.EvalInteraction "let y = 1"
@@ -207,11 +143,8 @@ module FsiTests =
 
         fsi.EvalExpression "x = y" |> shouldEqual true
 
-    [<Test>]
+    [<Fact>]
     let ``06 Custom functions on custom types`` () =
-            
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction "type Bar<'T> = Bar of 'T"
         fsi.EvalInteraction "module Bar = let map f (Bar x) = Bar (f x)"
         fsi.EvalInteraction "let rec factorial n = if n <= 0 then 1 else n * factorial(n-1)"
@@ -219,7 +152,7 @@ module FsiTests =
         fsi.EvalInteraction "let (Bar y) = client.EvaluateThunk <| fun () -> Bar.map factorial x"
         fsi.EvalExpression "y = factorial 10" |> shouldEqual true
 
-    [<Test>]
+    [<Fact>]
     let ``07 Nested module definitions`` () =
 
         let code = """
@@ -229,8 +162,6 @@ module FsiTests =
 
                 let x = Value 41
         """
-            
-        let fsi = FsiSession.Value
 
         fsi.EvalInteraction code
         fsi.EvalInteraction "open NestedModule"
@@ -238,25 +169,23 @@ module FsiTests =
         fsi.EvalExpression "y" |> shouldEqual 42
 
 
-    [<Test>]
+    [<Fact>]
     let ``09 Class Definitions`` () =
-            
         let code = """
             type Cell<'T> (x : 'T) =
-                let x = ref x
+                let mutable x = x
                 member __.Value
-                    with get () = !x
-                    and set y = x := y
+                    with get () = x
+                    and set y = x <- y
         """
 
-        let fsi = FsiSession.Value
         fsi.EvalInteraction code
         fsi.EvalInteraction "let c = Cell<int>(41)"
         fsi.EvalInteraction "let c' = client.EvaluateThunk <| fun () -> c.Value <- c.Value + 1 ; c"
         fsi.EvalExpression "c'.Value" |> shouldEqual 42
 
 
-    [<Test>]
+    [<Fact>]
     let ``10 Asynchronous workflows`` () =
 
         let code = """
@@ -280,13 +209,12 @@ module FsiTests =
             }
         """
 
-        let fsi = FsiSession.Value
         fsi.EvalInteraction code
         fsi.EvalInteraction "let results = runAsync testWorkflow"
         fsi.EvalExpression "results.Length = n" |> shouldEqual true
 
 
-    [<Test; Ignore("Failing with latest LinqOptimizer")>]
+    [<Fact(Skip = "Failing with latest LinqOptimizer")>]
     let ``11 Deploy LinqOptimizer dynamic assemblies`` () =
         
         let code = """
@@ -303,15 +231,12 @@ module FsiTests =
                 |> Query.compile
         """
 
-        let fsi = FsiSession.Value
         fsi.EvalInteraction code
         fsi.EvalInteraction "let result = client.EvaluateThunk query"
         fsi.EvalExpression "result = query ()" |> shouldEqual true
 
-    [<Test>]
+    [<Fact>]
     let ``12 Remotely deploy an actor definition`` () =
-        // temporarily disable for net46 due to issue in FSCS
-        if isNet46OrAbove then () else
         let code = """
             open Nessos.Thespian
 
@@ -338,8 +263,6 @@ module FsiTests =
                     actor.Ref)
         """
 
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction code
         fsi.EvalInteraction "let actorRef = deployActor (loop 0)"
 
@@ -348,7 +271,7 @@ module FsiTests =
 
         fsi.EvalExpression "actorRef <!= GetCount" |> shouldEqual 100
 
-    [<Test>]
+    [<Fact>]
     let ``13 Add reference to external library`` () =
         if not isWindowsProcess then () else // fsc.exe is difficult to set up on linux
         let code = """
@@ -370,13 +293,11 @@ module FsiTests =
         let errors,code = fsc.Compile [| "fsc.exe" ; sourcePath ; "-o" ; assemblyPath ; "--target:library" |] |> Async.RunSynchronously
         if code <> 0 then failwithf "Compiler error: %A" errors
 
-        let fsi = FsiSession.Value
-
         fsi.AddReferences [assemblyPath]
         fsi.EvalInteraction "open StaticAssemblyTest"
         fsi.EvalExpression "client.EvaluateThunk <| fun () -> let (TestCtor (v,_)) = value in v" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``14 Execute code from F# script file`` () =
             
         let code = """
@@ -399,17 +320,13 @@ module FsiTests =
         let scriptPath = Path.Combine(workDir, Path.ChangeExtension(name, ".fsx"))
         do File.WriteAllText(scriptPath, code)
 
-        let fsi = FsiSession.Value
-
         fsi.LoadScript scriptPath
         fsi.EvalInteraction "open Script"
         fsi.EvalInteraction "let r = client.EvaluateThunk <| fun () -> map factorial value"
         fsi.EvalExpression "r = map factorial value" |> shouldEqual true
 
-    [<Test>]
+    [<Fact>]
     let ``15 Single Interaction - Multiple executions`` () =
-
-        let fsi = FsiSession.Value
             
         let code = """
             let cell = ref 0
@@ -421,10 +338,8 @@ module FsiTests =
 
         fsi.EvalExpression code |> shouldEqual 100
 
-    [<Test>]
+    [<Fact>]
     let ``16 Cross slice inheritance`` () =
-
-        let fsi = FsiSession.Value
             
         let type1 = """
             type Foo<'T>(x : 'T) =
@@ -453,10 +368,8 @@ module FsiTests =
         fsi.EvalInteraction """let foo = client.EvaluateThunk <| fun () -> let b = new Baz(42, "42") in b :> Foo<int>"""
         fsi.EvalExpression "foo.Value" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``17 Cross slice interfaces`` () =
-
-        let fsi = FsiSession.Value
 
         let interfaceCode = """
             type IFoo =
@@ -475,9 +388,8 @@ module FsiTests =
         fsi.EvalInteraction implementationCode
         fsi.EvalExpression "client.EvaluateThunk <| fun () -> eval (new Foo()) [1..100]" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``17B Interfaces inheriting interfaces`` () =
-        let fsi = FsiSession.Value
 
         let code = """
             type IFoo =
@@ -496,7 +408,7 @@ module FsiTests =
         fsi.EvalInteraction code
         fsi.EvalExpression "client.EvaluateThunk <| fun () -> mkBar().Foo + mkBar().Bar" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``18 Binary Trees`` () =
         let code = """
             type BinTree<'T> = Leaf | Node of 'T * BinTree<'T> * BinTree<'T>
@@ -512,16 +424,13 @@ module FsiTests =
             let sum = client.EvaluateThunk <| fun () -> reduce 1. (+) tree'
         """
 
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction code
         fsi.EvalExpression "sum" |> shouldEqual 192.
 
 
-    [<Test>]
+    [<Fact>]
     let ``19 Native dependencies`` () =
         if isWindowsProcess && isX64Process then
-            let fsi = FsiSession.Value
 
             let code = """
                 open MathNet.Numerics
@@ -538,12 +447,12 @@ module FsiTests =
 
             // register native dll's
 
-            let nativeDir = "packages/fsi/MathNet.Numerics.MKL.Win-x64/build/x64/"
+            let nativeDir = repoRoot @@ "packages/fsi/MathNet.Numerics.MKL.Win-x64/build/x64/"
             let libiomp5md = nativeDir + "libiomp5md.dll"
             let mkl = nativeDir + "MathNet.Numerics.MKL.dll"
 
-            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getFullPath libiomp5md
-            fsi.EvalInteraction <| "client.RegisterNativeDependency " + getFullPath mkl
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + Path.toEscapedString libiomp5md
+            fsi.EvalInteraction <| "client.RegisterNativeDependency " + Path.toEscapedString mkl
 
             let code' = """
                 let useNativeMKL () = Control.UseNativeMKL()
@@ -552,9 +461,8 @@ module FsiTests =
 
             fsi.EvalInteraction code'
 
-    [<Test>]
+    [<Fact>]
     let ``20 Update earlier bindings if value changed`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction "let array = [|1..100|]"
 
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
@@ -565,32 +473,28 @@ module FsiTests =
         fsi.EvalInteraction "array.[49] <- 50"
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Array.sum array)" |> shouldEqual 5050
 
-    [<Test>]
+    [<Fact>]
     let ``21 Concurrent calls to client`` () =
-        let fsi = FsiSession.Value
+        let fsi = fixture.Session
         fsi.EvalInteraction "[|1..20|] |> Array.Parallel.map (fun i -> client.EvaluateThunk (fun () -> i * i))"
 
-    [<Test>]
+    [<Fact>]
     let ``22 Simple quotation literal`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction "client.EvaluateThunk (fun () -> <@ 1 + 1 @>)"
 
-    [<Test>]
+    [<Fact>]
     let ``23 Quotation literal references fsi code`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction "let rec f n = if n <= 1 then n else f(n-2) + f(n-1)"
         fsi.EvalInteraction "client.EvaluateThunk(fun () -> <@ f 10 @>)"
 
-    [<Test>]
+    [<Fact>]
     let ``24 Parametric quotation evaluation`` () =
-        let fsi = FsiSession.Value
         defineQuotationEvaluator fsi
         fsi.EvalInteraction "let incr x = eval <@ x + 1 @>"
         fsi.EvalExpression "client.EvaluateThunk(fun () -> incr 41)" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``24 Spliced quotation evaluation`` () =
-        let fsi = FsiSession.Value
         defineQuotationEvaluator fsi
         fsi.EvalInteraction """
             let rec expand n =
@@ -600,15 +504,13 @@ module FsiTests =
 
         fsi.EvalExpression "client.EvaluateThunk(fun () -> let e = expand 10 in eval <@ %e + 32 @>)" |> shouldEqual 42
 
-    [<Test>]
+    [<Fact>]
     let ``25 Cross slice quotation reference`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction "let x = client.EvaluateThunk(fun () -> 1 + 1)"
         fsi.EvalExpression "client.EvaluateThunk(fun () -> eval <@ x @>)" |> shouldEqual 2
 
-    [<Test>]
+    [<Fact>]
     let ``26 Class static field pickling`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction """
             type Foo () =
                 static let mutable count = 0
@@ -622,9 +524,8 @@ module FsiTests =
         fsi.EvalExpression "client.EvaluateThunk (fun () -> Foo.Count)" |> shouldEqual 2
 
 
-    [<Test>]
+    [<Fact>]
     let ``26 Multiple Large bindings in single slice`` () =
-        let fsi = FsiSession.Value
         fsi.EvalInteraction """
             let x = [|1L .. 10000000L|]
             let y = [|1L .. 10000000L|]
@@ -632,11 +533,9 @@ module FsiTests =
 
         fsi.EvalExpression "client.EvaluateThunk (fun () -> x.Length = y.Length)" |> shouldEqual true
 
-    [<Test>]
+    [<Fact>]
     let ``27 Mixed mode assemblies`` () =
         if isWindowsProcess && isX64Process then
-            let fsi = FsiSession.Value
-
             fsi.EvalInteraction """
             open Google.OrTools
             open Google.OrTools.Algorithms
@@ -660,10 +559,8 @@ module FsiTests =
             fsi.EvalInteraction "let expected = solve ()"
             fsi.EvalExpression "client.EvaluateThunk (fun () -> solve () = expected)" |> shouldEqual true
 
-    [<Test; Ignore("Test failing, but works on fsi")>]
+    [<Fact>]
     let ``28 Should be able to serialize new types without explicitly requesting slice compilation`` () =
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction """
             type LatestTypeDefinition = { Value : int }
 
@@ -677,10 +574,8 @@ module FsiTests =
         fsi.EvalExpression "roundTrip 42" |> shouldEqual 42
 
 
-    [<Test>]
+    [<Fact>]
     let ``29 Should correctly evaluate Array2D-init calls`` () =
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction """
             let array = client.EvaluateThunk(fun () -> Array2D.init 5 5 (fun _ _ -> 0.))
         """
@@ -688,11 +583,9 @@ module FsiTests =
         fsi.EvalExpression "array.GetLength(0)" |> shouldEqual 5
         fsi.EvalExpression "array.GetLength(1)" |> shouldEqual 5
 
-    [<Test>]
+    [<Fact>]
     let ``30 Test against Cecil bug #278`` () =
         // see https://github.com/jbevain/cecil/issues/278
-        let fsi = FsiSession.Value
-
         fsi.EvalInteraction """
         type A<'T> = class end
         type B<'T,'U> = class end
@@ -708,10 +601,8 @@ module FsiTests =
         fsi.EvalExpression "client.EvaluateThunk(fun () -> typeof<D>)" |> shouldBe (fun x -> true)
 
 
-    [<Test>]
-    let ``31 F# 4.1 Struct types supported`` () =
-        let fsi = FsiSession.Value
-
+    [<Fact>]
+    let ``31 F# 4-1 Struct types supported`` () =
         fsi.EvalInteraction """
         
         [<Struct>]
@@ -723,8 +614,9 @@ module FsiTests =
 
         fsi.EvalExpression """client.EvaluateThunk(fun () -> { A = A2(42,"42") ; B = struct(1,2) })""" |> shouldBe (fun x -> true)
 
-    [<Test>]
-    let ``32 F# 4.5 Anon records supported`` () =
-        let fsi = FsiSession.Value
-
+    [<Fact>]
+    let ``32 F# 4-5 Anon records supported`` () =
         fsi.EvalExpression """client.EvaluateThunk(fun () -> {| A = {| x = 2 |} ; B = struct(1,2) |})""" |> shouldBe (fun x -> true)
+
+    interface IDisposable with member __.Dispose() = testOutputToken.Dispose()
+    interface IClassFixture<FsiSessionFixture>

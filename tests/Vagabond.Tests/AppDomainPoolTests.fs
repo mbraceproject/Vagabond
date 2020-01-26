@@ -3,15 +3,16 @@
 open System
 open System.Threading
 
-open NUnit.Framework
+open Xunit
 open MBrace.FsPickler
 open MBrace.Vagabond
 open MBrace.Vagabond.AppDomainPool
 
 #if !NETCOREAPP
-
-[<TestFixture>]
+[<TestCaseOrderer("MBrace.Vagabond.Tests.Utils.AlphabeticalOrderer", "Vagabond.Tests")>]
 module ``AppDomain Pool Tests`` =
+
+    do VagabondConfig.Init()
 
     let minDomains = 3
     let maxDomains = 20
@@ -55,10 +56,7 @@ module ``AppDomain Pool Tests`` =
 
     let getDomainId() = System.AppDomain.CurrentDomain.FriendlyName
 
-    [<OneTimeSetUp>]
-    let init() = VagabondConfig.Init()
-
-    [<Test>]
+    [<Fact>]
     let ``01 Simple init and tear down an application domain.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
@@ -71,7 +69,7 @@ module ``AppDomain Pool Tests`` =
         mgr.RemoveTask ()
         (! mgr).TaskCount |> shouldEqual 0
 
-    [<Test>]
+    [<Fact>]
     let ``02A Empty dependency domain.`` () =
         use pool = AppDomainPoolTester.Init()
         let mgr = pool.RequestAppDomain []
@@ -80,7 +78,7 @@ module ``AppDomain Pool Tests`` =
         mgr.RemoveTask ()
         (! mgr).TaskCount |> shouldEqual 0
 
-    [<Test>]
+    [<Fact>]
     let ``02B Concurrent appdomain requests.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
@@ -91,7 +89,7 @@ module ``AppDomain Pool Tests`` =
 
         mgrs |> Seq.distinctBy (fun m -> m.Id) |> Seq.length |> shouldEqual 1
 
-    [<Test>]
+    [<Fact>]
     let ``03 Should use the same AppDomain when using identical dependency sets.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
@@ -100,7 +98,7 @@ module ``AppDomain Pool Tests`` =
             let mgr' = pool.RequestAppDomain dependencies
             mgr'.Id |> shouldEqual mgr.Id
 
-    [<Test>]
+    [<Fact>]
     let ``04 Should use the same AppDomain when extending the dependency set.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ]
@@ -110,7 +108,7 @@ module ``AppDomain Pool Tests`` =
             let mgr' = pool.RequestAppDomain dependencies'
             mgr'.Id |> shouldEqual mgr.Id
 
-    [<Test>]
+    [<Fact>]
     let ``05 Should use separate AppDomain when using incompatible dependency sets.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
@@ -120,7 +118,7 @@ module ``AppDomain Pool Tests`` =
             let mgr' = pool.RequestAppDomain dependencies'
             mgr'.Id |> shouldNotEqual mgr.Id
 
-    [<Test>]
+    [<Fact>]
     let ``06 Should create new AppDomains when conflicting dependencies.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
@@ -130,7 +128,7 @@ module ``AppDomain Pool Tests`` =
         |> Seq.length
         |> shouldEqual maxDomains
 
-    [<Test>]
+    [<Fact>]
     let ``07 Should fail when passing max domain threshold.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
@@ -140,7 +138,7 @@ module ``AppDomain Pool Tests`` =
                 let mgr = pool.RequestAppDomain (mkDeps i)
                 mgr.Reset() ; mgr.AddTask())
 
-    [<Test>]
+    [<Fact>]
     let ``08A Should successfully dispose idle domains when passing domain threshold.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
@@ -149,7 +147,7 @@ module ``AppDomain Pool Tests`` =
             let mgr = pool.RequestAppDomain (mkDeps i)
             mgr.Reset()
 
-    [<Test>]
+    [<Fact>]
     let ``08B Domain count should contract to minimum count after threshold passed.`` () =
         use manager = AppDomainPoolTester.Init(threshold = TimeSpan.FromMilliseconds 1.)
         for i in 1 .. 3 * minDomains do
@@ -159,7 +157,7 @@ module ``AppDomain Pool Tests`` =
         do Thread.Sleep 1000
         manager.DomainCount |> shouldBe (fun c -> c = minDomains)
 
-    [<Test>]
+    [<Fact>]
     let ``09 Should automatically dispose instances in pool with timespan threshold.`` () =
         use pool = AppDomainPoolTester.Init(threshold = TimeSpan.FromSeconds 1.)
         let name = Guid.NewGuid().ToString()
@@ -171,7 +169,7 @@ module ``AppDomain Pool Tests`` =
 
         pool.DomainCount |> shouldEqual pool.MinDomains
 
-    [<Test>]
+    [<Fact>]
     let ``10 Should not automatically dispose busy instances in pool with timespan threshold.`` () =
         use pool = AppDomainPoolTester.Init(threshold = TimeSpan.FromSeconds 1.)
         let name = Guid.NewGuid().ToString()
@@ -184,7 +182,7 @@ module ``AppDomain Pool Tests`` =
 
         pool.DomainCount |> shouldEqual pool.MaxDomains
 
-    [<Test>]
+    [<Fact>]
     let ``11 Should not return the same AppDomain when task threshold has been reached.`` () =
         use pool = AppDomainPoolTester.Init(maxTasks = 1)
         Seq.init maxDomains (fun i -> 
@@ -195,19 +193,19 @@ module ``AppDomain Pool Tests`` =
         |> shouldEqual maxDomains
 
 
-    [<Test>]
+    [<Fact>]
     let ``12 AppDomainEvaluatorPool simple lambda`` () =
         use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         pool.Evaluate([], fun () -> 1 + 1) |> shouldEqual 2
 
-    [<Test>]
+    [<Fact>]
     let ``13 AppDomainEvaluatorPool simple worfklow`` () =
         use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         pool.EvaluateAsync([], async { return getDomainId() }) 
         |> Async.RunSynchronously 
         |> shouldNotEqual (getDomainId())
 
-    [<Test>]
+    [<Fact>]
     let ``14 AppDomainEvaluatorPool simple worfklow with exception`` () =
         use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
         Assert.Throws<System.InvalidOperationException>(fun () -> pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously) |> ignore
@@ -255,7 +253,7 @@ module ``AppDomain Pool Tests`` =
 
         static member Init() = AppDomainPool.Create<AppDomainVagabondLambdaLoader, AppDomainVagabondLambdaLoaderConfiguration> ()
 
-    [<Test>]
+    [<Fact>]
     let ``15 AppDomain Vagabond Lambda Evaluator`` () =
         use pool = AppDomainVagabondLambdaLoader.Init()
         AppDomainVagabondLambdaLoader.Eval pool (fun () -> 1 + 1) |> shouldEqual 2
@@ -265,7 +263,7 @@ module ``AppDomain Pool Tests`` =
         static let id = Guid.NewGuid().ToString()
         static member Value = id
 
-    [<Test>]
+    [<Fact>]
     let ``16 AppDomain Vagabond Lambda Evaluator should always use the same domain`` () =
         use pool = AppDomainVagabondLambdaLoader.Init()
         Seq.init 10 (fun _ -> AppDomainVagabondLambdaLoader.Eval pool (fun () -> StaticValueContainer.Value))
@@ -273,7 +271,7 @@ module ``AppDomain Pool Tests`` =
         |> Seq.length
         |> shouldEqual 1
 
-    [<Test; Ignore("Long-Running test.")>]
+    [<Fact(Skip = "Long-Running test.")>]
     let ``17 AppDomain long running async execution``() =
         use pool = AppDomainEvaluatorPool.Create(ignore)
         pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })

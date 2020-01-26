@@ -3,16 +3,15 @@
 open System
 open System.Reflection
 
-open NUnit.Framework
+open Xunit
 
 open MBrace.Vagabond
 
 #nowarn "1571"
 
-[<TestFixture>]
 module ``Generic Vagabond API tests`` =
 
-    [<Test>]
+    [<Fact>]
     let ``Unmanaged Assembly loading`` () =
         let path = typeof<int>.Assembly.Location
         let instance = Vagabond.Initialize()
@@ -29,7 +28,7 @@ module ``Generic Vagabond API tests`` =
         info''.Id |> shouldEqual info.Id
 
 #if !NETCOREAPP
-    [<Test>]
+    [<Fact>]
     let ``Dot not differentiate between reflection-only and loaded assemblies`` () =
         let a1 = Assembly.Load "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
         let a2 = Assembly.ReflectionOnlyLoad "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
@@ -39,7 +38,7 @@ module ``Generic Vagabond API tests`` =
 #endif
         
 
-    [<Test>]
+    [<Fact>]
     let ``Cyclic Assembly resolution`` () =
         let load (name:string) =
             try [| Assembly.Load(name) |]

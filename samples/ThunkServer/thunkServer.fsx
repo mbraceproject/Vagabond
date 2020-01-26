@@ -11,8 +11,8 @@ The actual implementation of ThunkServer is a straightforward 100 lines of code.
 Dependency resolution and exportation logic is handled transparently by Vagabond
 *)
 
-#I "bin/Debug/netcoreapp3.1"
-let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp3.1/ThunkServer.exe"
+#I "bin/Debug/netcoreapp3.0"
+let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp3.0/ThunkServer.exe"
 
 #r "FsPickler.dll"
 #r "Vagabond.dll"

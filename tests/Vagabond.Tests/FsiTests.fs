@@ -2,6 +2,7 @@
 
 open System
 open System.Reflection
+open System.Runtime.InteropServices
 open System.IO
 
 open NUnit.Framework
@@ -14,9 +15,9 @@ open MBrace.Vagabond
 [<TestFixture>]
 module FsiTests =
 
-    let is64BitProcess = IntPtr.Size = 8
+    let isX64Process = RuntimeInformation.ProcessArchitecture = Architecture.X64
 
-    let runsOnMono = lazy(Type.GetType("Mono.Runtime") <> null)
+    let isWindowsProcess = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
 
     let getFullPath path = 
         let fullPath = Path.Combine(__SOURCE_DIRECTORY__, "..", "..", path) |> Path.GetFullPath
@@ -116,7 +117,7 @@ module FsiTests =
             
             sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
 
-        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer.exe")
+        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer") + (if isWindowsProcess then ".exe" else "")
 
         // add dependencies
 
@@ -349,7 +350,7 @@ module FsiTests =
 
     [<Test>]
     let ``13 Add reference to external library`` () =
-            
+        if not isWindowsProcess then () else // fsc.exe is difficult to set up on linux
         let code = """
             module StaticAssemblyTest
 
@@ -366,7 +367,7 @@ module FsiTests =
         let assemblyPath = Path.Combine(workDir, Path.ChangeExtension(name, ".dll"))
             
         do File.WriteAllText(sourcePath, code)
-        let errors,code = fsc.Compile [| "fsc.exe" ; "--target:library" ; sourcePath ; "-o" ; assemblyPath |] |> Async.RunSynchronously
+        let errors,code = fsc.Compile [| "fsc.exe" ; sourcePath ; "-o" ; assemblyPath ; "--targetprofile:netstandard"; "--target:library" ; "--nowin32manifest" |] |> Async.RunSynchronously
         if code <> 0 then failwithf "Compiler error: %A" errors
 
         let fsi = FsiSession.Value
@@ -519,7 +520,7 @@ module FsiTests =
 
     [<Test>]
     let ``19 Native dependencies`` () =
-        if is64BitProcess && not runsOnMono.Value then
+        if isWindowsProcess && isX64Process then
             let fsi = FsiSession.Value
 
             let code = """
@@ -633,7 +634,7 @@ module FsiTests =
 
     [<Test>]
     let ``27 Mixed mode assemblies`` () =
-        if is64BitProcess && not runsOnMono.Value then
+        if isWindowsProcess && isX64Process then
             let fsi = FsiSession.Value
 
             fsi.EvalInteraction """

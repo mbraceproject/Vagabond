@@ -117,7 +117,7 @@ module FsiTests =
             
             sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
 
-        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer") + (if isWindowsProcess then ".exe" else "")
+        let thunkServer = getFullPath (thunkServerPath @@ "ThunkServer" + if isWindowsProcess then ".exe" else "")
 
         // add dependencies
 
@@ -367,7 +367,7 @@ module FsiTests =
         let assemblyPath = Path.Combine(workDir, Path.ChangeExtension(name, ".dll"))
             
         do File.WriteAllText(sourcePath, code)
-        let errors,code = fsc.Compile [| "fsc.exe" ; sourcePath ; "-o" ; assemblyPath ; "--targetprofile:netstandard"; "--target:library" ; "--nowin32manifest" |] |> Async.RunSynchronously
+        let errors,code = fsc.Compile [| "fsc.exe" ; sourcePath ; "-o" ; assemblyPath ; "--target:library" |] |> Async.RunSynchronously
         if code <> 0 then failwithf "Compiler error: %A" errors
 
         let fsi = FsiSession.Value

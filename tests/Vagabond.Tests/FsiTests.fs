@@ -53,7 +53,7 @@ type FsiSessionFixture() =
 #endif
             let framework =
 #if NETCOREAPP
-                "netcoreapp3.0"
+                "netcoreapp3.1"
 #else
                 "net472"
 #endif

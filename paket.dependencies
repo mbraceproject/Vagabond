@@ -1,5 +1,5 @@
 source https://api.nuget.org/v3/index.json
-framework: net45, netstandard2.0
+framework: netstandard2.0
 redirects: off
 storage: none
 
@@ -11,7 +11,7 @@ nuget Microsoft.SourceLink.GitHub prerelease copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json
-  framework: net472, netcoreapp3.0
+  framework: netcoreapp3.1, net472
   redirects: off
   storage: none
 

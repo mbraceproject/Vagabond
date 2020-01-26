@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Reflection
+open System.Runtime.InteropServices
 open System.Diagnostics
 open System.Threading.Tasks
 
@@ -66,6 +67,7 @@ type ThunkServer private () =
 [<AutoSerializable(false)>]
 type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
     static let mutable exe = None
+    static let isWindowsPlatform = RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
 
     let assemblyUploader =
         {
@@ -119,6 +121,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         and set path = 
             let path = Path.GetFullPath path
             if File.Exists path then exe <- Some path
+            elif isWindowsPlatform && File.Exists (path + ".exe") then exe <- Some (path + ".exe")
             else raise <| FileNotFoundException(path)
 
     static member InitLocalAsync () = async {

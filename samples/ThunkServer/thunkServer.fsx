@@ -12,7 +12,7 @@ Dependency resolution and exportation logic is handled transparently by Vagabond
 *)
 
 #I "bin/Debug/netcoreapp3.0"
-let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp3.0/ThunkServer.exe"
+let executable = __SOURCE_DIRECTORY__ + "/bin/Debug/netcoreapp3.0/ThunkServer"
 
 #r "FsPickler.dll"
 #r "Vagabond.dll"
@@ -172,6 +172,7 @@ let getRandomDeterminant () =
 client.EvaluateThunk getRandomDeterminant
 
 // register native assemblies to Vagabond state
+// NB this works on windows x64 only
 let content = __SOURCE_DIRECTORY__ + "/../../packages/fsi/MathNet.Numerics.MKL.Win-x64/build/x64/"
 client.RegisterNativeDependency <| content + "libiomp5md.dll"
 client.RegisterNativeDependency <| content + "MathNet.Numerics.MKL.dll"
@@ -180,15 +181,3 @@ client.NativeAssemblies
 let useNativeMKL () = Control.UseNativeMKL()
 
 client.EvaluateThunk (fun () -> useNativeMKL () ; getRandomDeterminant ())
-
-// verify skipped failing test is passing here
-type LatestTypeDefinition = { Value : int }
-
-let roundTrip (n : int) =
-    let v = { Value = n }
-    let p = VagabondConfig.Serializer.Pickle(box v)
-    let v' = client.EvaluateThunk(fun () -> VagabondConfig.Serializer.UnPickle<obj>(p) :?> LatestTypeDefinition)
-    v'.Value
-
-
-roundTrip 42

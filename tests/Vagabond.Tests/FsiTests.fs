@@ -60,7 +60,7 @@ type FsiSessionFixture() =
         
             repoRoot @@ sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
 
-        let thunkServerExe = thunkServerPath @@ "ThunkServer" + (if isWindowsProcess then ".exe" else "")
+        let thunkServerExe = thunkServerPath @@ "ThunkServer"
 
         // add dependencies
 

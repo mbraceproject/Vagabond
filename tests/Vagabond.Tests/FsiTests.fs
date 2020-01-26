@@ -1,6 +1,7 @@
 ﻿namespace MBrace.Vagabond.Tests
 
 open System
+open System.Collections.Concurrent
 open System.IO
 
 open Xunit
@@ -14,25 +15,31 @@ type FsiSessionFixture() =
         VagabondConfig.Init()
         Actor.Init()
 
-    let dummy = new StringReader("")
     let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()
+    let inReader = new StringReader("")
     let stdoutWriter = new ObservableTextWriter()
     let stderrWriter = new ObservableTextWriter()
-    let fsi = FsiEvaluationSession.Create(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], dummy, stdoutWriter, stderrWriter)
     let outputLines = Observable.merge stdoutWriter.Lines stderrWriter.Lines
+    let fsi = FsiEvaluationSession.Create(fsiConfig, [| "fsi.exe" ; "--noninteractive" |], inReader, stdoutWriter, stderrWriter)
 
-    do FsiSessionFixture.SetupThunkServer(fsi)
+    /// capture and report any fsi output in event of exception
+    let protectInteraction f =
+        let queue = new ConcurrentQueue<string>()
+        try use _d = outputLines.Subscribe queue.Enqueue in f ()
+        with e ->
+            let output = queue |> String.concat Environment.NewLine
+            raise <| Exception(sprintf "Fsi error:\n%s" output, e)
+
+    do protectInteraction (fun () -> FsiSessionFixture.SetupThunkServer(fsi))
 
     member __.Session = fsi
 
     // a bit of Voodoo to get xunit to print the damn fsi output logs
-    member __.Subscribe(output : ITestOutputHelper) = 
-        let d = outputLines.Subscribe output.WriteLine
-        { new IDisposable with member __.Dispose() = d.Dispose() }
+    member __.Subscribe(output : ITestOutputHelper) = outputLines.Subscribe output.WriteLine
 
     interface IDisposable with
         member __.Dispose() =
-            FsiSessionFixture.TearDownThunkServer(fsi)
+            protectInteraction (fun () -> FsiSessionFixture.TearDownThunkServer(fsi))
             stdoutWriter.Dispose()
             stderrWriter.Dispose()
     

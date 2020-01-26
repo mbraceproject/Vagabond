@@ -2,11 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netcoreapp3.0</TargetFramework>
-    <PlatformTarget>AnyCPU</PlatformTarget>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <ItemGroup>
@@ -19,6 +14,7 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\samples\ThunkServer\ThunkServer.fsproj" />
     <ProjectReference Include="..\..\src\Vagabond.AssemblyParser\Vagabond.AssemblyParser.csproj" />
     <ProjectReference Include="..\..\src\Vagabond\Vagabond.fsproj" />
   </ItemGroup>

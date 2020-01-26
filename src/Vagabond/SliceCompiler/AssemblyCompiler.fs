@@ -54,7 +54,11 @@ let compileInMemoryAssembly (state : AssemblyCompilerState) (origin : Assembly) 
     // load new slice to System.Reflection
     // Assembly.LoadFrom() replaces the deprecated Assembly.ReflectionOnlyLoadFrom() call
     // TODO: migrate to System.Reflection.Metadata
+#if NETSTANDARD
     let assembly = Assembly.LoadFrom(target)
+#else
+    let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+#endif
 
     let assemblyInfo = 
         { 
@@ -84,7 +88,11 @@ let compileDynamicAssemblySlice (state : AssemblyCompilerState) (dynamicAssembly
     // load new slice to System.Reflection
     // Assembly.LoadFrom() replaces the deprecated Assembly.ReflectionOnlyLoadFrom() call
     // TODO: migrate to System.Reflection.Metadata
+#if NETSTANDARD
     let assembly = Assembly.LoadFrom(target)
+#else
+    let assembly = Assembly.ReflectionOnlyLoadFrom(target)
+#endif
         
     // collect pickleable static fields
     let pickleableFields = 

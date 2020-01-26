@@ -71,7 +71,11 @@ type FsiSessionFixture() =
                 thunkServerPath @@ "FsPickler.dll"
                 thunkServerPath @@ "Vagabond.dll"
                 thunkServerPath @@ "Thespian.dll"
+#if NETCOREAPP
                 thunkServerPath @@ "ThunkServer.dll"
+#else
+                thunkServerPath @@ "ThunkServer.exe"
+#endif
 
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"

@@ -208,7 +208,8 @@ module ``AppDomain Pool Tests`` =
     [<Fact>]
     let ``14 AppDomainEvaluatorPool simple worfklow with exception`` () =
         use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
-        Assert.Throws<System.InvalidOperationException>(fun () -> pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously) |> ignore
+        Assert.Throws<System.InvalidOperationException>(fun () -> pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously |> ignore) 
+        |> ignore
 
 
     type AppDomainVagabondLambdaLoaderConfiguration() =

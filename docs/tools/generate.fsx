@@ -2,6 +2,26 @@
 // Builds the documentation from `.fsx` and `.md` files in the 'docs/content' directory
 // (the generated documentation is stored in the 'docs/output' directory)
 // --------------------------------------------------------------------------------------
+#I "../../packages/docgeneration/FSharp.Compiler.Service/lib/netstandard2.0"
+#I "../../packages/docgeneration/FSharp.Formatting/lib/netstandard2.0"
+#r "../../packages/docgeneration/FAKE/tools/FakeLib.dll"
+#r "RazorEngine.NetCore.dll"
+#r "FSharp.Compiler.Service.dll"
+#r "FSharp.Markdown.dll"
+#r "FSharp.Literate.dll"
+#r "FSharp.CodeFormat.dll"
+#r "FSharp.MetadataFormat.dll"
+#r "FSharp.Formatting.Common.dll"
+#r "FSharp.Formatting.Razor.dll"
+
+open System
+open System.IO
+open Fake
+open FSharp.Formatting.Razor
+
+#nowarn "44" // fake obsolete warnings
+
+Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 // Binaries that have XML documentation (in a corresponding generated XML file)
 let referenceProjects = [ "../../src/Vagabond" ]
@@ -21,21 +41,6 @@ let info =
 // --------------------------------------------------------------------------------------
 // For typical project, no changes are needed below
 // --------------------------------------------------------------------------------------
-
-#I "../../packages/docgeneration/FSharp.Compiler.Service/lib/net45"
-#I "../../packages/docgeneration/FSharp.Formatting/lib/net461"
-#r "../../packages/docgeneration/FAKE/tools/FakeLib.dll"
-#r "RazorEngine.dll"
-#r "FSharp.Markdown.dll"
-#r "FSharp.Literate.dll"
-#r "FSharp.CodeFormat.dll"
-#r "FSharp.MetadataFormat.dll"
-#r "FSharp.Formatting.Common.dll"
-#r "FSharp.Formatting.Razor.dll"
-
-open Fake
-open System.IO
-open FSharp.Formatting.Razor
 
 // When called from 'build.fsx', use the public project URL as <root>
 // otherwise, use the current 'output' directory.

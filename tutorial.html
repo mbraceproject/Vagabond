@@ -32,8 +32,7 @@
       <hr />
       <div class="row">
         <div class="span9" id="main">
-          
-<h1><a name="API-Overview" class="anchor" href="#API-Overview">API Overview</a></h1>
+          <h1><a name="API-Overview" class="anchor" href="#API-Overview">API Overview</a></h1>
 <p>The included implementation of
 <a href="https://github.com/mbraceproject/Vagabond/blob/master/samples/ThunkServer/thunkServer.fsx">ThunkServer</a>
 is a straightforward distributed implementation that makes use of Vagabond.
@@ -63,7 +62,7 @@ What follows is a brief overview of the basic API.</p>
 <p>An assembly can be exported by generating Vagabond metadata</p>
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs20', 28)" onmouseover="showTip(event, 'fs20', 28)" class="id">vagabondAssembly</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 29)" onmouseover="showTip(event, 'fs9', 29)" class="fn">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs21', 30)" onmouseover="showTip(event, 'fs21', 30)" class="id">GetVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs5', 31)" onmouseover="showTip(event, 'fs5', 31)" class="id">assembly</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs20', 28)" onmouseover="showTip(event, 'fs20', 28)" class="id">vagabondAssembly</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 29)" onmouseover="showTip(event, 'fs9', 29)" class="fn">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs19', 30)" onmouseover="showTip(event, 'fs19', 30)" class="id">GetVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs5', 31)" onmouseover="showTip(event, 'fs5', 31)" class="id">assembly</span>
 </code></pre></td>
 </tr>
 </table>
@@ -71,7 +70,7 @@ What follows is a brief overview of the basic API.</p>
 <p>Assemblies can be loaded in a remote process like so:</p>
 <table class="pre"><tr><td class="lines"><pre class="fssnip"><span class="l">1: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 32)" onmouseover="showTip(event, 'fs22', 32)" class="id">response</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 33)" onmouseover="showTip(event, 'fs9', 33)" class="fn">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs23', 34)" onmouseover="showTip(event, 'fs23', 34)" class="id">LoadVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs20', 35)" onmouseover="showTip(event, 'fs20', 35)" class="id">vagabondAssembly</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs21', 32)" onmouseover="showTip(event, 'fs21', 32)" class="id">response</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 33)" onmouseover="showTip(event, 'fs9', 33)" class="fn">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs19', 34)" onmouseover="showTip(event, 'fs19', 34)" class="id">LoadVagabondAssembly</span> <span onmouseout="hideTip(event, 'fs20', 35)" onmouseover="showTip(event, 'fs20', 35)" class="id">vagabondAssembly</span>
 </code></pre></td>
 </tr>
 </table>
@@ -84,9 +83,9 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <span class="l">2: </span>
 <span class="l">3: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs24', 36)" onmouseover="showTip(event, 'fs24', 36)" class="id">serializer</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 37)" onmouseover="showTip(event, 'fs9', 37)" class="id">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs25', 38)" onmouseover="showTip(event, 'fs25', 38)" class="id">Serializer</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs22', 36)" onmouseover="showTip(event, 'fs22', 36)" class="id">serializer</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs9', 37)" onmouseover="showTip(event, 'fs9', 37)" class="id">vmanager</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs19', 38)" onmouseover="showTip(event, 'fs19', 38)" class="id">Serializer</span>
 
-<span class="k">let</span> <span onmouseout="hideTip(event, 'fs26', 39)" onmouseover="showTip(event, 'fs26', 39)" class="id">bytes</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs24', 40)" onmouseover="showTip(event, 'fs24', 40)" class="fn">serializer</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs27', 41)" onmouseover="showTip(event, 'fs27', 41)" class="id">Pickle</span><span class="pn">(</span><span onmouseout="hideTip(event, 'fs12', 42)" onmouseover="showTip(event, 'fs12', 42)" class="id">value</span><span class="pn">)</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs23', 39)" onmouseover="showTip(event, 'fs23', 39)" class="id">bytes</span> <span class="o">=</span> <span onmouseout="hideTip(event, 'fs22', 40)" onmouseover="showTip(event, 'fs22', 40)" class="fn">serializer</span><span class="pn">.</span><span onmouseout="hideTip(event, 'fs19', 41)" onmouseover="showTip(event, 'fs19', 41)" class="id">Pickle</span><span class="pn">(</span><span onmouseout="hideTip(event, 'fs12', 42)" onmouseover="showTip(event, 'fs12', 42)" class="id">value</span><span class="pn">)</span>
 </code></pre></td>
 </tr>
 </table>
@@ -98,7 +97,7 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <div class="tip" id="fs5">val assembly : AssemblyId</div>
 <div class="tip" id="fs6">module Unchecked<br /><br />from Microsoft.FSharp.Core.Operators</div>
 <div class="tip" id="fs7">val defaultof&lt;&#39;T&gt; : &#39;T</div>
-<div class="tip" id="fs8">type AssemblyId =<br />&#160;&#160;{FullName: string;<br />&#160;&#160;&#160;ImageHash: byte [];<br />&#160;&#160;&#160;Extension: string;}<br />&#160;&#160;&#160;&#160;member GetName : unit -&gt; AssemblyName<br />&#160;&#160;&#160;&#160;override ToString : unit -&gt; string</div>
+<div class="tip" id="fs8">type AssemblyId =<br />&#160;&#160;{ FullName: string<br />&#160;&#160;&#160;&#160;ImageHash: byte []<br />&#160;&#160;&#160;&#160;Extension: string }<br />&#160;&#160;&#160;&#160;member GetName : unit -&gt; AssemblyName<br />&#160;&#160;&#160;&#160;override ToString : unit -&gt; string</div>
 <div class="tip" id="fs9">val vmanager : VagabondManager</div>
 <div class="tip" id="fs10">type Vagabond =<br />&#160;&#160;static member ComputeAssemblyDependencies : assemblies:seq&lt;Assembly&gt; * ?isIgnoredAssembly:(Assembly -&gt; bool) * ?policy:AssemblyLookupPolicy -&gt; Assembly []<br />&#160;&#160;static member ComputeAssemblyDependencies : assembly:Assembly * ?isIgnoredAssembly:(Assembly -&gt; bool) * ?policy:AssemblyLookupPolicy -&gt; Assembly []<br />&#160;&#160;static member ComputeAssemblyDependencies : obj:obj * ?isIgnoredAssembly:(Assembly -&gt; bool) * ?policy:AssemblyLookupPolicy -&gt; Assembly []<br />&#160;&#160;static member ComputeAssemblyId : assembly:Assembly -&gt; AssemblyId<br />&#160;&#160;static member ComputeAssemblyIds : assemblies:seq&lt;Assembly&gt; -&gt; AssemblyId []<br />&#160;&#160;static member GetUniqueFileName : id:AssemblyId -&gt; string<br />&#160;&#160;static member GetUniqueFileName : hash:HashResult * ?assemblyPrefix:AssemblyId -&gt; string<br />&#160;&#160;static member Initialize : config:VagabondConfiguration -&gt; VagabondManager<br />&#160;&#160;static member Initialize : ignoredAssemblies:seq&lt;Assembly&gt; * ?cacheDirectory:string * ?profiles:seq&lt;IDynamicAssemblyProfile&gt; * ?typeConverter:ITypeNameConverter * ?forceLocalFSharpCore:bool * ?forceSerializationCompilation:bool * ?lookupPolicy:AssemblyLookupPolicy * ?dataCompressionAlgorithm:ICompressionAlgorithm * ?dataPersistTreshold:int64 -&gt; VagabondManager<br />&#160;&#160;static member Initialize : ?cacheDirectory:string * ?profiles:seq&lt;IDynamicAssemblyProfile&gt; * ?typeConverter:ITypeNameConverter * ?forceLocalFSharpCore:bool * ?forceSerializationCompilation:bool * ?isIgnoredAssembly:(Assembly -&gt; bool) * ?lookupPolicy:AssemblyLookupPolicy * ?dataCompressionAlgorithm:ICompressionAlgorithm * ?dataPersistTreshold:int64 -&gt; VagabondManager<br />&#160;&#160;...</div>
 <div class="tip" id="fs11">static member Vagabond.Initialize : config:VagabondConfiguration -&gt; VagabondManager<br />static member Vagabond.Initialize : ignoredAssemblies:seq&lt;Assembly&gt; * ?cacheDirectory:string * ?profiles:seq&lt;IDynamicAssemblyProfile&gt; * ?typeConverter:MBrace.FsPickler.ITypeNameConverter * ?forceLocalFSharpCore:bool * ?forceSerializationCompilation:bool * ?lookupPolicy:AssemblyLookupPolicy * ?dataCompressionAlgorithm:ICompressionAlgorithm * ?dataPersistTreshold:int64 -&gt; VagabondManager<br />static member Vagabond.Initialize : ?cacheDirectory:string * ?profiles:seq&lt;IDynamicAssemblyProfile&gt; * ?typeConverter:MBrace.FsPickler.ITypeNameConverter * ?forceLocalFSharpCore:bool * ?forceSerializationCompilation:bool * ?isIgnoredAssembly:(Assembly -&gt; bool) * ?lookupPolicy:AssemblyLookupPolicy * ?dataCompressionAlgorithm:ICompressionAlgorithm * ?dataPersistTreshold:int64 -&gt; VagabondManager</div>
@@ -109,15 +108,11 @@ capable of serializing and deserializing objects depending on dynamic assemblies
 <div class="tip" id="fs16">union case Option.None: Option&lt;&#39;T&gt;</div>
 <div class="tip" id="fs17">val id : x:&#39;T -&gt; &#39;T</div>
 <div class="tip" id="fs18">val assemblies : VagabondAssembly []</div>
-<div class="tip" id="fs19">member VagabondManager.ComputeObjectDependencies : graph:obj * ?permitCompilation:bool * ?includeNativeDependencies:bool -&gt; VagabondAssembly []</div>
+<div class="tip" id="fs19"></div>
 <div class="tip" id="fs20">val vagabondAssembly : VagabondAssembly</div>
-<div class="tip" id="fs21">member VagabondManager.GetVagabondAssembly : id:AssemblyId * ?lookupPolicy:AssemblyLookupPolicy -&gt; VagabondAssembly</div>
-<div class="tip" id="fs22">val response : AssemblyLoadInfo</div>
-<div class="tip" id="fs23">member VagabondManager.LoadVagabondAssembly : va:VagabondAssembly * ?lookupPolicy:AssemblyLookupPolicy -&gt; AssemblyLoadInfo</div>
-<div class="tip" id="fs24">val serializer : MBrace.FsPickler.BinarySerializer</div>
-<div class="tip" id="fs25">property VagabondManager.Serializer: MBrace.FsPickler.BinarySerializer</div>
-<div class="tip" id="fs26">val bytes : byte []</div>
-<div class="tip" id="fs27">member MBrace.FsPickler.FsPicklerSerializer.Pickle : value:&#39;T * ?pickler:MBrace.FsPickler.Pickler&lt;&#39;T&gt; * ?streamingContext:Runtime.Serialization.StreamingContext * ?encoding:Text.Encoding -&gt; byte []</div>
+<div class="tip" id="fs21">val response : AssemblyLoadInfo</div>
+<div class="tip" id="fs22">val serializer : MBrace.FsPickler.BinarySerializer</div>
+<div class="tip" id="fs23">val bytes : byte []</div>
 
         </div>
         <div class="span3">

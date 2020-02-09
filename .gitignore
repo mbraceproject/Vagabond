@@ -182,3 +182,5 @@ temp/
 temp/
 
 artifacts/
+.paket/load
+temp/

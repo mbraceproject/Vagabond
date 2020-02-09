@@ -16,10 +16,10 @@
 
 open System
 open System.IO
-open Fake
+open Fake.IO
+open Fake.IO.Globbing.Operators
+open Fake.IO.FileSystemOperators
 open FSharp.Formatting.Razor
-
-#nowarn "44" // fake obsolete warnings
 
 Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
@@ -65,10 +65,9 @@ let layoutRoots =
 
 // Copy static files and CSS + JS from F# Formatting
 let copyFiles () =
-  CopyRecursive files output true |> Log "Copying file: "
-  ensureDirectory (output @@ "content")
-  CopyRecursive (formatting @@ "styles") (output @@ "content") true 
-    |> Log "Copying styles and scripts: "
+    Fake.IO.DirectoryInfo.copyRecursiveTo true (DirectoryInfo output) (DirectoryInfo files) |> ignore
+    Fake.IO.Directory.ensure (output @@ "content")
+    Fake.IO.DirectoryInfo.copyRecursiveTo true (DirectoryInfo (output @@ "content")) (DirectoryInfo (formatting @@ "styles")) |> ignore
 
 
 let getReferenceAssembliesForProject (proj : string) =
@@ -77,7 +76,7 @@ let getReferenceAssembliesForProject (proj : string) =
 
 // Build API reference from XML comments
 let buildReference () =
-  CleanDir (output @@ "reference")
+  Shell.cleanDir (output @@ "reference")
   let binaries = referenceProjects |> List.map getReferenceAssembliesForProject
   RazorMetadataFormat.Generate
     ( binaries, output @@ "reference", layoutRoots, 
@@ -96,8 +95,8 @@ let buildDocumentation () =
         layoutRoots = layoutRoots, generateAnchors = true )
 
 // Generate
-CleanDir output
-CreateDir output
+Shell.cleanDir output
+Shell.mkdir output
 copyFiles()
 buildDocumentation()
 buildReference()

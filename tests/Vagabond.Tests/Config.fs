@@ -26,6 +26,7 @@ type VagabondConfig private () =
                 let _ = Directory.CreateDirectory cachePath in cachePath
 
         manager <- Vagabond.Initialize(cacheDirectory = cachePath, ignoredAssemblies = [Assembly.GetExecutingAssembly()])
+        manager
 
     static member Instance = manager
     static member Pickler = manager.Serializer

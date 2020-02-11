@@ -1,14 +1,10 @@
 ﻿namespace MBrace.Vagabond.AppDomainPool
 
-#if !NETSTANDARD2_0
-
 open System
 open System.Collections.Generic
 open System.Reflection
 open System.Runtime.Serialization
-open System.Runtime.Remoting
-open System.Security
-open System.Security.Permissions
+open System.Runtime.Loader
 open System.Threading
 open System.Threading.Tasks
 
@@ -34,10 +30,9 @@ type IAppDomainConfiguration = interface end
 /// Types implementing the interface must carry
 /// a parameterless constructor.
 type IAppDomainManager =
+    inherit IDisposable
     /// AppDomain initializer method.
     abstract Initialize : IAppDomainConfiguration -> unit
-    /// AppDomain finalization method.
-    abstract Finalize : unit -> unit
     /// Gets the number of tasks currently active in the AppDomain. 
     /// AppDomains with non-zero task count will never be unloaded
     /// by the AppDomainPool.
@@ -46,63 +41,152 @@ type IAppDomainManager =
     /// Used by the AppDomainPool to unload unused instances.
     abstract LastUsed : DateTime
 
+/// Proxy interface used for communicating with type loaded in remote AssemblyLoadContext
+type ILoadContextProxy<'T when 'T :> IDisposable> =
+    inherit IDisposable
+    /// Marshalls a command which will be executed in the remote AssemblyLoadContext
+    abstract Execute : command:('T -> 'R) -> 'R
+    /// Marshalls a command which will be executed in the remote AssemblyLoadContext
+    abstract ExecuteAsync : command:('T -> Async<'R>) -> Async<'R>
+
 [<AutoOpen>]
 module private Impl =
 
-    /// initialize a new AppDomain with given friendly name
-    let initAppDomain permissions (name : string) =
-        let currentDomain = AppDomain.CurrentDomain
-        let appDomainSetup = currentDomain.SetupInformation
-        let permissions = defaultArg permissions currentDomain.PermissionSet
-        let evidence = new Security.Policy.Evidence(currentDomain.Evidence)
-        AppDomain.CreateDomain(name, evidence, appDomainSetup, permissions)
-
     let ctorFlags = BindingFlags.Public ||| BindingFlags.NonPublic ||| BindingFlags.Instance
+    let activate (t:Type) = t.GetConstructor(ctorFlags, null, [||], [||]).Invoke([||])
 
-    let activate<'T> () = typeof<'T>.GetConstructor(ctorFlags, null, [||], [||]).Invoke([||]) :?> 'T
+    type private LoadContextMarshaller<'T when 'T : (new : unit -> 'T) and 'T :> IDisposable> () =
+        let instance = new 'T()
 
-    /// initialize an object in the target Application domain
-    let initAppDomainObject<'T when 'T :> MarshalByRefObject 
-                                and 'T : (new : unit -> 'T)> (targetDomain : AppDomain) =
+        static let pickler = FsPickler.CreateBinarySerializer()
 
-        let assemblyName = typeof<'T>.Assembly.FullName
-        let typeName = typeof<'T>.FullName
-        let culture = System.Globalization.CultureInfo.CurrentCulture
-        let handle = targetDomain.CreateInstance(assemblyName, typeName, false, ctorFlags, null, [||], culture, [||])
-        handle.Unwrap() :?> 'T
+        interface IDisposable with member __.Dispose() = instance.Dispose()
+
+        member __.ExecuteMarshalled (bytes : byte[]) : byte[] = 
+            let result = 
+                try 
+                    let command = pickler.UnPickle<'T -> obj> bytes
+                    command instance |> Choice1Of2 
+                with e -> Choice2Of2 e
+
+            pickler.Pickle<Choice<obj,exn>> result
+
+        member __.ExecuteMarshalledAsync (ct : CancellationToken, bytes : byte[]) : Task<byte[]> = 
+            let work = async {
+                let executor = async { 
+                    let command = pickler.UnPickle<'T -> Async<obj>> bytes 
+                    return! command instance 
+                }
+
+                let! result = Async.Catch executor
+                return pickler.Pickle<Choice<obj, exn>> result
+            } 
+    
+            Async.StartAsTask(work, cancellationToken = ct)
+
+        static member CreateProxyFromMarshallerHandle (remoteHandle : obj) =
+            let remoteMethod = remoteHandle.GetType().GetMethod("ExecuteMarshalled", BindingFlags.NonPublic ||| BindingFlags.Instance)
+            let remoteAsyncMethod = remoteHandle.GetType().GetMethod("ExecuteMarshalledAsync", BindingFlags.NonPublic ||| BindingFlags.Instance)
+            { new ILoadContextProxy<'T> with
+                member __.Dispose() = (remoteHandle :?> IDisposable).Dispose()
+                member __.Execute<'R> (command : 'T -> 'R) =
+                    let boxedCommand instance = let result = command instance in result :> obj
+                    let commandBytes = pickler.Pickle<'T -> obj> boxedCommand
+                    let responseBytes = remoteMethod.Invoke(remoteHandle, [|commandBytes|]) :?> byte[]
+                    match pickler.UnPickle<Choice<obj,exn>> responseBytes with
+                    | Choice1Of2 obj -> obj :?> 'R
+                    | Choice2Of2 e -> reraise' e
+
+                member __.ExecuteAsync<'R> (command : 'T -> Async<'R>) = async {
+                    let! ct = Async.CancellationToken
+                    let boxedCommand instance = async { let! result = command instance in return box result }
+                    let commandBytes = pickler.Pickle<'T -> Async<obj>> boxedCommand
+                    let responseTask = remoteAsyncMethod.Invoke(remoteHandle, [|ct ; commandBytes|]) :?> Task<byte[]>
+                    let! responseBytes = Async.AwaitTask responseTask
+                    return 
+                        match pickler.UnPickle<Choice<obj, exn>> responseBytes with
+                        | Choice1Of2 obj -> obj :?> 'R
+                        | Choice2Of2 e -> reraise' e
+                }
+            }
+
+    type AssemblyLoadContext with
+        member ctx.CreateProxy<'T when 'T : (new : unit -> 'T) and 'T :> IDisposable>() : ILoadContextProxy<'T> =
+            let getRemoteType (t : Type) =
+                let remoteAssembly = ctx.LoadFromAssemblyPath t.Assembly.Location
+                remoteAssembly.GetType t.FullName
+
+            // Construct the type of LoadContextMarshaller<'TProxy>, but using assemblies loaded in the remote context
+            let remoteProxyType = getRemoteType typeof<'T>
+            let remoteMarshallerType = getRemoteType (typeof<LoadContextMarshaller<'T>>.GetGenericTypeDefinition())
+            let remoteInstanceType = remoteMarshallerType.MakeGenericType remoteProxyType
+
+            // instantiate proxy in remote context
+            let remoteInstance = activate remoteInstanceType
+            LoadContextMarshaller<'T>.CreateProxyFromMarshallerHandle remoteInstance
+
+    /// An assembly load context that mirrors assembly loading from the currently running context
+    type MirroredAssemblyLoadContext() =
+        inherit AssemblyLoadContext() // TODO need the isCollectible=true constructor overload here
+
+        // AssemblyLoadContext is not available in netstandard2.0
+        // Use reflection to access its APIs
+        let unloadMethod = typeof<AssemblyLoadContext>.GetMethod("Unload", BindingFlags.Public ||| BindingFlags.Instance)
+        let getLoadedAssemblies = Utils.getLoadedAssemblies.Value
+
+        let tryResolveFileName (an : AssemblyName) =
+            let isMatchingAssembly (assembly : Assembly) =
+                let can = assembly.GetName()
+                can.Name = an.Name &&
+                can.Version >= an.Version &&
+                can.GetPublicKeyToken() = an.GetPublicKeyToken()
+
+            getLoadedAssemblies()
+            |> Seq.filter (fun a -> not a.IsDynamic && not (String.IsNullOrEmpty a.Location))
+            |> Seq.tryFind isMatchingAssembly
+            |> Option.map (fun a -> a.Location)
+
+        /// Due to nestandard constraints, need to call "Unload" method using reflection
+        member this.TryUnload() = 
+            match unloadMethod with
+            | null -> false
+            | m -> m.Invoke(this, [||]) |> ignore ; true
+                
+        override this.Load an =
+            match tryResolveFileName an with
+            | None -> null
+            | Some path -> this.LoadFromAssemblyPath path
 
     /// Application Domain load state
-    type AppDomainLoadInfo<'Manager when 'Manager :> IAppDomainManager 
-                                    and 'Manager :> MarshalByRefObject 
-                                    and 'Manager : (new : unit -> 'Manager)> =
+    type AppDomainLoadInfo<'Manager when 'Manager :> IAppDomainManager
+                                     and 'Manager : (new : unit -> 'Manager)> =
         {
             /// AppDomain identifier
             Id : string
             /// AppDomain instance
-            AppDomain : AppDomain
+            LoadContext : MirroredAssemblyLoadContext
             /// AppDomain manager instance
-            Manager : 'Manager
+            Proxy : ILoadContextProxy<'Manager>
             /// Declared Vagabond dependency load state
             Dependencies : Map<string, AssemblyId>
         }
     with
         /// Initialize an AppDomain instance with given Vagabond dependencies
-        static member Init (config : IAppDomainConfiguration, permissions : PermissionSet option, dependencies : seq<AssemblyId>) =
+        static member Init (config : IAppDomainConfiguration, dependencies : seq<AssemblyId>) =
             let id = Guid.NewGuid().ToString()
             let dependencies = dependencies |> Seq.map (fun d -> d.FullName, d) |> Map.ofSeq
-            let appDomain = initAppDomain permissions id
-            let manager = initAppDomainObject<'Manager> appDomain
-            do manager.Initialize config
+            let loadContext = new MirroredAssemblyLoadContext()
+            let proxy = loadContext.CreateProxy<'Manager>()
+            proxy.Execute(fun m -> m.Initialize config)
 
-            { Id = id; Manager = manager; AppDomain = appDomain; Dependencies = dependencies }
+            { Id = id; Proxy = proxy; LoadContext = loadContext; Dependencies = dependencies }
 
         member adli.AddDependencies (dependencies : seq<AssemblyId>) =
             { adli with Dependencies = dependencies |> Seq.map (fun d -> d.FullName, d) |> Map.addMany adli.Dependencies }
 
 
     /// Globad AppDomain load state
-    type AppDomainPoolInfo<'Manager when 'Manager :> IAppDomainManager 
-                                     and 'Manager :> MarshalByRefObject 
+    type AppDomainPoolInfo<'Manager when 'Manager :> IAppDomainManager
                                      and 'Manager : (new : unit -> 'Manager)> =
         {
             /// Application domain pool
@@ -113,8 +197,6 @@ module private Impl =
             MinConcurrentDomains : int
             /// Max tasks allowed per domain
             MaxTasksPerDomain : int option
-            /// AppDomain permission set
-            Permissions : PermissionSet option
             /// User-specified configuration for the AppDomain
             Configuration : IAppDomainConfiguration
             /// Unload threshold: minimum timespan needed for unloading unused domains
@@ -123,7 +205,7 @@ module private Impl =
     with
         /// Initialize a new AppDomain with provided dependencies and add to state
         member s.AddNew(dependencies) =
-            let adli = AppDomainLoadInfo<'Manager>.Init (s.Configuration, dependencies = dependencies, permissions = s.Permissions)
+            let adli = AppDomainLoadInfo<'Manager>.Init (s.Configuration, dependencies = dependencies)
             adli, s.AddDomain adli
 
         /// Add existing or updated AppDomain info to state
@@ -131,12 +213,11 @@ module private Impl =
             { s with DomainPool = s.DomainPool.Add(adli.Id, adli) }
 
         /// Initialize a new AppDomain pool state
-        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
+        static member Init(minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration ,threshold : TimeSpan option, maxTasks : int option) =
             {
                 DomainPool = Map.empty
                 MaxConcurrentDomains = maximumConcurrentDomains
                 MinConcurrentDomains = minimumConcurrentDomains
-                Permissions = permissions
                 Configuration = config
                 MaxTasksPerDomain = maxTasks
                 UnloadThreshold = threshold
@@ -149,7 +230,7 @@ module private Impl =
         let getCompatibility (adli : AppDomainLoadInfo<'M>) =
             let missingCount = ref 0
             let isCompatibleAssembly (id : AssemblyId) =
-                if state.MaxTasksPerDomain |> Option.exists (fun mtpd -> adli.Manager.TaskCount >= mtpd) 
+                if state.MaxTasksPerDomain |> Option.exists (fun mtpd -> adli.Proxy.Execute(fun m -> m.TaskCount) >= mtpd) 
                 then false
                 else
                     match adli.Dependencies.TryFind id.FullName with
@@ -174,8 +255,8 @@ module private Impl =
     let disposeDomains (domains : seq<AppDomainLoadInfo<'M>>) = async {
         do for adli in domains do
             try 
-                try adli.Manager.Finalize()
-                finally AppDomain.Unload adli.AppDomain 
+                try adli.Proxy.Execute(fun m -> m.Dispose())
+                finally adli.LoadContext.TryUnload() |> ignore
             with _ -> ()
     }
 
@@ -193,12 +274,12 @@ module private Impl =
         let unusedDomains =         
             state.DomainPool
             |> Seq.map(function KeyValue(_,adli) -> adli)
-            |> Seq.filter(fun adli -> adli.Manager.TaskCount = 0)
+            |> Seq.filter(fun adli -> adli.Proxy.Execute(fun m -> m.TaskCount = 0))
             |> Seq.sortBy(fun adli -> adli.Dependencies.Count)
 
         for adli in unusedDomains do
             if pool.Count <= state.MinConcurrentDomains then ()
-            elif removed.Count < minRemovals || state.UnloadThreshold |> Option.exists(fun th -> now - adli.Manager.LastUsed > th) then
+            elif removed.Count < minRemovals || state.UnloadThreshold |> Option.exists(fun th -> now - adli.Proxy.Execute(fun m -> m.LastUsed) > th) then
                 removed.Add adli
                 pool <- pool.Remove adli.Id
 
@@ -226,9 +307,8 @@ module private Impl =
 
 
     type AppDomainPoolMsg<'Manager when 'Manager :> IAppDomainManager 
-                                     and 'Manager :> MarshalByRefObject 
                                      and 'Manager : (new : unit -> 'Manager)> =
-        | GetDomain of dependencies : AssemblyId [] * ReplyChannel<'Manager>
+        | GetDomain of dependencies : AssemblyId [] * ReplyChannel<ILoadContextProxy<'Manager>>
         | GetState of ReplyChannel<AppDomainPoolInfo<'Manager>>
         | Dispose of ReplyChannel<unit>
         | Cleanup
@@ -250,7 +330,7 @@ module private Impl =
             match msg with
             | GetDomain(dependencies, rc) ->
                 match Exn.protect2 getMatchingAppDomain state dependencies with
-                | Success(state2, adli) -> rc.Reply adli.Manager ; return! behaviour (Some state2) self
+                | Success(state2, adli) -> rc.Reply adli.Proxy ; return! behaviour (Some state2) self
                 | Error e -> rc.ReplyWithError e ; return! behaviour gstate self
 
             | GetState rc -> rc.Reply state ; return! behaviour gstate self
@@ -266,16 +346,15 @@ module private Impl =
     }
 
 /// Provides an AppDomain pooling mechanism for use by Vagabond.
-/// AppDomains are managed based what assembly dependencies are required for execution.
+/// AppDomains are managed based on what assembly dependencies are required for execution.
 [<AutoSerializable(false)>]
-type AppDomainPool<'Manager when 'Manager :> IAppDomainManager 
-                             and 'Manager :> MarshalByRefObject 
+type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
                              and 'Manager : (new : unit -> 'Manager)>
 
-    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration, threshold : TimeSpan option, maxTasks : int option, permissions : PermissionSet option) =
+    internal (minimumConcurrentDomains : int, maximumConcurrentDomains : int, config : IAppDomainConfiguration, threshold : TimeSpan option, maxTasks : int option) =
 
     let cts = new CancellationTokenSource()
-    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks, permissions)
+    let state = AppDomainPoolInfo<'Manager>.Init(minimumConcurrentDomains, maximumConcurrentDomains, config, threshold, maxTasks)
     let mbox = MailboxProcessor.Start(behaviour (Some state))
     let getState () = mbox.PostAndReply GetState
 
@@ -298,7 +377,7 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
     ///     AppDomain will be selected based on dependency affinity.
     /// </summary>
     /// <param name="dependencies">Assembly dependencies required of AppDomain.</param>
-    member __.RequestAppDomain(dependencies : seq<AssemblyId>) : 'Manager =
+    member __.RequestAppDomain(dependencies : seq<AssemblyId>) : ILoadContextProxy<'Manager> =
         let conflict =
             dependencies 
             |> Seq.groupBy(fun d -> d.FullName)
@@ -320,7 +399,7 @@ type AppDomainPool<'Manager when 'Manager :> IAppDomainManager
 #if DEBUG
     member __.State = 
         getState().DomainPool 
-        |> Seq.map (function KeyValue(_,v) -> v.Manager, v.AppDomain)
+        |> Seq.map (function KeyValue(_,v) -> v.LoadContext :> AssemblyLoadContext, v.Proxy)
         |> Seq.toArray
 #endif
 
@@ -341,18 +420,16 @@ type AppDomainPool =
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
-    /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
-    static member Create<'Manager when 'Manager :> IAppDomainManager 
-                                   and 'Manager :> MarshalByRefObject 
+    static member Create<'Manager when 'Manager :> IAppDomainManager
                                    and 'Manager : (new : unit -> 'Manager)>
-        (configuration : IAppDomainConfiguration, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
+        (configuration : IAppDomainConfiguration, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
 
         let minimumConcurrentDomains = defaultArg minimumConcurrentDomains 3
         let maximumConcurrentDomains = defaultArg maximumConcurrentDomains 20
         if minimumConcurrentDomains < 0 then invalidArg "minimumConcurrentDomains" "Must be non-negative."
         if maximumConcurrentDomains < minimumConcurrentDomains then invalidArg "minimumConcurrentDomains" "should be greater or equal to 'minimumConcurrentDomains'."
         if maxTasksPerDomain |> Option.exists (fun mtpd -> mtpd <= 0) then invalidArg "maxTasksPerDomain" "should be positive."
-        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, configuration, threshold, maxTasksPerDomain, permissions)
+        new AppDomainPool<'Manager>(minimumConcurrentDomains, maximumConcurrentDomains, configuration, threshold, maxTasksPerDomain)
 
 
     /// <summary>
@@ -365,16 +442,14 @@ type AppDomainPool =
     /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
     static member Create<'Manager, 'Config 
                                 when 'Manager :> IAppDomainManager 
-                                 and 'Manager :> MarshalByRefObject 
                                  and 'Manager : (new : unit -> 'Manager)
                                  and 'Config :> IAppDomainConfiguration
                                  and 'Config : (new : unit -> 'Config)>
-        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
+        (?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
 
-        AppDomainPool.Create<'Manager>(activate<'Config>(), 
+        AppDomainPool.Create<'Manager>(activate typeof<'Config> :?> 'Config, 
             ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, 
-            ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain, ?permissions = permissions)
-
+            ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain)
 
 //
 //  Lambda Evaluator AppDomain pool: application of the AppDomain pool that uses FsPickler for sending lambdas 
@@ -383,53 +458,15 @@ type AppDomainPool =
 
 [<AutoOpen>]
 module private EvaluatorImpl =
-    
-    
-    // BinaryFormatter, the .NET default in remoting is not to be trusted when serializing closures
-    // use FsPickler instead and pass Pickle<'T> values to the marshalled objects
-    let pickler = lazy(FsPickler.CreateBinarySerializer())
-
-    type ResultPickle = Pickle<Exn<obj>>
-
-    [<AbstractClass>]
-    type ImmortalMarshalByRefObject () =
-        inherit MarshalByRefObject ()
-        [<SecurityPermissionAttribute(SecurityAction.Demand, Flags = SecurityPermissionFlag.Infrastructure)>]
-        override __.InitializeLifetimeService() = null
-        member o.Disconnect () = ignore <| RemotingServices.Disconnect o
-
-    /// Marshalled task completion source for async computation over AppDomains
-    type MarshalledTaskCompletionSource<'T> () =
-        inherit ImmortalMarshalByRefObject ()
-        let tcs = new TaskCompletionSource<'T> ()
-        /// Set a value as task result
-        member __.SetResult(t : 'T) = tcs.SetResult t
-        /// Set an exception as task result
-        member __.SetException(e : exn) = tcs.SetException e
-        /// Cancels the task
-        member __.SetCanceled() = tcs.SetCanceled()
-        /// Gets the local task instance.
-        member __.Task = tcs.Task
-
-    /// Marshalled cancellation token source for use over AppDomains
-    type MarshalledCancellationTokenSource () =
-        inherit ImmortalMarshalByRefObject ()
-        let cts = new CancellationTokenSource()
-        /// Cancel the cancellation token source
-        member __.Cancel() = cts.Cancel()
-        /// Gets the local cancellation token
-        member __.CancellationToken = cts.Token
 
     /// AppDomain configuration that carries a pickled initializer
     type AppDomainEvaluatorConfiguration(?initializer : unit -> unit) =
-        let pInitializer = initializer |> Option.map pickler.Value.PickleTyped 
-        member __.Initializer = pInitializer
+        let initializer = defaultArg initializer id
+        member __.Initializer = initializer
         interface IAppDomainConfiguration
 
     /// AppDomain managing object
     type AppDomainEvaluatorManager() =
-        inherit ImmortalMarshalByRefObject()
-
         let mutable taskCount = 0
         let mutable lastUsed = DateTime.Now
 
@@ -442,66 +479,25 @@ module private EvaluatorImpl =
             lastUsed <- DateTime.Now
 
         /// Synchronously executes a computation in remote AppDomain
-        member e.EvaluateSync(pFunc : Pickle<unit -> obj>) : ResultPickle =
-            let func = pickler.Value.UnPickleTyped pFunc
+        member __.EvaluateSync(func : unit -> 'T) =
             init ()
-            try
-                let result = Exn.protect func ()
-                pickler.Value.PickleTyped result
-            finally fini ()
+            try func () finally fini ()
 
         /// Asynchronously executes a computation in remote AppDomain
-        member e.EvaluateAsync(mtcs : MarshalledTaskCompletionSource<ResultPickle>, pWorkflow : Pickle<Async<obj>>) : MarshalledCancellationTokenSource =
-            let mcts = new MarshalledCancellationTokenSource()
-            let workflow = pickler.Value.UnPickleTyped pWorkflow
-            let setResult (result : Exn<obj>) =
-                try
-                    let presult = 
-                        try pickler.Value.PickleTyped result
-                        with ex -> pickler.Value.PickleTyped (Error ex)
-
-                    mtcs.SetResult presult
-                finally 
-                    mcts.Disconnect()
-                    fini ()
-
-            let setCancelled _ = try mtcs.SetCanceled() finally fini ()
-
-            let exec () = Async.StartWithContinuations(workflow, Success >> setResult, Error >> setResult, setCancelled, mcts.CancellationToken)
-
+        member __.EvaluateAsync(func : Async<'T>) : Async<'T> = async {
             init ()
-            Async.Start(async { exec () })
-            mcts
+            try return! func finally fini ()
+        }
 
         interface IAppDomainManager with
             member e.Initialize(config : IAppDomainConfiguration) =
                 match config with
-                | :? AppDomainEvaluatorConfiguration as c ->
-                    c.Initializer |> Option.iter (fun init -> pickler.Value.UnPickleTyped(init)())
+                | :? AppDomainEvaluatorConfiguration as c -> c.Initializer()
                 | _ -> ()
 
-            member e.Finalize () = ()
             member e.TaskCount = taskCount
             member e.LastUsed = lastUsed
-
-    let evalSync (mgr : AppDomainEvaluatorManager) (f : unit -> 'T) : 'T =
-        let result = (fun () -> f () :> obj) |> pickler.Value.PickleTyped |> mgr.EvaluateSync |> pickler.Value.UnPickleTyped
-        result.Value :?> 'T
-
-    let evalAsync (mgr : AppDomainEvaluatorManager) (f : Async<'T>) : Async<'T> = async {
-        let! ct = Async.CancellationToken
-        let pworkflow = pickler.Value.PickleTyped(async { let! r = f in return box r })
-        let mtcs = new MarshalledTaskCompletionSource<ResultPickle>()
-        try
-            let mcts = mgr.EvaluateAsync(mtcs, pworkflow)
-            use _ = ct.Register (fun () -> mcts.Cancel ())
-            let! presult = Async.AwaitTask(mtcs.Task)
-            let result = pickler.Value.UnPickleTyped presult
-            return result.Value :?> 'T
-        finally
-            mtcs.Disconnect()
-    }
-        
+            member e.Dispose() = ()
 
 /// Defines an app domain pool that evaluates code based on Vagabond dependency affinities
 [<AutoSerializable(false)>]
@@ -515,11 +511,10 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// <param name="maximumConcurrentDomains">Maximum allowed AppDomains. Defaults to 20.</param>
     /// <param name="threshold">TimeSpan after which unused AppDomains may get unloaded. Defaults to infinite.</param>
     /// <param name="maxTasksPerDomain">Maximum number of tasks allowed per domain. Defaults to infinite.</param>
-    /// <param name="permissions">AppDomain pool permissions set. Defaults to permission set of current domain.</param>
-    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int, ?permissions : PermissionSet) =
+    static member Create(?appDomainInitializer : unit -> unit, ?minimumConcurrentDomains : int, ?maximumConcurrentDomains : int, ?threshold : TimeSpan, ?maxTasksPerDomain : int) =
         let config = new AppDomainEvaluatorConfiguration(?initializer = appDomainInitializer)
         let pool = AppDomainPool.Create<AppDomainEvaluatorManager>(config, ?threshold = threshold, ?maxTasksPerDomain = maxTasksPerDomain,
-                            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains, ?permissions = permissions)
+                            ?minimumConcurrentDomains = minimumConcurrentDomains, ?maximumConcurrentDomains = maximumConcurrentDomains)
 
         new AppDomainEvaluatorPool(pool)
 
@@ -536,8 +531,8 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// <param name="dependencies">Dependencies for operation.</param>
     /// <param name="f">Function to be executed.</param>
     member __.Evaluate(dependencies : seq<AssemblyId>, f : unit -> 'T) : 'T =
-        let evaluator = pool.RequestAppDomain dependencies
-        evalSync evaluator f
+        let proxy = pool.RequestAppDomain dependencies
+        proxy.Execute (fun evaluator -> evaluator.EvaluateSync f)
 
     /// <summary>
     ///     Asynchronously evaluates function in pooled AppDomain. AppDomain will be selected based on dependency affinity.
@@ -545,11 +540,9 @@ type AppDomainEvaluatorPool private (pool : AppDomainPool<AppDomainEvaluatorMana
     /// <param name="dependencies">Dependencies for operation.</param>
     /// <param name="f">Asynchronous workflow to be executed.</param>
     member __.EvaluateAsync(dependencies : seq<AssemblyId>, f : Async<'T>) : Async<'T> = async {
-        let evaluator = pool.RequestAppDomain dependencies
-        return! evalAsync evaluator f
+        let proxy = pool.RequestAppDomain dependencies
+        return! proxy.ExecuteAsync (fun evaluator -> evaluator.EvaluateAsync f)
     }
 
     interface IDisposable with
         member __.Dispose () = (pool :> IDisposable).Dispose()
-
-#endif

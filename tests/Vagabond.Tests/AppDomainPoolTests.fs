@@ -1,6 +1,8 @@
 ﻿namespace MBrace.Vagabond.Tests
 
 open System
+open System.Reflection
+open System.Runtime.Loader
 open System.Threading
 
 open Xunit
@@ -8,17 +10,13 @@ open MBrace.FsPickler
 open MBrace.Vagabond
 open MBrace.Vagabond.AppDomainPool
 
-#if !NETCOREAPP
 [<TestCaseOrderer("MBrace.Vagabond.Tests.Utils.AlphabeticalOrderer", "Vagabond.Tests")>]
 module ``AppDomain Pool Tests`` =
-
-    do VagabondConfig.Init()
 
     let minDomains = 3
     let maxDomains = 20
 
     type AppDomainPoolTester () =
-        inherit MarshalByRefObject()
 
         let id = Guid.NewGuid()
         let mutable taskCount = 0
@@ -41,7 +39,7 @@ module ``AppDomain Pool Tests`` =
 
         interface IAppDomainManager with
             member __.Initialize (_ : _) = isInitialized <- true
-            member __.Finalize () = isFinalized <- true
+            member __.Dispose() = isFinalized <- true
             member __.TaskCount = taskCount
             member __.LastUsed = lastUsed
 
@@ -54,76 +52,84 @@ module ``AppDomain Pool Tests`` =
 
     let idOfWith<'T> i = { idOf<'T> with ImageHash = [|i|] }
 
-    let getDomainId() = System.AppDomain.CurrentDomain.FriendlyName
+    let getLoadContextId() = AssemblyLoadContext.GetLoadContext(Assembly.GetExecutingAssembly()).Name
 
     [<Fact>]
     let ``01 Simple init and tear down an application domain.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
-        let mgr = pool.RequestAppDomain dependencies
-        mgr.IsInitialized |> shouldEqual true
-        mgr.IsFinalized |> shouldEqual false
-        (! mgr).TaskCount |> shouldEqual 0
-        mgr.AddTask ()
-        (! mgr).TaskCount |> shouldEqual 1
-        mgr.RemoveTask ()
-        (! mgr).TaskCount |> shouldEqual 0
+        let proxy = pool.RequestAppDomain dependencies
+        proxy.Execute(fun mgr ->
+            mgr.IsInitialized |> shouldEqual true
+            mgr.IsFinalized |> shouldEqual false
+            (! mgr).TaskCount |> shouldEqual 0
+            mgr.AddTask ()
+            (! mgr).TaskCount |> shouldEqual 1
+            mgr.RemoveTask ()
+            (! mgr).TaskCount |> shouldEqual 0)
 
     [<Fact>]
     let ``02A Empty dependency domain.`` () =
         use pool = AppDomainPoolTester.Init()
-        let mgr = pool.RequestAppDomain []
-        mgr.AddTask () 
-        (! mgr).TaskCount |> shouldEqual 1
-        mgr.RemoveTask ()
-        (! mgr).TaskCount |> shouldEqual 0
+        let proxy = pool.RequestAppDomain []
+        proxy.Execute(fun mgr ->
+            mgr.AddTask () 
+            (! mgr).TaskCount |> shouldEqual 1
+            mgr.RemoveTask ()
+            (! mgr).TaskCount |> shouldEqual 0)
 
     [<Fact>]
     let ``02B Concurrent appdomain requests.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
-        let mgrs = Async.RunSynchronously(async {
+        let proxies = Async.RunSynchronously(async {
             let wf = async { return pool.RequestAppDomain dependencies }
             return! Seq.init 10 (fun _ -> wf) |> Async.Parallel
         })
 
-        mgrs |> Seq.distinctBy (fun m -> m.Id) |> Seq.length |> shouldEqual 1
+        proxies |> Seq.distinctBy (fun p -> p.Execute(fun m -> m.Id)) |> Seq.length |> shouldEqual 1
 
     [<Fact>]
     let ``03 Should use the same AppDomain when using identical dependency sets.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
-        let mgr = pool.RequestAppDomain dependencies
+        let proxy = pool.RequestAppDomain dependencies
+        let id = proxy.Execute(fun m -> m.Id)
         for i = 1 to 10 do
-            let mgr' = pool.RequestAppDomain dependencies
-            mgr'.Id |> shouldEqual mgr.Id
+            let proxy' = pool.RequestAppDomain dependencies
+            let id' = proxy'.Execute(fun m -> m.Id)
+            id' |> shouldEqual id
 
     [<Fact>]
     let ``04 Should use the same AppDomain when extending the dependency set.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ]
         let dependencies' = idOf<int option> :: dependencies
-        let mgr = pool.RequestAppDomain dependencies
+        let proxy = pool.RequestAppDomain dependencies
+        let id = proxy.Execute(fun m -> m.Id)
         for i = 1 to 10 do
-            let mgr' = pool.RequestAppDomain dependencies'
-            mgr'.Id |> shouldEqual mgr.Id
+            let proxy' = pool.RequestAppDomain dependencies'
+            let id' = proxy'.Execute(fun m -> m.Id)
+            id' |> shouldEqual id
 
     [<Fact>]
     let ``05 Should use separate AppDomain when using incompatible dependency sets.`` () =
         use pool = AppDomainPoolTester.Init()
         let dependencies = [ idOf<int> ; idOf<int option> ]
-        let mgr = pool.RequestAppDomain dependencies
+        let proxy = pool.RequestAppDomain dependencies
+        let id = proxy.Execute(fun m -> m.Id)
         let dependencies' = [ idOf<int> ; { idOf<int option> with ImageHash = [||] } ]
         for i = 1 to 10 do
-            let mgr' = pool.RequestAppDomain dependencies'
-            mgr'.Id |> shouldNotEqual mgr.Id
+            let proxy' = pool.RequestAppDomain dependencies'
+            let id' = proxy'.Execute(fun m -> m.Id)
+            id' |> shouldNotEqual id
 
     [<Fact>]
     let ``06 Should create new AppDomains when conflicting dependencies.`` () =
         use pool = AppDomainPoolTester.Init()
         let name = Guid.NewGuid().ToString()
         let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; Extension = ".dll" }]
-        Seq.init maxDomains (fun i -> let mgr = pool.RequestAppDomain (mkDeps i) in mgr.Id)
+        Seq.init maxDomains (fun i -> let proxy = pool.RequestAppDomain (mkDeps i) in proxy.Execute(fun m -> m.Id))
         |> Seq.distinct
         |> Seq.length
         |> shouldEqual maxDomains
@@ -135,8 +141,9 @@ module ``AppDomain Pool Tests`` =
         let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; Extension = ".dll" }]
         shouldFailwith<_,OutOfResourcesException>(fun () ->
             for i in 1 .. maxDomains + 1 do
-                let mgr = pool.RequestAppDomain (mkDeps i)
-                mgr.Reset() ; mgr.AddTask())
+                let proxy = pool.RequestAppDomain (mkDeps i)
+                proxy.Execute(fun m -> m.Reset())
+                proxy.Execute(fun m -> m.AddTask()))
 
     [<Fact>]
     let ``08A Should successfully dispose idle domains when passing domain threshold.`` () =
@@ -144,8 +151,8 @@ module ``AppDomain Pool Tests`` =
         let name = Guid.NewGuid().ToString()
         let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; Extension = ".dll" }]
         for i in 1 .. 3 * maxDomains do
-            let mgr = pool.RequestAppDomain (mkDeps i)
-            mgr.Reset()
+            let proxy = pool.RequestAppDomain (mkDeps i)
+            proxy.Execute(fun m -> m.Reset())
 
     [<Fact>]
     let ``08B Domain count should contract to minimum count after threshold passed.`` () =
@@ -175,8 +182,8 @@ module ``AppDomain Pool Tests`` =
         let name = Guid.NewGuid().ToString()
         let mkDeps i = [{ FullName = name ; ImageHash = [|byte i|] ; Extension = ".dll" }]
         for i in 1 .. maxDomains do
-            let mgr = pool.RequestAppDomain (mkDeps i) in ()
-            mgr.AddTask()
+            let proxy = pool.RequestAppDomain (mkDeps i) in ()
+            proxy.Execute(fun m -> m.AddTask())
 
         do Thread.Sleep 2000
 
@@ -186,8 +193,8 @@ module ``AppDomain Pool Tests`` =
     let ``11 Should not return the same AppDomain when task threshold has been reached.`` () =
         use pool = AppDomainPoolTester.Init(maxTasks = 1)
         Seq.init maxDomains (fun i -> 
-            let mgr = pool.RequestAppDomain [ idOf<int> ]
-            mgr.AddTask() ; mgr.Id)
+            let proxy = pool.RequestAppDomain [ idOf<int> ]
+            proxy.Execute(fun m -> m.AddTask() ; m.Id))
         |> Seq.distinct
         |> Seq.length
         |> shouldEqual maxDomains
@@ -201,9 +208,9 @@ module ``AppDomain Pool Tests`` =
     [<Fact>]
     let ``13 AppDomainEvaluatorPool simple worfklow`` () =
         use pool = AppDomainEvaluatorPool.Create(fun () -> printfn "Initializing AppDomain")
-        pool.EvaluateAsync([], async { return getDomainId() }) 
+        pool.EvaluateAsync([], async { return getLoadContextId() }) 
         |> Async.RunSynchronously 
-        |> shouldNotEqual (getDomainId())
+        |> shouldNotEqual (getLoadContextId())
 
     [<Fact>]
     let ``14 AppDomainEvaluatorPool simple worfklow with exception`` () =
@@ -213,12 +220,11 @@ module ``AppDomain Pool Tests`` =
 
 
     type AppDomainVagabondLambdaLoaderConfiguration() =
-        let cachePath = VagabondConfig.Instance.CachePath
+        let cachePath = VagabondConfig.Init().CachePath
         interface IAppDomainConfiguration
         member __.CachePath = cachePath
 
     type AppDomainVagabondLambdaLoader () =
-        inherit MarshalByRefObject()
         let mutable lastUsed = DateTime.Now
         let mutable taskCount = 0
 
@@ -234,10 +240,10 @@ module ``AppDomain Pool Tests`` =
         interface IAppDomainManager with
             member __.Initialize (config : IAppDomainConfiguration) =
                 match config with
-                | :? AppDomainVagabondLambdaLoaderConfiguration as c -> VagabondConfig.Init(c.CachePath)
+                | :? AppDomainVagabondLambdaLoaderConfiguration as c -> VagabondConfig.Init(c.CachePath) |> ignore
                 | _ -> ()
 
-            member __.Finalize () = ()
+            member __.Dispose () = ()
             member __.LastUsed = lastUsed
             member __.TaskCount = taskCount
 
@@ -245,9 +251,9 @@ module ``AppDomain Pool Tests`` =
         static member Eval (vpm : AppDomainPool<AppDomainVagabondLambdaLoader>) (f : unit -> 'T) =
             let vg = VagabondConfig.Instance
             let deps = vg.ComputeObjectDependencies(f, true)
-            let mgr = vpm.RequestAppDomain(deps |> Seq.map (fun deps -> deps.Id))
+            let proxy = vpm.RequestAppDomain(deps |> Seq.map (fun deps -> deps.Id))
             let p = VagabondConfig.Pickler.PickleTyped f
-            let presult = mgr.Evaluate(deps, p)
+            let presult = proxy.Execute(fun m -> m.Evaluate(deps, p))
             match vg.Serializer.UnPickleTyped presult with
             | Choice1Of2 v -> v
             | Choice2Of2 e -> raise e
@@ -271,12 +277,3 @@ module ``AppDomain Pool Tests`` =
         |> Seq.distinct
         |> Seq.length
         |> shouldEqual 1
-
-    [<Fact(Skip = "Long-Running test.")>]
-    let ``17 AppDomain long running async execution``() =
-        use pool = AppDomainEvaluatorPool.Create(ignore)
-        pool.EvaluateAsync([], async { let! _ = Async.Sleep(301*1000) in return 1 + 41 })
-        |> Async.RunSynchronously
-        |> shouldEqual 42
-
-#endif

@@ -13,6 +13,7 @@
     <PackageTags>F#, fsharp, dynamic assemblies, code, distribution, cecil</PackageTags>
     <RepositoryUrl>https://github.com/mbraceproject/Vagabond</RepositoryUrl>
     <PackageProjectUrl>http://mbraceproject.github.io/Vagabond/</PackageProjectUrl>
+    <PackageIconUrl>https://avatars0.githubusercontent.com/u/9674757</PackageIconUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <!-- SourceLink Options -->

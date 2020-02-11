@@ -62,15 +62,13 @@ namespace MBrace.Vagabond.AssemblyParser
     /// <summary>
     /// Default Assembly parsing configuration
     /// </summary>
-    class DefaultAssemblyParserConfig : IAssemblyParserConfig
+    public class DefaultAssemblyParserConfig : IAssemblyParserConfig
     {
-        public DefaultAssemblyParserConfig() { }
+        bool IAssemblyParserConfig.MakePublic(MemberInfo member) { return false; }
+        bool IAssemblyParserConfig.EraseMember(MemberInfo member) { return false; }
 
-        public bool MakePublic(MemberInfo member) { return false; }
-        public bool EraseMember(MemberInfo member) { return false; }
+        TypeParseAction IAssemblyParserConfig.GetTypeParseAction(Type type) { return TypeParseAction.ParseAll; }
 
-        public TypeParseAction GetTypeParseAction(Type type) { return TypeParseAction.ParseAll; }
-
-        public bool RemapReference(Type type, out Type outType) { outType = null; return false; }
+        bool IAssemblyParserConfig.RemapReference(Type type, out Type outType) { outType = null; return false; }
     }
 }

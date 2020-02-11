@@ -12,7 +12,7 @@ open FSharp.Compiler.SourceCodeServices
 
 type FsiSessionFixture() =
     static do
-        VagabondConfig.Init()
+        VagabondConfig.Init() |> ignore
         Actor.Init()
 
     let fsiConfig = FsiEvaluationSession.GetDefaultConfiguration()

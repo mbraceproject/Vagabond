@@ -1,5 +1,4 @@
 FSharp.Core
 FsPickler
 Mono.Cecil
-System.Runtime.Loader
 Microsoft.SourceLink.GitHub

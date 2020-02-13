@@ -97,14 +97,15 @@ Target.create "NuGet.ValidateSourceLink" (fun _ ->
 )
 
 Target.create "NuGet.Push" (fun _ ->
-    DotNet.nugetPush (fun opts ->
-        { opts with
-            PushParams =
-                { opts.PushParams with
-                    NoSymbols = true
-                    Source = Some "https://api.nuget.org/v3/index.json"
-                    ApiKey = Some (Environment.GetEnvironmentVariable "NUGET_KEY") }
-        }) (artifactsDir + "/*")
+    for artifact in !! (artifactsDir + "/*nupkg") do
+        DotNet.nugetPush (fun opts ->
+            { opts with
+                PushParams =
+                    { opts.PushParams with
+                        NoSymbols = true
+                        Source = Some "https://api.nuget.org/v3/index.json"
+                        ApiKey = Some (Environment.GetEnvironmentVariable "NUGET_KEY") }
+            }) artifact
 )
 
 // Doc generation

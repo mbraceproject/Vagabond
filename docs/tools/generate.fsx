@@ -72,7 +72,7 @@ let copyFiles () =
 
 let getReferenceAssembliesForProject (proj : string) =
     let projName = Path.GetFileName proj
-    !! (proj @@ "bin/Release/netstandard*/" + projName + ".dll") |> Seq.head
+    !! (proj @@ "bin/Release/netcoreapp*/" + projName + ".dll") |> Seq.head
 
 // Build API reference from XML comments
 let buildReference () =

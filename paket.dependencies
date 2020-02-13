@@ -51,7 +51,6 @@ group Build
 group DocGeneration
   source https://api.nuget.org/v3/index.json
   framework: netcoreapp3.1
-  storage: none
 
   nuget FAKE ~> 5.0
   nuget FSharp.Formatting ~> 4.0 prerelease

@@ -27,17 +27,6 @@ module ``Generic Vagabond API tests`` =
         let info'' = instance'.NativeDependencies.[0]
         info''.Id |> shouldEqual info.Id
 
-#if !NETCOREAPP
-    [<Fact>]
-    let ``Dot not differentiate between reflection-only and loaded assemblies`` () =
-        let a1 = Assembly.Load "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
-        let a2 = Assembly.ReflectionOnlyLoad "System.Configuration, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a"
-        
-        a2 |> shouldNotEqual a1
-        Vagabond.ComputeAssemblyDependencies([|a1 ; a2|], policy = AssemblyLookupPolicy.None) |> shouldEqual [|a1|]
-#endif
-        
-
     [<Fact>]
     let ``Cyclic Assembly resolution`` () =
         let load (name:string) =

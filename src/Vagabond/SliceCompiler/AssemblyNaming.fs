@@ -85,7 +85,7 @@ module AssemblySliceName =
             let m = sliceRegex.Match assemblyName
             if m.Success then
                 let dynamicName = m.Groups.[1].Value
-                let uuid = Guid.Parse <| m.Groups.[2].Value
+                let uuid = Guid.Parse m.Groups.[2].Value
                 let sliceId = int <| m.Groups.[3].Value
                 Some(uuid, dynamicName, sliceId)
             else

@@ -1,7 +1,6 @@
 ﻿namespace MBrace.Vagabond.LoadContextPool
 
 open System
-open System.Collections.Generic
 open System.Reflection
 open System.Runtime.Serialization
 open System.Runtime.Loader
@@ -117,7 +116,7 @@ module private Impl =
 
     /// An assembly load context that mirrors assembly loading from the currently running context
     type MirroredAssemblyLoadContext() =
-        inherit AssemblyLoadContext() // TODO need the isCollectible=true constructor overload here
+        inherit AssemblyLoadContext(isCollectible = true)
 
         // AssemblyLoadContext is not available in netstandard2.0
         // Use reflection to access its APIs
@@ -135,12 +134,6 @@ module private Impl =
             |> Seq.filter (fun a -> not a.IsDynamic && not (String.IsNullOrEmpty a.Location))
             |> Seq.tryFind isMatchingAssembly
             |> Option.map (fun a -> a.Location)
-
-        /// Due to nestandard constraints, need to call "Unload" method using reflection
-        member this.TryUnload() = 
-            match unloadMethod with
-            | null -> false
-            | m -> m.Invoke(this, [||]) |> ignore ; true
                 
         override this.Load an =
             match tryResolveFileName an with
@@ -246,7 +239,7 @@ module private Impl =
         do for adli in contexts do
             try 
                 try adli.Proxy.Execute(fun m -> m.Dispose())
-                finally adli.LoadContext.TryUnload() |> ignore
+                finally adli.LoadContext.Unload()
             with _ -> ()
     }
 
@@ -342,10 +335,6 @@ type AssemblyLoadContextPool<'Manager when 'Manager :> ILoadContextManager
                              and 'Manager : (new : unit -> 'Manager)>
 
     internal (minimumConcurrentContexts : int, maximumConcurrentContexts : int, config : obj, threshold : TimeSpan option, maxTasks : int option) =
-
-#if !NETCOREAPP
-    do if not Utils.isNetCoreApp then raise <| PlatformNotSupportedException "Requires .NET Core"
-#endif
 
     let cts = new CancellationTokenSource()
     let state = LoadContextPoolInfo<'Manager>.Init(minimumConcurrentContexts, maximumConcurrentContexts, config, threshold, maxTasks)

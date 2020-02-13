@@ -51,12 +51,7 @@ type FsiSessionFixture() =
 #else
                 "Release"
 #endif
-            let framework =
-#if NETCOREAPP
-                "netcoreapp3.0"
-#else
-                "net472"
-#endif
+            let framework = "netcoreapp3.1"
         
             repoRoot @@ sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
 
@@ -71,11 +66,7 @@ type FsiSessionFixture() =
                 thunkServerPath @@ "FsPickler.dll"
                 thunkServerPath @@ "Vagabond.dll"
                 thunkServerPath @@ "Thespian.dll"
-#if NETCOREAPP
                 thunkServerPath @@ "ThunkServer.dll"
-#else
-                thunkServerPath @@ "ThunkServer.exe"
-#endif
 
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"

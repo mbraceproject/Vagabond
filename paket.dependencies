@@ -1,5 +1,5 @@
 source https://api.nuget.org/v3/index.json
-framework: netstandard2.0, net462
+framework: netcoreapp3.0
 redirects: off
 storage: none
 
@@ -12,7 +12,7 @@ nuget Microsoft.SourceLink.GitHub prerelease copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json
-  framework: netcoreapp3.0, net472
+  framework: netcoreapp3.1
   redirects: off
   storage: none
 
@@ -51,6 +51,7 @@ group Build
 group DocGeneration
   source https://api.nuget.org/v3/index.json
   framework: netcoreapp3.1
+  storage: none
 
   nuget FAKE ~> 5.0
   nuget FSharp.Formatting ~> 4.0 prerelease

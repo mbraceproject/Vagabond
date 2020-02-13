@@ -179,18 +179,10 @@ module internal Utils =
 
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
-    // AssemblyLoadContext is not available in netstandard2.0
-    // Use reflection to access its APIs
     let getLoadedAssemblies = lazy(
-        match Type.GetType "System.Runtime.Loader.AssemblyLoadContext" with
-        | null -> fun () -> System.AppDomain.CurrentDomain.GetAssemblies() |> Array.toSeq
-        | ty ->
-            // do not query AppDomain if netcoreapp; it will return assemblies from all contexts
-            let asm = Assembly.GetExecutingAssembly()
-            let loadContextM = ty.GetMethod("GetLoadContext", BindingFlags.Public ||| BindingFlags.Static)
-            let currentLoadContext = loadContextM.Invoke(null, [|asm|])
-            let assembliesProperty = ty.GetProperty("Assemblies")
-            fun () -> assembliesProperty.GetValue(currentLoadContext) :?> seq<Assembly>)
+        let asm = Assembly.GetExecutingAssembly()
+        let currentLoadContext = System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(asm)
+        fun () -> currentLoadContext.Assemblies)
 
     /// try get assembly that is loaded in current appdomain
     let tryGetLoadedAssembly =

@@ -10,7 +10,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="VagabondTests.fs" />
     <Compile Include="FsiTests.fs" />
-    <Compile Include="AppDomainPoolTests.fs" />
+    <Compile Include="AssemblyLoadContextPoolTests.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

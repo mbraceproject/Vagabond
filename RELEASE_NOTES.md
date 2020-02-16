@@ -1,4 +1,4 @@
-* 0.16.1 - Fix AssemblyLoadContext bug.
+* 0.16.2 - Fix AssemblyLoadContext bug.
 * 0.16.1 - Fix packaging issue.
 * 0.16.0 - Support netcoreapp3.0 only.
 * 0.15.1 - Fix nuget issue that was causing errors in new dotnet sdk.

@@ -115,8 +115,8 @@ module private Impl =
             LoadContextMarshaller<'T>.CreateProxyFromMarshallerHandle remoteInstance
 
     /// An assembly load context that mirrors assembly loading from the currently running context
-    type MirroredAssemblyLoadContext() =
-        inherit AssemblyLoadContext(isCollectible = true)
+    type MirroredAssemblyLoadContext(name : string) =
+        inherit AssemblyLoadContext(name, isCollectible = true)
 
         // AssemblyLoadContext is not available in netstandard2.0
         // Use reflection to access its APIs
@@ -158,7 +158,7 @@ module private Impl =
         static member Init (configuration : obj, dependencies : seq<AssemblyId>) =
             let id = Guid.NewGuid().ToString()
             let dependencies = dependencies |> Seq.map (fun d -> d.FullName, d) |> Map.ofSeq
-            let loadContext = new MirroredAssemblyLoadContext()
+            let loadContext = new MirroredAssemblyLoadContext(name = id)
             let proxy = loadContext.CreateProxy<'Manager>()
             proxy.Execute(fun m -> m.Initialize configuration)
 

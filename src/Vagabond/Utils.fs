@@ -9,8 +9,7 @@ open System.Threading
 open System.Threading.Tasks
 open System.Text.RegularExpressions
 open System.Runtime.ExceptionServices
-open System.Runtime.Serialization
-open System.Security.Cryptography
+open System.Runtime.Loader
 
 open Microsoft.FSharp.Control
 
@@ -179,17 +178,16 @@ module internal Utils =
 
     let allBindings = BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.Static
 
-    let getLoadedAssemblies = lazy(
+    let currentLoadContext =
         let asm = Assembly.GetExecutingAssembly()
-        let currentLoadContext = System.Runtime.Loader.AssemblyLoadContext.GetLoadContext(asm)
-        fun () -> currentLoadContext.Assemblies)
+        AssemblyLoadContext.GetLoadContext asm
 
-    /// try get assembly that is loaded in current appdomain
+    /// try get assembly that is loaded in current assembly load context
     let tryGetLoadedAssembly =
         let load fullName =
             // first, query AppDomain for loaded assembly of given qualified name
             let results =
-                getLoadedAssemblies.Value()
+                currentLoadContext.Assemblies
                 |> Seq.filter (fun a -> a.FullName = fullName)
                 |> Seq.toArray
 
@@ -206,7 +204,7 @@ module internal Utils =
         match tryGetLoadedAssembly fullName with
         | Some _ as a -> a
         | None ->
-            try Some <| Assembly.Load(fullName)
+            try Some <| currentLoadContext.LoadFromAssemblyName(AssemblyName fullName)
             with :? FileNotFoundException | :? FileLoadException -> None
 
 

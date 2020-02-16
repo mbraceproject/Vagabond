@@ -127,7 +127,7 @@ let loadAssembly (state : VagabondState) (policy : AssemblyLookupPolicy) (va : V
             | LoadFault(_,e) -> raise e
             | _ -> ()
 
-        let assembly = System.Reflection.Assembly.LoadFrom va.Image
+        let assembly = Utils.currentLoadContext.LoadFromAssemblyPath va.Image
 
         if assembly.FullName <> va.FullName then
             let msg = sprintf "Expected assembly '%s', but was '%s'." va.FullName assembly.FullName

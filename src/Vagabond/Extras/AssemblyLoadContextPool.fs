@@ -33,6 +33,8 @@ type ILoadContextManager =
 /// Proxy interface used for communicating with type loaded in remote AssemblyLoadContext
 type ILoadContextProxy<'T when 'T :> IDisposable> =
     inherit IDisposable
+    /// AssemblyLoadContext hosting the instance
+    abstract LoadContext : AssemblyLoadContext
     /// Marshalls a command which will be executed in the remote AssemblyLoadContext
     abstract Execute : command:('T -> 'R) -> 'R
     /// Marshalls a command which will be executed in the remote AssemblyLoadContext
@@ -73,10 +75,11 @@ module private Impl =
     
             Async.StartAsTask(work, cancellationToken = ct)
 
-        static member CreateProxyFromMarshallerHandle (remoteHandle : obj) =
+        static member CreateProxyFromMarshallerHandle (context : AssemblyLoadContext, remoteHandle : obj) =
             let remoteMethod = remoteHandle.GetType().GetMethod("ExecuteMarshalled", BindingFlags.NonPublic ||| BindingFlags.Instance)
             let remoteAsyncMethod = remoteHandle.GetType().GetMethod("ExecuteMarshalledAsync", BindingFlags.NonPublic ||| BindingFlags.Instance)
             { new ILoadContextProxy<'T> with
+                member __.LoadContext = context
                 member __.Dispose() = (remoteHandle :?> IDisposable).Dispose()
                 member __.Execute<'R> (command : 'T -> 'R) =
                     let boxedCommand instance = let result = command instance in result :> obj
@@ -112,16 +115,11 @@ module private Impl =
 
             // instantiate proxy in remote context
             let remoteInstance = activate remoteInstanceType
-            LoadContextMarshaller<'T>.CreateProxyFromMarshallerHandle remoteInstance
+            LoadContextMarshaller<'T>.CreateProxyFromMarshallerHandle(ctx, remoteInstance)
 
     /// An assembly load context that mirrors assembly loading from the currently running context
     type MirroredAssemblyLoadContext(name : string) =
         inherit AssemblyLoadContext(name, isCollectible = true)
-
-        // AssemblyLoadContext is not available in netstandard2.0
-        // Use reflection to access its APIs
-        let unloadMethod = typeof<AssemblyLoadContext>.GetMethod("Unload", BindingFlags.Public ||| BindingFlags.Instance)
-        let getLoadedAssemblies = Utils.getLoadedAssemblies.Value
 
         let tryResolveFileName (an : AssemblyName) =
             let isMatchingAssembly (assembly : Assembly) =
@@ -130,7 +128,7 @@ module private Impl =
                 can.Version >= an.Version &&
                 can.GetPublicKeyToken() = an.GetPublicKeyToken()
 
-            getLoadedAssemblies()
+            Utils.currentLoadContext.Assemblies
             |> Seq.filter (fun a -> not a.IsDynamic && not (String.IsNullOrEmpty a.Location))
             |> Seq.tryFind isMatchingAssembly
             |> Option.map (fun a -> a.Location)

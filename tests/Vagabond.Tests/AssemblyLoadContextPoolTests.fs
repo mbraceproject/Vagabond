@@ -218,6 +218,16 @@ module ``AssemblyLoadContextPool Tests`` =
         Assert.Throws<System.InvalidOperationException>(fun () -> pool.EvaluateAsync([], async { return invalidOp "boom"}) |> Async.RunSynchronously |> ignore) 
         |> ignore
 
+    [<Fact>]
+    let ``14B AssemblyLoadContextEvaluatorPool simple worfklow with cancellation`` () =
+        use pool = AssemblyLoadContextEvaluatorPool.Create(fun () -> printfn "Initializing AssemblyLoadContext")
+        use cts = new CancellationTokenSource()
+        Assert.Throws<System.Threading.Tasks.TaskCanceledException>(fun () -> 
+            let work = pool.EvaluateAsync([], Async.Sleep 60_000)
+            cts.CancelAfter 1000
+            Async.RunSynchronously(work, cancellationToken = cts.Token))
+        |> ignore
+
 
     type LoadContextVagabondLambdaLoaderConfiguration = { CachePath : string }
     

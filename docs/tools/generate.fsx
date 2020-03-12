@@ -2,17 +2,7 @@
 // Builds the documentation from `.fsx` and `.md` files in the 'docs/content' directory
 // (the generated documentation is stored in the 'docs/output' directory)
 // --------------------------------------------------------------------------------------
-#I "../../packages/docgeneration/FSharp.Compiler.Service/lib/netstandard2.0"
-#I "../../packages/docgeneration/FSharp.Formatting/lib/netstandard2.0"
-#r "../../packages/docgeneration/FAKE/tools/FakeLib.dll"
-#r "RazorEngine.NetCore.dll"
-#r "FSharp.Compiler.Service.dll"
-#r "FSharp.Markdown.dll"
-#r "FSharp.Literate.dll"
-#r "FSharp.CodeFormat.dll"
-#r "FSharp.MetadataFormat.dll"
-#r "FSharp.Formatting.Common.dll"
-#r "FSharp.Formatting.Razor.dll"
+#load "../../.paket/load/netstandard2.0/Build/build.group.fsx"
 
 open System
 open System.IO
@@ -55,7 +45,7 @@ let content    = __SOURCE_DIRECTORY__ @@ "../content"
 let output     = __SOURCE_DIRECTORY__ @@ "../output"
 let files      = __SOURCE_DIRECTORY__ @@ "../files"
 let templates  = __SOURCE_DIRECTORY__ @@ "templates"
-let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/docgeneration/FSharp.Formatting/"
+let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/build/FSharp.Formatting/"
 let docTemplate = formatting @@ "templates/docpage.cshtml"
 
 // Where to look for *.csproj templates (in this order)

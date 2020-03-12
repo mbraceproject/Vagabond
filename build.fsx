@@ -183,8 +183,8 @@ Target.create "Release" ignore
   ==> "Bundle"
 
 "Bundle"
-  ==> "NuGet.Push"
   ==> "ReleaseDocs"
+  ==> "NuGet.Push"
   ==> "ReleaseGithub"
   ==> "Release"
 

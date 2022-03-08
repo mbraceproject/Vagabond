@@ -44,6 +44,7 @@ let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
         match Graph.tryGetTopologicalOrdering graph with
         | Choice1Of2 sorted -> sorted |> List.map (fun id -> map.[id])
         | Choice2Of2 cycle ->
+#if NETSTANDARD
             // tolerate a certain set of microsoft-shipped assemblies that are cyclic
             match cycle |> List.tryFindIndex (fun id -> map.[id].GlobalAssemblyCache) with
             | Some i ->
@@ -55,7 +56,10 @@ let getAssemblyOrdering (dependencies : Graph<Assembly>) : Assembly list =
                 // graph not DAG, return an appropriate exception
                 let cycle = cycle |> Seq.map (fun id -> id.GetName().Name) |> String.concat ", "
                 raise <| new VagabondException(sprintf "Found circular assembly dependencies: %s." cycle)
-
+#else
+            let cycle = cycle |> Seq.map (fun id -> id.GetName().Name) |> String.concat ", "
+            raise <| new VagabondException(sprintf "Found circular assembly dependencies: %s." cycle)
+#endif
     aux idGraph
 
 

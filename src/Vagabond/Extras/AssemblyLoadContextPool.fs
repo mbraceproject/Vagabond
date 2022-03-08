@@ -2,8 +2,10 @@
 
 open System
 open System.Reflection
-open System.Runtime.Serialization
+#if !NETSTANDARD
 open System.Runtime.Loader
+#endif
+open System.Runtime.Serialization
 open System.Threading
 open System.Threading.Tasks
 

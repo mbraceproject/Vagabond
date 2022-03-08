@@ -44,16 +44,16 @@ type FsiSessionFixture() =
             stderrWriter.Dispose()
     
     static member private SetupThunkServer(fsi : FsiEvaluationSession) =
-        let thunkServerPath = 
-            let configuration =
-#if DEBUG
-                "Debug"
-#else
-                "Release"
-#endif
-            let framework = "netcoreapp3.1"
         
-            repoRoot @@ sprintf "samples/ThunkServer/bin/%s/%s" configuration framework
+        let thunkServerPath = 
+            let configurationPath = 
+                let assemblyLocation = System.Environment.CurrentDirectory
+                Path.Combine(
+                    Path.GetFileName(Path.GetDirectoryName(assemblyLocation)), 
+                    Path.GetFileName assemblyLocation)
+
+        
+            repoRoot @@ sprintf "samples/ThunkServer/bin/%s" configurationPath
 
         let thunkServerExe = thunkServerPath @@ "ThunkServer"
 
@@ -66,7 +66,11 @@ type FsiSessionFixture() =
                 thunkServerPath @@ "FsPickler.dll"
                 thunkServerPath @@ "Vagabond.dll"
                 thunkServerPath @@ "Thespian.dll"
+#if NETFRAMEWORK
+                thunkServerPath @@ "ThunkServer.exe"
+#else
                 thunkServerPath @@ "ThunkServer.dll"
+#endif
 
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Base.dll"
                 repoRoot @@ "packages/fsi/LinqOptimizer.FSharp/lib/netstandard2.0/LinqOptimizer.Core.dll"

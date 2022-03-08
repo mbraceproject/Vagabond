@@ -5,11 +5,13 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open System.IO
 open System.Reflection
+#if !NETSTANDARD
+open System.Runtime.Loader
+#endif
 open System.Threading
 open System.Threading.Tasks
 open System.Text.RegularExpressions
 open System.Runtime.ExceptionServices
-open System.Runtime.Loader
 
 open Microsoft.FSharp.Control
 

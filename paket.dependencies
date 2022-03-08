@@ -1,9 +1,9 @@
 source https://api.nuget.org/v3/index.json
-framework: netcoreapp3.0
+framework: netstandard2.0,netcoreapp3.1,net5.0
 redirects: off
 storage: none
 
-nuget FSharp.Core >= 4.3.2 lowest_matching:true
+nuget FSharp.Core >= 5.0.1 lowest_matching:true
 nuget FsPickler ~> 5.3.2 lowest_matching:true
 nuget Mono.Cecil >= 0.11.0 lowest_matching:true
 
@@ -11,15 +11,15 @@ nuget Microsoft.SourceLink.GitHub copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json
-  framework: netcoreapp3.1
+  framework: net472,netcoreapp3.1,net5.0,net6.0
   redirects: off
   storage: none
 
-  nuget FSharp.Core ~> 4.6
-  nuget FsPickler ~> 5.2
+  nuget FSharp.Core >= 5.0.1 lowest_matching:true
+  nuget FsPickler ~> 5.3.2 lowest_matching:true
   nuget Thespian ~> 0.2.0
 
-  nuget FSharp.Compiler.Service ~> 34.0.0
+  nuget FSharp.Compiler.Service ~> 39.0.0
   nuget xunit ~> 2.4.1
   nuget xunit.runner.visualstudio ~> 2.4.1
   nuget Microsoft.Net.Test.SDK ~> 16.4.0

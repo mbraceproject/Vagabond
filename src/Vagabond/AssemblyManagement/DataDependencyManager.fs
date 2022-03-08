@@ -121,7 +121,13 @@ let importDataDependency (state : VagabondState) (va : VagabondAssembly) (curren
 
     let updateValue hash (value : obj) =
         let field = state.Serializer.UnPickleTyped di.FieldInfo
-        field.SetValue(null, value)
+
+        // As per https://docs.microsoft.com/en-us/dotnet/api/system.reflection.fieldinfo.setvalue
+        // SetValue method cannot be used to set values of static, init-only (readonly in C#) fields reliably. 
+        // In .NET Core 3.0 and later versions, an exception is thrown if you attempt to set a value on a static, init-only field.
+        if field.Attributes &&& FieldAttributes.Static <> FieldAttributes.Static
+            || field.Attributes &&& FieldAttributes.InitOnly <> FieldAttributes.InitOnly then
+            field.SetValue(null, value)
         Some(field, hash)
 
     match di.Data, persistPath with

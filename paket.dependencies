@@ -1,7 +1,7 @@
 version 7.0.0-alpha003
 
 source https://api.nuget.org/v3/index.json
-framework: netstandard2.0,netcoreapp3.1,net5.0
+framework: netstandard2.0,netcoreapp3.1
 redirects: off
 storage: none
 
@@ -13,7 +13,7 @@ nuget Microsoft.SourceLink.GitHub copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json
-  framework: net472,netcoreapp3.1,net5.0,net6.0
+  framework: net472,net6.0
   redirects: off
   storage: none
 
@@ -37,10 +37,22 @@ group Fsi
   nuget MathNet.Numerics.FSharp ~> 4.9.0
   nuget MathNet.Numerics.MKL.Win-x64 ~> 2.3.0
 
+group Formatting
+  source https://api.nuget.org/v3/index.json
+  generate_load_scripts: true
+  framework: netstandard2.0
+  storage: none
+
+  nuget Fake.IO.FileSystem    ~> 5.19.0
+
+  nuget FSharp.Compiler.Service ~> 35.0 storage: packages
+  nuget FSharp.Formatting ~> 4.1.0 storage: packages
+  nuget FSharp.Formatting.CommandTool ~> 4.1.0 storage: packages
+
 group Build
   source https://api.nuget.org/v3/index.json
   generate_load_scripts: true
-  framework: net6.0
+  framework: netstandard2.0, net6.0
   storage: none
 
   nuget Fake.Core.UserInput	    ~> 5.22.0
@@ -50,5 +62,3 @@ group Build
   nuget Fake.DotNet.Cli         ~> 5.22.0
   nuget Fake.Tools.Git          ~> 5.22.0
   nuget Fake.Api.Github         ~> 5.22.0
-
-  nuget FSharp.Formatting ~> 4.0 prerelease storage: packages

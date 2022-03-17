@@ -63,6 +63,7 @@ type ThunkServer private () =
 
     static member Start () = new ThunkServer()
 
+
 /// Client object for interacting with thunk server
 [<AutoSerializable(false)>]
 type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
@@ -129,7 +130,7 @@ type ThunkClient internal (server : ActorRef<ServerMsg>, ?proc : Process) =
         let! awaiter = receiver.ReceiveEvent |> Async.AwaitEvent |> Async.StartChild
 
         let argument = VagabondConfig.Serializer.Pickle receiver.Ref |> System.Convert.ToBase64String
-        let proc = Process.Start(ThunkClient.Executable, argument)
+        let proc = Process.Start(ThunkClient.Executable, argument + " --roll-forward Major")
 
         let! serverRef = awaiter
         return new ThunkClient(serverRef, proc)

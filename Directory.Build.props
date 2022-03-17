@@ -22,6 +22,8 @@
     <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
     <!--<IncludeSymbols>true</IncludeSymbols>-->
     <!--<SymbolPackageFormat>snupkg</SymbolPackageFormat>-->
+    <LibTargetFrameworks>netstandard2.0;netcoreapp3.1</LibTargetFrameworks>
+    <TestTargetFrameworks>net472;net6.0</TestTargetFrameworks>
   </PropertyGroup>
 
   <!-- P2P nuget inlining workaround: c.f. http://yer.ac/blog/2019/09/05/dotnet-pack-project-reference-and-nuget-dependency/ -->

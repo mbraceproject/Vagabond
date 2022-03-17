@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFrameworks>$(LibTargetFrameworks)</TargetFrameworks>
     <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <IsPackable>true</IsPackable>
@@ -12,6 +12,7 @@
     <Compile Include="DynamicAssemblyProfile.fs" />
     <Compile Include="Compression.fs" />
     <Compile Include="Types.fs" />
+    <Compile Include="AssemblyLoadContext.fs" />
     <Compile Include="Utils.fs" />
     <Compile Include="SliceCompiler\SliceCompilerTypes.fs" />
     <Compile Include="SliceCompiler\AssemblyNaming.fs" />

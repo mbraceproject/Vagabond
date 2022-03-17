@@ -2,7 +2,7 @@
 // Builds the documentation from `.fsx` and `.md` files in the 'docs/content' directory
 // (the generated documentation is stored in the 'docs/output' directory)
 // --------------------------------------------------------------------------------------
-#load "../../.paket/load/netstandard2.0/Build/build.group.fsx"
+#load "../../.paket/load/netstandard2.0/Formatting/formatting.group.fsx"
 
 open System
 open System.IO
@@ -45,7 +45,7 @@ let content    = __SOURCE_DIRECTORY__ @@ "../content"
 let output     = __SOURCE_DIRECTORY__ @@ "../output"
 let files      = __SOURCE_DIRECTORY__ @@ "../files"
 let templates  = __SOURCE_DIRECTORY__ @@ "templates"
-let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/build/FSharp.Formatting/"
+let formatting = __SOURCE_DIRECTORY__ @@ "../../packages/formatting/FSharp.Formatting/"
 let docTemplate = formatting @@ "templates/docpage.cshtml"
 
 // Where to look for *.csproj templates (in this order)
@@ -62,7 +62,7 @@ let copyFiles () =
 
 let getReferenceAssembliesForProject (proj : string) =
     let projName = Path.GetFileName proj
-    !! (proj @@ "bin/Release/netcoreapp*/" + projName + ".dll") |> Seq.head
+    !! (proj @@ "bin/Release/netstandard2.0/" + projName + ".dll") |> Seq.head
 
 // Build API reference from XML comments
 let buildReference () =

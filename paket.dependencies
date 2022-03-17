@@ -1,9 +1,11 @@
+version 7.0.0-alpha003
+
 source https://api.nuget.org/v3/index.json
-framework: netcoreapp3.0
+framework: netstandard2.0,netcoreapp3.1
 redirects: off
 storage: none
 
-nuget FSharp.Core >= 4.3.2 lowest_matching:true
+nuget FSharp.Core >= 5.0.1 lowest_matching:true
 nuget FsPickler ~> 5.3.2 lowest_matching:true
 nuget Mono.Cecil >= 0.11.0 lowest_matching:true
 
@@ -11,15 +13,15 @@ nuget Microsoft.SourceLink.GitHub copy_local:true
 
 group Testing
   source https://api.nuget.org/v3/index.json
-  framework: netcoreapp3.1
+  framework: net472,net6.0
   redirects: off
   storage: none
 
-  nuget FSharp.Core ~> 4.6
-  nuget FsPickler ~> 5.2
+  nuget FSharp.Core >= 5.0.1 lowest_matching:true
+  nuget FsPickler ~> 5.3.2 lowest_matching:true
   nuget Thespian ~> 0.2.0
 
-  nuget FSharp.Compiler.Service ~> 34.0.0
+  nuget FSharp.Compiler.Service ~> 39.0.0
   nuget xunit ~> 2.4.1
   nuget xunit.runner.visualstudio ~> 2.4.1
   nuget Microsoft.Net.Test.SDK ~> 16.4.0
@@ -35,18 +37,28 @@ group Fsi
   nuget MathNet.Numerics.FSharp ~> 4.9.0
   nuget MathNet.Numerics.MKL.Win-x64 ~> 2.3.0
 
-group Build
+group Formatting
   source https://api.nuget.org/v3/index.json
   generate_load_scripts: true
   framework: netstandard2.0
   storage: none
 
-  nuget Fake.Core.UserInput	    ~> 5.19.0
-  nuget Fake.Core.ReleaseNotes  ~> 5.19.0
-  nuget Fake.Core.Target        ~> 5.19.0
-  nuget Fake.IO.FileSystem      ~> 5.19.0
-  nuget Fake.DotNet.Cli         ~> 5.19.0
-  nuget Fake.Tools.Git          ~> 5.19.0
-  nuget Fake.Api.Github         ~> 5.19.0
+  nuget Fake.IO.FileSystem    ~> 5.19.0
 
-  nuget FSharp.Formatting ~> 4.0 prerelease storage: packages
+  nuget FSharp.Compiler.Service ~> 35.0 storage: packages
+  nuget FSharp.Formatting ~> 4.1.0 storage: packages
+  nuget FSharp.Formatting.CommandTool ~> 4.1.0 storage: packages
+
+group Build
+  source https://api.nuget.org/v3/index.json
+  generate_load_scripts: true
+  framework: netstandard2.0, net6.0
+  storage: none
+
+  nuget Fake.Core.UserInput	    ~> 5.22.0
+  nuget Fake.Core.ReleaseNotes  ~> 5.22.0
+  nuget Fake.Core.Target        ~> 5.22.0
+  nuget Fake.IO.FileSystem      ~> 5.22.0
+  nuget Fake.DotNet.Cli         ~> 5.22.0
+  nuget Fake.Tools.Git          ~> 5.22.0
+  nuget Fake.Api.Github         ~> 5.22.0

@@ -163,9 +163,11 @@ packages/
 
 # Generated documentation folder
 docs/output/
+.fsdocs/
 
 # Temp folder used for publishing docs
 temp/
+tmp/
 
 # Test results produced by build
 TestResults.xml

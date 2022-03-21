@@ -1,7 +1,7 @@
 (*** hide ***)
 // This block of code is omitted in the generated HTML documentation. Use 
 // it to define helpers that you do not want to show in the documentation.
-#I "../../src/Vagabond/bin/Release/netstandard2.0"
+#I "../src/Vagabond/bin/Release/netstandard2.0"
 #r "Vagabond.AssemblyParser.dll"
 #r "Vagabond.dll"
 
@@ -26,15 +26,10 @@ It is based on the [Cecil](http://www.mono-project.com/docs/tools+libraries/libr
 and [FsPickler](http://mbraceproject.github.io/FsPickler) libraries and adapts code from JB Evain's
 [AssemblySaver](https://github.com/jbevain/mono.reflection/blob/assembly-saver/Mono.Reflection/AssemblySaver.cs).
 
-<div class="row">
-  <div class="span1"></div>
-  <div class="span6">
-    <div class="well well-small" id="nuget">
-      The Vagabond library can be <a href="https://nuget.org/packages/Vagabond">installed from NuGet</a>:
-      <pre>PM> Install-Package Vagabond</pre>
-    </div>
-  </div>
-  <div class="span1"></div>
+The Vagabond library can be <a href="https://nuget.org/packages/Vagabond">installed from NuGet
+
+<div id="nuget">
+  <pre class="fssnip">PM> Install-Package Vagabond</pre>
 </div>
 
 ## Example

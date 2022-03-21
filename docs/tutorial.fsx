@@ -1,7 +1,7 @@
 (*** hide ***)
 // This block of code is omitted in the generated HTML documentation. Use 
 // it to define helpers that you do not want to show in the documentation.
-#I "../../tests/Vagabond.Tests/bin/Release/netcoreapp3.1"
+#I "../tests/Vagabond.Tests/bin/Release/net6.0"
 #r "FsPickler.dll"
 #r "Vagabond.AssemblyParser.dll"
 #r "Vagabond.dll"

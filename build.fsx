@@ -107,8 +107,8 @@ Target.create "NuGet.Push" (fun _ ->
 // Doc generation
 
 Target.create "GenerateDocs" (fun _ ->
-    let result = DotNet.exec (fun o -> { o with WorkingDirectory = "docs" }) "fsi" "--define:RELEASE tools/generate.fsx"
-    if not result.OK then failwith "failed to generate docs"
+    Shell.cleanDirs [ ".fsdocs"; "docs/output" ]
+    DotNet.exec id "fsdocs" "build --clean  --output docs/output" |> ignore
 )
 
 Target.create "ReleaseDocs" (fun _ ->
